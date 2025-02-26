@@ -1,0 +1,17 @@
+@font-face {
+  font-family: "sen";
+  src: url("./fonts/Sen-VariableFont_wght.ttf");
+}
+
+body {
+  margin: 0;
+  font-family: "sen";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  position: relative;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+    monospace;
+}
