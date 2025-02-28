@@ -27,6 +27,8 @@ const CustomModal = ({
   header = "Are you sure you want to delete",
   label = "open modal",
   disabled = false,
+  style,
+  footerText,
 }) => {
   const handleOpen = () => {
     setOpen((o) => !o);
@@ -63,30 +65,41 @@ const CustomModal = ({
               <span>{header}</span>
               <IoMdClose style={{ cursor: "pointer" }} onClick={handleOpen} />
             </FlexBox>
-            <FlexBox style={{ padding: 24, borderBottom: "1px solid #EFF0F6" }}>
+            <FlexBox
+              style={{
+                padding: 24,
+                borderBottom: "1px solid #EFF0F6",
+                ...style,
+              }}
+            >
               {children}
             </FlexBox>
             <FlexBox
               style={{
                 padding: 24,
-                justifyContent: "flex-end",
+                justifyContent: "space-between",
                 alignItems: "center",
                 gap: 10,
               }}
             >
-              <Button variant="outlined" onClick={handleOpen}>
-                Cancel
-              </Button>
-              <Button
-                variant="contained"
-                disabled={disabled}
-                onClick={(event) => {
-                  onConfirm(event);
-                  handleOpen();
-                }}
-              >
-                Confirm
-              </Button>
+              <FlexBox>
+                <span>{footerText}</span>
+              </FlexBox>
+              <FlexBox style={{ gap: 10 }}>
+                <Button variant="outlined" onClick={handleOpen}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="contained"
+                  disabled={disabled}
+                  onClick={(event) => {
+                    onConfirm(event);
+                    handleOpen();
+                  }}
+                >
+                  Confirm
+                </Button>
+              </FlexBox>
             </FlexBox>
           </FlexBox>
         </ModelWrapper>

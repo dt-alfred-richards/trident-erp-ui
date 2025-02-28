@@ -1,9 +1,6 @@
-import React, { useState } from "react";
-import BasicCard from "../Card/Card";
+import React from "react";
 import { LuListTodo } from "react-icons/lu";
 import { FlexBox } from "../Navbar/styles";
-import { Button } from "@mui/material";
-import Dropdown from "../Card/Dropdown";
 
 export const IconRender = ({ type, ...props }) => {
   switch (type) {
@@ -34,43 +31,9 @@ const cards = [
 ];
 
 const Home = () => {
-  const [selectedOption, setSelectedOption] = useState(undefined);
-
   return (
-    <FlexBox flexDirection={"column"} gap={40}>
-      <FlexBox justifyContent="flex-end">
-        <Dropdown
-          label="Actions"
-          onSelect={setSelectedOption}
-          options={[
-            { label: "Create New Sales Entry" },
-            { label: "Record Payment Info" },
-            { label: "Update Inventory" },
-          ]}
-        />
-      </FlexBox>
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          justifyContent: "center",
-          alignItems: "center",
-          gap: 50,
-          padding:'0 50px'
-        }}
-      >
-        {cards.map((item) => {
-          return (
-            <BasicCard
-              width={250}
-              title={item.title}
-              description={item.description}
-              icon={<IconRender type={item.type} size={40} />}
-              style={{ color: "#000000", ...(item.style ?? {}) }}
-            />
-          );
-        })}
-      </div>
+    <FlexBox style={{ padding: "24px 70px", flex: 1 }}>
+      
     </FlexBox>
   );
 };

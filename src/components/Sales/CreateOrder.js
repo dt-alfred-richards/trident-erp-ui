@@ -6,8 +6,9 @@ import { Button } from "@mui/material";
 import axios from "axios";
 import { addOrder, getOrderDetails } from "../../api";
 import CustomModal from "../utils/Modal";
-import { toast } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
 import { useParams } from "react-router-dom";
+import BasicTable from "../Table/NormalTable";
 
 const fieldsConfig = [
   {
@@ -157,6 +158,38 @@ const CreateOrder = () => {
   );
   const [openConfirm, setOpenConfirm] = useState(false);
   const [openCancel, setOpenCancel] = useState(false);
+  const [showAddItem, setShowAddItem] = useState(false);
+  const [productList, setProductList] = useState([...rows]);
+  const [tempList, setTempProduct] = useState({
+    productName: {
+      label: "Product Name",
+      name: "productName",
+      type: "text",
+      value: "",
+      placeholder: "Please provide product name",
+      error: false,
+      style: { width: "100%" },
+    },
+    cases: {
+      label: "Cases",
+      name: "cases",
+      type: "number",
+      value: "",
+      placeholder: "Please provide cases",
+      error: false,
+      style: { width: "100%" },
+    },
+    price: {
+      label: "Price",
+      name: "price",
+      type: "number",
+      value: "",
+      placeholder: "Please provide price",
+      error: false,
+      style: { width: "100%" },
+    },
+  });
+  const [addModal, setAddModal] = useState(false);
 
   useEffect(() => {
     if (!orderId) return;
@@ -179,6 +212,13 @@ const CreateOrder = () => {
   const handleChange = (event) => {
     const { name, value } = event.target;
     setOrderDetails((prev) => ({
+      ...prev,
+      [name]: { ...(prev[name] ?? {}), value },
+    }));
+  };
+  const handleProduct = (event) => {
+    const { name, value } = event.target;
+    setTempProduct((prev) => ({
       ...prev,
       [name]: { ...(prev[name] ?? {}), value },
     }));
@@ -216,10 +256,9 @@ const CreateOrder = () => {
         toast("Order added");
       })
       .catch((error) => {
-        console.log({ error });
+        toast(error.response.data.message ?? error.message);
       });
   }, [orderDetails]);
-
   return (
     <FlexBox
       style={{
@@ -278,13 +317,52 @@ const CreateOrder = () => {
           onChange={handleChange}
           style={{ width: "100%", marginTop: 40 }}
         />
-        <DataTable
-          rows={rows}
-          columns={columns}
-          checkboxSelection={true}
-          rowSelection={true}
-          uniqueField="productId"
-        />
+        <BasicTable rows={productList} columns={columns} />
+        <Button
+          variant="outlined"
+          style={{ width: 150 }}
+          onClick={() => setShowAddItem(true)}
+        >
+          Add item
+        </Button>
+        {showAddItem && (
+          <FlexBox flexDirection="column">
+            <FlexBox
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr 1fr",
+                columnGap: 20,
+              }}
+            >
+              {Object.values(tempList).map((item) => (
+                <InputField {...item} onChange={handleProduct} />
+              ))}
+            </FlexBox>
+            <FlexBox style={{ gap: 20 }}>
+              <Button variant="outlined" onClick={() => setShowAddItem(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="contained"
+                onClick={() => {
+                  setProductList((p) =>
+                    p.concat(
+                      Object.fromEntries(
+                        Object.values(tempList).map((item) => [
+                          item.name,
+                          item.value,
+                        ])
+                      )
+                    )
+                  );
+                  setShowAddItem(false);
+                }}
+              >
+                Confirm
+              </Button>
+            </FlexBox>
+          </FlexBox>
+        )}
         <FlexBox
           style={{
             flexDirection: "column",
@@ -386,9 +464,31 @@ const CreateOrder = () => {
               </h3>
             </FlexBox>
             <FlexBox style={{ padding: "24px 0", justifyContent: "flex-end" }}>
-              <Button variant="contained" onClick={onAddOrder}>
-                Add order
-              </Button>
+              <CustomModal
+                label="Add order"
+                setOpen={setAddModal}
+                header="Order summary"
+                open={addModal}
+                footerText="Send for admin approval"
+                onConfirm={onAddOrder}
+                style={{ flexDirection: "column", gap: 20 }}
+              >
+                <FlexBox style={{ justifyContent: "space-between" }}>
+                  <FlexBox>
+                    <span>Date:</span>
+                    <span>23-04-2024</span>
+                  </FlexBox>
+                  <FlexBox>
+                    <span>Name:</span>
+                    <span>Pradeep</span>
+                  </FlexBox>
+                  <FlexBox>
+                    <span>Reference ::</span>
+                    <span>Anwar</span>
+                  </FlexBox>
+                </FlexBox>
+                <BasicTable rows={productList} columns={columns} />
+              </CustomModal>
             </FlexBox>
           </>
         )}

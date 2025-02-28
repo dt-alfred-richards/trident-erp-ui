@@ -14,6 +14,8 @@ import Login from "./components/login/Login";
 import { FlexBox } from "./components/Navbar/styles";
 import ToastProvider from "./ToastContainer";
 import CreateOrder from "./components/Sales/CreateOrder";
+import { toast, ToastContainer } from "react-toastify";
+import OrderDetails from "./components/Sales/OrderDetails";
 
 const backEnabledRoutes = ["/sales/entry", "/sales/orderbook"];
 
@@ -29,6 +31,7 @@ function App() {
 
   return (
     <AppWrapper>
+      <ToastContainer position="bottom-left"/> 
       <NavBar closeSideBar={closeSideBar} />
       <FlexBox style={{ flex: 1, height: "calc(100vh - 75px)" }}>
         <SideBar showSideBar={showSideBar} />
@@ -47,6 +50,7 @@ function App() {
             <Route path="/sales/entry" Component={SalesEntry} />
             <Route path="/sales/orderbook" Component={OrderBook} />
             <Route path="/sales/create-order" Component={CreateOrder} />
+            <Route path="/sales/order-details" Component={OrderDetails} />
             <Route path="/sales/:orderId" Component={CreateOrder} />
             <Route path="/login" Component={Login} />
             <Route path="*" Component={NotFound} />

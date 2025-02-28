@@ -3,6 +3,7 @@ import { IoIosTrendingUp } from "react-icons/io";
 import { useNavigate } from "react-router-dom";
 import { FlexBox } from "../Navbar/styles";
 import Chart from "../charts/ReactECharts";
+import { Button } from "@mui/material";
 
 const SalesCard = ({
   title,
@@ -127,6 +128,11 @@ const Sales = () => {
       flexDirection="column"
       style={{ flex: 1, gap: 30, overflowY: "scroll", padding: "24px 70px" }}
     >
+      <FlexBox style={{ justifyContent: "flex-end", gap: 20 }}>
+        <Button variant="outlined" onClick={()=>navigate("/sales/create-order")}>Add new order</Button>
+        <Button variant="outlined" onClick={()=>navigate("/sales/orderbook")}>Order book</Button>
+        <Button variant="outlined" onClick={()=>navigate("/sales/order-details")}>Track Order</Button>
+      </FlexBox>
       <div
         style={{
           display: "flex",
