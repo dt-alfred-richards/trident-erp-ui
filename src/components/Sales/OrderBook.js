@@ -1,19 +1,24 @@
-import React, { useEffect, useState } from "react";
+import { Button } from "@mui/material";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { IoFilterSharp } from "react-icons/io5";
+import { PiExportThin } from "react-icons/pi";
+import { RiDeleteBin5Line } from "react-icons/ri";
+import { toast } from "react-toastify";
+import { deleteOrderBook, getSalesOrders } from "../../api";
 import { FlexBox } from "../Navbar/styles";
 import DataTable from "../utils/Table";
-import { Button } from "@mui/material";
-import { RiDeleteBin5Line } from "react-icons/ri";
-import { PiExportThin } from "react-icons/pi";
-import { IoFilterSharp } from "react-icons/io5";
-import { FaPlus } from "react-icons/fa";
 
 const columns = [
-  { field: "id", headerName: "Product ID", width: 130 },
+  {
+    field: "orderId",
+    headerName: "Product ID",
+    width: 130,
+  },
   { field: "date", headerName: "Date", width: 130 },
-  { field: "clientId", headerName: "clientId", width: 130 },
+  { field: "custId", headerName: "clientId", width: 130 },
   { field: "name", headerName: "name", width: 130 },
-  { field: "invoice", headerName: "Invoice", width: 130 },
-  { field: "reference", headerName: "Reference", width: 130 },
+  { field: "invoiceNumber", headerName: "Invoice", width: 130 },
+  { field: "refernceName", headerName: "Reference", width: 130 },
   { field: "poNumber", headerName: "PO Number", width: 130 },
   { field: "poDate", headerName: "poDate", width: 130 },
   { field: "poId", headerName: "PO Id", width: 130 },
@@ -36,15 +41,67 @@ const rows = [
     dc: "some text",
     dcDate: "some text",
     status: "some text",
+    orderId: "123",
   },
 ];
 
 const OrderBook = () => {
+  const fetchRef = useRef(true);
   const [data, setData] = useState({});
+  const [selectedData, setSelectedRows] = useState([]);
+
+  const fetchData = useCallback(() => {
+    return getSalesOrders()
+      .then((res) => {
+        setData(res.data ?? []);
+      })
+      .catch((error) => {
+        console.log({ error });
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!fetchRef.current) return;
+    fetchRef.current = false;
+    fetchData();
+  }, []);
+
+  const deleteOrder = useCallback(() => {
+    if (selectedData.length <= 0) return;
+    selectedData.forEach((item) => {
+      deleteOrderBook({ column: "orderId", value: item.orderId })
+        .then((res) => {
+          console.log({ res });
+        })
+        .then(() => fetchData())
+        .then(() => toast("Operation success"))
+        .catch((error) => {
+          console.log({ error });
+        });
+    });
+  }, [selectedData]);
+
+  const notify = () => toast("Wow so easy !");
 
   return (
-    <FlexBox flexDirection="column" style={{ userSelect: "none" }}>
-      <FlexBox style={{ justifyContent: "space-between" }}>
+    <FlexBox
+      flexDirection="column"
+      style={{
+        flex: 1,
+        padding: "24px 70px",
+        boxSizing: "border-box",
+        maxWidth: "100%",
+      }}
+    >
+      <FlexBox
+        style={{
+          justifyContent: "space-between",
+          backgroundColor: "white",
+          borderTopLeftRadius: "10px",
+          borderTopRightRadius: "10px",
+          padding: "10px 24px",
+        }}
+      >
         <FlexBox
           flexDirection="column"
           style={{
@@ -89,32 +146,37 @@ const OrderBook = () => {
               borderRadius: 10,
               textTransform: "unset",
               color: "#344054",
+              width: 110,
             },
           }}
         >
-          <Button>
+          <Button onClick={deleteOrder}>
             <RiDeleteBin5Line />
             Delete
           </Button>
-          <Button>
+          <Button onClick={notify}>
             <IoFilterSharp /> Filters
           </Button>
           <Button variant="outlined" style={{ border: "1px solid #D0D5DD" }}>
             <PiExportThin fill="#344054" /> Export
           </Button>
-          <Button variant="contained" style={{ color: "#fff" }}>
-            <FaPlus fill="#fff" />
-            New Order
-          </Button>
         </FlexBox>
       </FlexBox>
-      <DataTable
-        columns={columns}
-        rows={Array.from({ length: 20 }).map((_) => rows[0])}
-        checkboxSelection={false}
-        pageSize={10}
-        onRowSelect={(v) => console.log(v)}
-      />
+      <FlexBox style={{ maxWidth: "100%", height: "100%" }}>
+        {data.length > 0 && (
+          <DataTable
+            columns={columns}
+            width={500}
+            height={"100%"}
+            rows={data}
+            pageSize={10}
+            uniqueField={"orderId"}
+            onRowSelect={(v) => {
+              setSelectedRows(v);
+            }}
+          />
+        )}
+      </FlexBox>
     </FlexBox>
   );
 };

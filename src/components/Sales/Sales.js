@@ -1,70 +1,119 @@
-import React from "react";
-import { FlexBox } from "../Navbar/styles";
-import BasicCard from "../Card/Card";
-import { LuChartNoAxesCombined } from "react-icons/lu";
-import { styled } from "@mui/material";
-import { IoArrowDown } from "react-icons/io5";
-import { IoMdArrowRoundUp } from "react-icons/io";
-import Dropdown from "../Card/Dropdown";
+import React, { Fragment } from "react";
+import { IoIosTrendingUp } from "react-icons/io";
 import { useNavigate } from "react-router-dom";
-
-const SalesCardWrapper = styled(FlexBox)({
-  justifyContent: "space-between",
-  alignItems: "center",
-  width: 250,
-  height: 100,
-  padding: 20,
-  borderRadius: 10,
-  border: "1px solid #dcdfe4",
-  boxShadow:
-    "rgba(0, 0, 0, 0.04) 0px 5px 22px 0px, rgba(0, 0, 0, 0.06) 0px 0px 0px 1px",
-  "h2,h3,h4": {
-    margin: 0,
-  },
-});
+import { FlexBox } from "../Navbar/styles";
+import Chart from "../charts/ReactECharts";
 
 const SalesCard = ({
   title,
   subtitle,
-  subtitle2,
-  icon,
+  bottomTitle,
+  style = {},
+  showTrend,
   isNegative,
-  className,
+  type,
+  chartConfig,
 }) => {
   return (
-    <SalesCardWrapper className={className}>
-      <FlexBox gap={10} flexDirection={"column"}>
-        <h3>{title}</h3>
-        <h2>{subtitle}</h2>
-        {subtitle2 && (
+    <FlexBox
+      style={{
+        width: 340,
+        height: 200,
+        border: "1px solid ##BDBDBD",
+        backgroundColor: "white",
+        borderRadius: 10,
+        padding: "35px 31px",
+        boxSizing: "border-box",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        "h3,h4": {
+          padding: 0,
+          margin: 0,
+          letterSpacing: "0.5px",
+        },
+        h3: {
+          fontSize: 45,
+        },
+        ...style,
+      }}
+    >
+      <span>{title}</span>
+      {type === "chart" ? (
+        <Chart {...chartConfig} />
+      ) : (
+        <Fragment>
+          <h3>{subtitle}</h3>
           <h4>
-            {subtitle2}
-            {isNegative ? <IoArrowDown /> : <IoMdArrowRoundUp />}
+            {showTrend ? (
+              <IoIosTrendingUp
+                size={20}
+                viewBox={`0 ${isNegative ? "" : "-"}100 512 512`}
+                style={{
+                  transform: isNegative ? "rotate(180deg)" : 0,
+                  marginRight: 10,
+                }}
+              />
+            ) : null}
+            {bottomTitle}
           </h4>
-        )}
-      </FlexBox>
-      <div style={{ marginRight: 20 }}>{icon}</div>
-    </SalesCardWrapper>
+        </Fragment>
+      )}
+    </FlexBox>
   );
 };
 
 const salesItems = [
   {
-    title: "Today’s sales",
-    subtitle: "50.3k",
-    icon: <LuChartNoAxesCombined size={40} />,
-  },
-  {
     title: "MTD Sales",
-    subtitle: "12.6L",
-    subtitle2: "12.4%",
+    subtitle: "₹ 2.65 L",
+    showTrend: true,
     isNegative: false,
+    bottomTitle: "12 % MoM",
   },
   {
-    title: "Cash in Hand",
-    subtitle: "4.5L",
-    subtitle2: "-8.6%",
+    title: "CD Sales",
+    subtitle: "₹ 45,890",
+    showTrend: true,
     isNegative: true,
+    bottomTitle: "7 % DoD",
+  },
+  {
+    title: "Operating Margin",
+    subtitle: "25%",
+    bottomTitle: "Target 30%",
+    style: {
+      h3: {
+        color: "#FF3830",
+        fontSize: 45,
+      },
+    },
+  },
+  {
+    type: "chart",
+    title: "This Week Sales Trend",
+    chartConfig: {
+      series: [400, 300, 350, 200, 280],
+      data: ["Item 1", "Item 2", "Item 3", "Item 4", "Item 5"],
+      type: "bar",
+    },
+  },
+  {
+    type: "chart",
+    title: "Orders Completed",
+    chartConfig: {
+      series: [400, 300, 350, 200, 280],
+      data: ["Item 1", "Item 2", "Item 3", "Item 4", "Item 5"],
+      type: "bar",
+    },
+  },
+  {
+    type: "chart",
+    title: "Orders Completed",
+    chartConfig: {
+      series: [400, 300, 350, 200, 280],
+      data: ["Item 1", "Item 2", "Item 3", "Item 4", "Item 5"],
+      type: "bar",
+    },
   },
 ];
 
@@ -74,36 +123,39 @@ const Sales = () => {
     navigate(option.route);
   };
   return (
-    <FlexBox flexDirection="column">
-      <FlexBox justifyContent="flex-end">
-        <Dropdown
-          onSelect={onSelect}
-          label="Actions"
-          options={[
-            { label: "Create new entry", route: "/sales/entry" },
-            { label: "Track orders" },
-            { label: "Update orders", route: "/sales/orderbook" },
-          ]}
-        />
-      </FlexBox>
-      <FlexBox
+    <FlexBox
+      flexDirection="column"
+      style={{ flex: 1, gap: 30, overflowY: "scroll", padding: "24px 70px" }}
+    >
+      <div
         style={{
-          height: "calc(100vh - 100px)",
           display: "flex",
-          justifyContent: "space-evenly",
-          alignItems: "center",
-          gap: "40px",
-          ".sales-card-1": {
-            marginTop: -100,
-          },
+          justifyContent: "space-between",
+          alignContent: "center",
+          flexWrap: "wrap",
+          gap: 20,
         }}
       >
-        {salesItems.map((item, index) => (
-          <SalesCard {...item} className={`sales-card-${index}`} />
+        {salesItems.map((item) => (
+          <SalesCard {...item} />
         ))}
-        {/* <BasicCard title={"Today’s Sales"} description={"50.3k"} />
-      <BasicCard title={"MTD Sales"} description={"12.6L"} />
-      <BasicCard title={"Cash in Hand"} description={"4.5l"} /> */}
+      </div>
+      <FlexBox
+        style={{
+          borderRadius: 10,
+          backgroundColor: "white",
+          flex: 1,
+        }}
+      >
+        <Chart
+          width={"100%"}
+          height={350}
+          {...{
+            series: [400, 300, 350, 200, 280, 200, 100].reverse(),
+            data: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+            type: "line",
+          }}
+        />
       </FlexBox>
     </FlexBox>
   );

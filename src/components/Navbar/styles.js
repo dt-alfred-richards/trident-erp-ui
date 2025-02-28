@@ -1,15 +1,23 @@
 import newStyled from "@emotion/styled";
 
 export const NavWrapper = newStyled.div({
-  width: "100%",
+  flex: 1,
+  padding: "12px 20px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  backgroundColor: "var(--nav-bg, white)",
+  borderBottom: "1px solid #dcdfe4",
+  maxHeight: 65,
+  boxSizing: "border-box",
+  position: "sticky",
+  top: 0,
 });
 
 export const NavItems = newStyled.div({
   display: "flex",
   flex: 1,
-  padding: 24,
   justifyContent: "space-between",
-  borderBottom: "1px solid #dcdfe4",
 });
 
 export const FlexBox = newStyled.div(

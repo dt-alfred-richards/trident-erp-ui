@@ -11,8 +11,11 @@ import { Button } from "@mui/material";
 import { IoMdArrowBack } from "react-icons/io";
 import OrderBook from "./components/Sales/OrderBook";
 import Login from "./components/login/Login";
+import { FlexBox } from "./components/Navbar/styles";
+import ToastProvider from "./ToastContainer";
+import CreateOrder from "./components/Sales/CreateOrder";
 
-const backEnabledRoutes = ["/sales/entry","/sales/orderbook"];
+const backEnabledRoutes = ["/sales/entry", "/sales/orderbook"];
 
 function App() {
   const [showSideBar, setShowSideBar] = useState(true);
@@ -26,30 +29,30 @@ function App() {
 
   return (
     <AppWrapper>
-      <SideBar showSideBar={showSideBar} />
-      <div style={{ width: "100%", background: "rgb(255 248 248)" }}>
-        <NavBar closeSideBar={closeSideBar} />
-        <div style={{ padding: "24px 24px 0 24px" }}>
-          {backEnabledRoutes.includes(pathname) && (
-            <Button
-              variant="contained"
-              style={{ display: "flex", gap: 10, marginBottom: 30 }}
-              onClick={() => navigate(-1)}
-            >
-              <IoMdArrowBack size={20} />
-              Back
-            </Button>
-          )}
+      <NavBar closeSideBar={closeSideBar} />
+      <FlexBox style={{ flex: 1, height: "calc(100vh - 75px)" }}>
+        <SideBar showSideBar={showSideBar} />
+        <FlexBox
+          style={{
+            backgroundColor: "var(--main-bg, #EDF1F5)",
+            overflowY: "auto",
+            overflowX: "hidden",
+            flex: 1,
+            boxSizing: "border-box",
+          }}
+        >
           <Routes>
             <Route path="/" Component={Home} />
             <Route path="/sales" Component={Sales} />
             <Route path="/sales/entry" Component={SalesEntry} />
             <Route path="/sales/orderbook" Component={OrderBook} />
+            <Route path="/sales/create-order" Component={CreateOrder} />
+            <Route path="/sales/:orderId" Component={CreateOrder} />
             <Route path="/login" Component={Login} />
             <Route path="*" Component={NotFound} />
           </Routes>
-        </div>
-      </div>
+        </FlexBox>
+      </FlexBox>
     </AppWrapper>
   );
 }

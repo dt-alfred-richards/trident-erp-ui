@@ -1,21 +1,21 @@
 import styled from "@emotion/styled";
 
 export const SideBarWrapper = styled.div(({ showSideBar }) => ({
-  width: showSideBar ? 280 : 0,
-  background: "#121621",
-  color: "#b3b9c6",
-  userSelect: "none",
-  padding: showSideBar ? "24px 24px 0px 24px" : 0,
-  fontWeight: 400,
-  fontSize: 20,
-  ".logo": {
-    display: showSideBar ? "flex" : "none",
-    color: "white",
-    cursor: "pointer",
-    strong: {
-      color: "#5221e6",
-    },
-  },
+  // width: showSideBar ? 280 : 0,
+  // background: "#121621",
+  // color: "#b3b9c6",
+  // userSelect: "none",
+  // padding: showSideBar ? "24px 24px 0px 24px" : 0,
+  // fontWeight: 400,
+  // fontSize: 20,
+  // ".logo": {
+  //   display: showSideBar ? "flex" : "none",
+  //   color: "white",
+  //   cursor: "pointer",
+  //   strong: {
+  //     color: "#5221e6",
+  //   },
+  // },
 }));
 
 export const SideBarItemsWrapper = styled.ul(() => {

@@ -20,19 +20,20 @@ const ModelWrapper = newStyled.div({
 });
 
 const CustomModal = ({
-  children,
+  children = null,
   open = false,
   setOpen,
-  onConfirm,
+  onConfirm = () => {},
   header = "Are you sure you want to delete",
   label = "open modal",
+  disabled = false,
 }) => {
   const handleOpen = () => {
     setOpen((o) => !o);
   };
   return (
     <div>
-      <Button variant="contained" onClick={handleOpen}>
+      <Button variant="contained" onClick={handleOpen} disabled={disabled}>
         {label}
       </Button>
 
@@ -41,7 +42,7 @@ const CustomModal = ({
           <FlexBox
             style={{
               border: "1px solid #EFF0F6",
-              minHeight: 300,
+              minHeight: "max-content",
               minWidth: 500,
               opacity: 1,
               borderRadius: 10,
@@ -78,9 +79,10 @@ const CustomModal = ({
               </Button>
               <Button
                 variant="contained"
-                onClick={() => {
+                disabled={disabled}
+                onClick={(event) => {
+                  onConfirm(event);
                   handleOpen();
-                  onConfirm();
                 }}
               >
                 Confirm
