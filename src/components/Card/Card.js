@@ -13,7 +13,6 @@ export default function BasicCard({
   width,
   title,
   description,
-
 }) {
   return (
     <FlexBox
