@@ -42,6 +42,9 @@ const UIWrapper = newStyled.ul({
   gap: 10,
   flexDirection: "column",
   marginTop: 24,
+  ".selected-li": {
+    backgroundColor: "var(--h-bg , #ADB4F3)",
+  },
   li: {
     display: "flex",
     justifyContent: "flex-start",
@@ -62,10 +65,6 @@ const SideBar = ({ showSideBar }) => {
   const navigate = useNavigate();
 
   const pathname = useLocation().pathname;
-
-  const onRouteChange = useCallback(({ data }) => {
-    navigate(data);
-  }, []);
 
   const checkPathname = useCallback(
     (data) => {
@@ -90,20 +89,25 @@ const SideBar = ({ showSideBar }) => {
       }}
     >
       <UIWrapper>
-        {items.map(({ data, label, icon = null }) => (
-          <li onClick={() => navigate(data)}>
-            <div style={{ width: 20 }}>{icon}</div>
-            <label
-              style={{
-                opacity: showSideBar ? 1 : 0,
-                transition: "opacity 0.6s ease-in-out",
-                visibility: showSideBar ? "visible" : "hidden",
-              }}
+        {items.map(({ data, label, icon = null }) => {
+          return (
+            <li
+              onClick={() => navigate(data)}
+              className={checkPathname(data) ? "selected-li" : ""}
             >
-              {showSideBar && label}
-            </label>
-          </li>
-        ))}
+              <div style={{ width: 20 }}>{icon}</div>
+              <label
+                style={{
+                  opacity: showSideBar ? 1 : 0,
+                  transition: "opacity 0.6s ease-in-out",
+                  visibility: showSideBar ? "visible" : "hidden",
+                }}
+              >
+                {showSideBar && label}
+              </label>
+            </li>
+          );
+        })}
       </UIWrapper>
     </FlexBox>
   );

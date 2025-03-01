@@ -116,6 +116,15 @@ const salesItems = [
       type: "bar",
     },
   },
+  {
+    type: "chart",
+    title: "Brand Type",
+    chartConfig: {
+      series: [400, 300, 350, 200, 280],
+      data: ["Item 1", "Item 2", "Item 3", "Item 4", "Item 5"],
+      type: "donut",
+    },
+  },
 ];
 
 const Sales = () => {
@@ -129,14 +138,25 @@ const Sales = () => {
       style={{ flex: 1, gap: 30, overflowY: "scroll", padding: "24px 70px" }}
     >
       <FlexBox style={{ justifyContent: "flex-end", gap: 20 }}>
-        <Button variant="outlined" onClick={()=>navigate("/sales/create-order")}>Add new order</Button>
-        <Button variant="outlined" onClick={()=>navigate("/sales/orderbook")}>Order book</Button>
-        <Button variant="outlined" onClick={()=>navigate("/sales/order-details")}>Track Order</Button>
+        <Button
+          variant="outlined"
+          onClick={() => navigate("/sales/create-order")}
+        >
+          Add new order
+        </Button>
+        <Button variant="outlined" onClick={() => navigate("/sales/orderbook")}>
+          Order book
+        </Button>
+        <Button
+          variant="outlined"
+          onClick={() => navigate("/sales/order-details")}
+        >
+          Track Order
+        </Button>
       </FlexBox>
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
           alignContent: "center",
           flexWrap: "wrap",
           gap: 20,
@@ -153,15 +173,7 @@ const Sales = () => {
           flex: 1,
         }}
       >
-        <Chart
-          width={"100%"}
-          height={350}
-          {...{
-            series: [400, 300, 350, 200, 280, 200, 100].reverse(),
-            data: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-            type: "line",
-          }}
-        />
+        <Chart width={"100%"} height={350} type={"line"} />
       </FlexBox>
     </FlexBox>
   );

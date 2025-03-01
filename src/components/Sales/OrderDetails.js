@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { Fragment, useState } from "react";
 import { FlexBox } from "../Navbar/styles";
 import BasicTabs from "../Tab/Tabs";
-import { Button } from "@mui/material";
+import { Button, styled } from "@mui/material";
 import BasicTable from "../Table/NormalTable";
 
 const columns = [
@@ -20,81 +20,382 @@ const rows = [
   },
 ];
 
-const OrderDetails = () => {
-  const [selectedTab, setSelectedTab] = useState("");
+const TabItem = styled(FlexBox)(({ selected }) => ({
+  width: "100px",
+  textAlign: "center",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  padding: "0 0 12px 0",
+  cursor: "pointer",
+  borderBottom: selected ? "2px solid blue" : "",
+  color: selected ? "#6976EB" : "",
+}));
+
+const TabWrapper = styled(FlexBox)({});
+
+const NavTabs = ({ selectedTab = "", options, setSelectedTab }) => {
   return (
-    <FlexBox flexDirection="column">
-      <FlexBox>
+    <TabWrapper>
+      {options.map((item) => (
+        <TabItem
+          selected={item.label === selectedTab}
+          onClick={() => setSelectedTab(item.label)}
+        >
+          {item.label}
+        </TabItem>
+      ))}
+    </TabWrapper>
+  );
+};
+
+const CardWrapper = styled(FlexBox)({
+  flexDirection: "column",
+  gap: 15,
+  "h1,h2,h3": {
+    height: 20,
+  },
+  h1: {
+    fontSize: 20,
+    fontWeight: 600,
+    padding: 0,
+    margin: 0,
+  },
+  h2: { fontSize: 12, padding: 0, margin: 0, fontWeight: 400 },
+  h3: { fontSize: 14, padding: 0, margin: 0, fontWeight: 400 },
+});
+
+const Card = ({ h1 = "", h2 = "", h3 }) => {
+  return (
+    <CardWrapper>
+      <h1>{h1}</h1>
+      {h2 && <h2>{h2}</h2>}
+      {h3.map((item) => {
+        let arr = item.split(":").map((item) => item.trim());
+        return (
+          <h3>
+            <strong>{arr[0]}:</strong> {arr[1]}
+          </h3>
+        );
+      })}
+    </CardWrapper>
+  );
+};
+
+const OrderDetails = () => {
+  const [selectedTab, setSelectedTab] = useState("Order");
+  return (
+    <FlexBox
+      flexDirection="column"
+      style={{ flex: 1, padding: "30px 160px", gap: 20 }}
+    >
+      <FlexBox
+        style={{
+          backgroundColor: "white",
+          borderRadius: 10,
+          padding: "0 27px",
+          fontSize: 14,
+        }}
+      >
         <h1>Order details</h1>
       </FlexBox>
-      <FlexBox>
-        <Button>Order</Button>
-        <Button>Invoice</Button>
-      </FlexBox>
-      <FlexBox flexDirection="column">
-        <FlexBox>
-          <span>Customer</span>
-          <span>Placed on 12.01.2025 10:00</span>
-        </FlexBox>
-        <FlexBox>
-          <FlexBox>Customer Name</FlexBox>
-          <FlexBox>070 123 4567</FlexBox>
-          <FlexBox>example@mail.com</FlexBox>
-        </FlexBox>
-        <FlexBox>
-          <span>Payment method</span>
-          <span>Shipping method</span>
-          <span></span>
-        </FlexBox>
-        <FlexBox>
-          <span>Credit Card</span>
-          <span>Carrier</span>
-          <span>Fulfillment status : Delivered</span>
-        </FlexBox>
-        <FlexBox>
-          <span>Transaction ID : 000001-TXT</span>
-          <span>Tracking Code : 001</span>
-          <span>Payment Status :</span>
-        </FlexBox>
-        <FlexBox>
-          <span>Amount : 18500</span>
-          <span>Date : 12-02-2025</span>
-          <span>Date : 12-02-2025</span>
-        </FlexBox>
-      </FlexBox>
-      <FlexBox>
-        <FlexBox flexDirection="column">
-          <h1>Billing address</h1>
-          <span>First name : xxxxx</span>
-          <span>Last name : xxxxxx</span>
-          <span>Address : Paradise, Gachibowli</span>
-          <span>city : Hyderabad</span>
-          <span>Country : India</span>
-          <span>State : Telangana</span>
-          <span>Zip code : 5413xx</span>
-          <span>Phone : xxxxxxxxxx</span>
-        </FlexBox>
-        <FlexBox flexDirection="column">
-          <h1>Shipping address</h1>
-          <span>First name : xxxxx</span>
-          <span>Last name : xxxxxx</span>
-          <span>Address : Paradise, Gachibowli</span>
-          <span>city : Hyderabad</span>
-          <span>Country : India</span>
-          <span>State : Telangana</span>
-          <span>Zip code : 5413xx</span>
-          <span>Phone : xxxxxxxxxx</span>
-        </FlexBox>
-      </FlexBox>
-      <FlexBox flexDirection="column">
-        <h1>Products</h1>
-        <BasicTable rows={rows} columns={columns} />
-      </FlexBox>
-      <FlexBox flexDirection="column">
-        <span>Sub Total : xxxxxxx</span>
-        <span>Taxes : xxxxx</span>
-        <span>Discount : xxxxx</span>
-        <span>Total : xxxxxxx</span>
+      <FlexBox
+        style={{
+          flexDirection: "column",
+          background: "white",
+          borderRadius: 10,
+          padding: "31px 28px",
+          gap: 20,
+        }}
+      >
+        <NavTabs
+          selectedTab={selectedTab}
+          options={[{ label: "Order" }, { label: "Invoice" }]}
+          setSelectedTab={setSelectedTab}
+        />
+        {selectedTab === "Order" ? (
+          <FlexBox flexDirection="column" style={{ gap: 10 }}>
+            <FlexBox
+              flexDirection="column"
+              style={{
+                border: "1px solid #D9D9D9",
+                padding: 21,
+                borderRadius: 10,
+              }}
+            >
+              <FlexBox
+                style={{
+                  fontSize: 20,
+                  fontWeight: 500,
+                  justifyContent: "space-between",
+                  paddingBottom: 25,
+                  borderBottom: "1px solid #D0D5DD",
+                }}
+              >
+                <span>Customer</span>
+                <span>Placed on 12.01.2025 10:00</span>
+              </FlexBox>
+              <FlexBox
+                style={{
+                  borderBottom: "1px solid #D0D5DD",
+                  padding: "25px 0",
+                  gap: 30,
+                }}
+              >
+                <FlexBox>Customer Name</FlexBox>
+                <FlexBox>070 123 4567</FlexBox>
+                <FlexBox>example@mail.com</FlexBox>
+              </FlexBox>
+              <FlexBox
+                style={{
+                  gap: 20,
+                  padding: "20px 0",
+                  borderBottom: "1px solid #D0D5DD",
+                  justifyContent: "space-between",
+                }}
+              >
+                <Card
+                  h1="Payment Method"
+                  h2="Credit card"
+                  h3={["Transaction ID:000001-TXT", "Amount:18500"]}
+                />
+                <Card
+                  h1="Shipping method"
+                  h2="Carrier"
+                  h3={["Tracking Code:001", "Date:12-02-2025"]}
+                />
+                <Card
+                  h1=""
+                  h2=""
+                  h3={["Fulfillment status:Delivered", "Payment Status:Paid"]}
+                />
+              </FlexBox>
+              <FlexBox
+                style={{
+                  gap: 20,
+                  padding: "20px 0",
+                }}
+              >
+                <Card
+                  h1="Billing address"
+                  h2=""
+                  h3={[
+                    "First name:xxxxx",
+                    "Last name:xxxx",
+                    "Address:Paradise, Gachibowli",
+                    "city :Hyderabad",
+                    "Country :India",
+                    "State  :Telangana",
+                    "Zip code  :5413xx",
+                    "Phone   :xxxxxxxxxx ",
+                  ]}
+                />
+                <Card
+                  h1="Shipping address"
+                  h2=""
+                  h3={[
+                    "First name:xxxxx",
+                    "Last name:xxxx",
+                    "Address:Paradise, Gachibowli",
+                    "city :Hyderabad",
+                    "Country :India",
+                    "State :Telangana",
+                    "Zip code :5413xx",
+                    "Phone:xxxxxxxxxx ",
+                  ]}
+                />
+              </FlexBox>
+            </FlexBox>
+
+            <FlexBox
+              flexDirection="column"
+              style={{
+                border: "1px solid #D9D9D9",
+                padding: 21,
+                borderRadius: 10,
+                gap: 20,
+              }}
+            >
+              <h1
+                style={{
+                  backgroundColor: "white",
+                  fontSize: 20,
+                  height: 50,
+                  borderBottom: "1px solid #D9D9D9",
+                }}
+              >
+                Products
+              </h1>
+              <BasicTable rows={rows} columns={columns} />
+              <FlexBox
+                flexDirection="column"
+                style={{
+                  backgroundColor: "#E5F3FA",
+                  gap: 20,
+                  borderRadius: 10,
+                  padding: 32,
+                  textAlign: "end",
+                  strong: {
+                    width: 100,
+                    fontWeight: 400,
+                  },
+                }}
+              >
+                <span>
+                  <strong>Sub Total :</strong> xxxxxxx
+                </span>
+                <span>
+                  <strong>Taxes :</strong> xxxxxxx
+                </span>
+                <span>
+                  <strong>Discount :</strong> xxxxxxx
+                </span>
+                <span style={{ color: "#0070FF" }}>
+                  <strong>Total :</strong> xxxxxxx
+                </span>
+              </FlexBox>
+            </FlexBox>
+          </FlexBox>
+        ) : (
+          <FlexBox
+            style={{
+              border: "1px solid #D9D9D9",
+              borderRadius: 10,
+              padding: 24,
+              flexDirection: "column",
+            }}
+          >
+            <h1
+              style={{
+                fontSize: 16,
+                borderBottom: "1px solid #D0D5DD",
+                paddingBottom: 20,
+                flex: 1,
+              }}
+            >
+              Invoice #125863478945
+            </h1>
+            <FlexBox style={{ gap: 10, flexDirection: "column" }}>
+              {[
+                "Trident Beverages",
+                "Address : xxxxxx",
+                "example@mail.com",
+                "+91 xxxxxxxxxx",
+              ].map((item) => (
+                <div>{item}</div>
+              ))}
+            </FlexBox>
+            <FlexBox
+              style={{
+                gap: 20,
+                flexDirection: "row",
+                marginTop: 20,
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+              }}
+            >
+              <FlexBox style={{ gap: 10, flexDirection: "column" }}>
+                {[
+                  "Customer:",
+                  "Address : Paradise, Gachibowli,                Hyderabad, Telangana. xxxxxx",
+                  "example@mail.com",
+                  "+91 xxxxxxxxxx",
+                ].map((item) => (
+                  <div>{item}</div>
+                ))}
+              </FlexBox>
+              <FlexBox style={{ gap: 10, flexDirection: "column" }}>
+                {[
+                  "Order Details : ",
+                  "Date : 12-02-2025",
+                  "Status : Pending",
+                  "Order ID : 002",
+                ].map((item) => (
+                  <div>{item}</div>
+                ))}
+              </FlexBox>
+            </FlexBox>
+            <FlexBox
+              flexDirection="column"
+              style={{
+                padding: 21,
+                borderRadius: 10,
+                gap: 20,
+              }}
+            >
+              <h1
+                style={{
+                  backgroundColor: "white",
+                  fontSize: 20,
+                  height: 50,
+                  borderBottom: "1px solid #D9D9D9",
+                }}
+              >
+                Products
+              </h1>
+              <BasicTable rows={rows} columns={columns} />
+              <FlexBox
+                flexDirection="column"
+                style={{
+                  backgroundColor: "#E5F3FA",
+                  gap: 20,
+                  borderRadius: 10,
+                  padding: 32,
+                  textAlign: "end",
+                  strong: {
+                    width: 100,
+                    fontWeight: 400,
+                  },
+                }}
+              >
+                <span>
+                  <strong>Sub Total :</strong> xxxxxxx
+                </span>
+                <span>
+                  <strong>Taxes :</strong> xxxxxxx
+                </span>
+                <span>
+                  <strong>Discount :</strong> xxxxxxx
+                </span>
+                <span style={{ color: "#0070FF" }}>
+                  <strong>Total :</strong> xxxxxxx
+                </span>
+              </FlexBox>
+            </FlexBox>
+            <FlexBox
+              style={{
+                padding: "24px 0",
+                flexDirection: "column",
+              }}
+            >
+              <span>Terms and Condition:*</span>
+              <h3
+                style={{
+                  height: 50,
+                  fontSize: 16,
+                  backgroundColor: "rgb(226 222 222)",
+                  borderRadius: 10,
+                  display: "flex",
+                  justifyContent: "flex-start",
+                  alignItems: "center",
+                  padding: "0 27px",
+                }}
+              >
+                I acknowledge terms and conditions.
+              </h3>
+            </FlexBox>
+            <FlexBox
+              style={{
+                justifyContent: "center",
+                alignItems: "center",
+                gap: 20,
+              }}
+            >
+              <Button variant="contained">Export</Button>
+              <Button variant="contained">Print</Button>
+            </FlexBox>
+          </FlexBox>
+        )}
       </FlexBox>
     </FlexBox>
   );

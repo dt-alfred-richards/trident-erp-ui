@@ -4,7 +4,11 @@ import { IoFilterSharp } from "react-icons/io5";
 import { PiExportThin } from "react-icons/pi";
 import { RiDeleteBin5Line } from "react-icons/ri";
 import { toast } from "react-toastify";
-import { deleteOrderBook, getSalesOrders } from "../../api";
+import {
+  deleteMultipleRecord,
+  deleteOrderBook,
+  getSalesOrders,
+} from "../../api";
 import { FlexBox } from "../Navbar/styles";
 import DataTable from "../utils/Table";
 
@@ -68,17 +72,17 @@ const OrderBook = () => {
 
   const deleteOrder = useCallback(() => {
     if (selectedData.length <= 0) return;
-    selectedData.forEach((item) => {
-      deleteOrderBook({ column: "orderId", value: item.orderId })
-        .then((res) => {
-          console.log({ res });
-        })
-        .then(() => fetchData())
-        .then(() => toast("Operation success"))
-        .catch((error) => {
-          console.log({ error });
-        });
-    });
+    deleteMultipleRecord({
+      ids: selectedData.map((item) => item.orderId),
+    })
+      .then((res) => {
+        toast("Multiple records deleted");
+        fetchData();
+      })
+      .catch((error) => {
+        console.log({ error });
+        toast("Failed to delete records", { type: "error" });
+      });
   }, [selectedData]);
 
   const notify = () => toast("Wow so easy !");
