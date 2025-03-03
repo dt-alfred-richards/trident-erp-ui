@@ -1,8 +1,11 @@
 import React, { Fragment, useState } from "react";
 import { FlexBox } from "../Navbar/styles";
-import BasicTabs from "../Tab/Tabs";
 import { Button, styled } from "@mui/material";
 import BasicTable from "../Table/NormalTable";
+import { IoPhonePortraitOutline } from "react-icons/io5";
+import { VscAccount } from "react-icons/vsc";
+import { FlexCenter } from "../../AppStyles";
+import { MdOutlineEmail } from "react-icons/md";
 
 const columns = [
   { field: "productName", headerName: "Product Name", width: 130 },
@@ -62,19 +65,48 @@ const CardWrapper = styled(FlexBox)({
     margin: 0,
   },
   h2: { fontSize: 12, padding: 0, margin: 0, fontWeight: 400 },
-  h3: { fontSize: 14, padding: 0, margin: 0, fontWeight: 400 },
+  h3: {
+    fontSize: 14,
+    padding: 0,
+    margin: 0,
+    fontWeight: 400,
+    color: "#667085",
+    display: "flex",
+    justifyContent: "flex-start",
+    alignItems: "center",
+    gap: 10,
+    strong: {
+      color: "black",
+    },
+    span: {
+      color: "#667085",
+    },
+  },
 });
 
-const Card = ({ h1 = "", h2 = "", h3 }) => {
+const ChipWrapper = styled(FlexCenter)(({ status }) => ({
+  padding: "10px 20px",
+  borderRadius: 10,
+  color: status === "paid" ? "#14BA6D" : "#D4D244",
+  border: `1px solid ${status === "paid" ? "#14BA6D" : "#D4D244"}`,
+  cursor: "default",
+}));
+
+const Card = ({ h1 = "", h2 = "", h3, status = Infinity }) => {
   return (
     <CardWrapper>
       <h1>{h1}</h1>
       {h2 && <h2>{h2}</h2>}
-      {h3.map((item) => {
+      {h3.map((item, index) => {
         let arr = item.split(":").map((item) => item.trim());
         return (
           <h3>
-            <strong>{arr[0]}:</strong> {arr[1]}
+            <strong>{arr[0]}:</strong>
+            {status == index ? (
+              <ChipWrapper status={arr[1]?.toLowerCase()}>{arr[1]}</ChipWrapper>
+            ) : (
+              <span>{arr[1]}</span>
+            )}
           </h3>
         );
       })}
@@ -142,9 +174,17 @@ const OrderDetails = () => {
                   gap: 30,
                 }}
               >
-                <FlexBox>Customer Name</FlexBox>
-                <FlexBox>070 123 4567</FlexBox>
-                <FlexBox>example@mail.com</FlexBox>
+                <FlexCenter style={{ gap: 10 }}>
+                  <VscAccount />
+                  Customer Name
+                </FlexCenter>
+                <FlexCenter style={{ gap: 10 }}>
+                  <IoPhonePortraitOutline />
+                  070 123 4567
+                </FlexCenter>
+                <FlexCenter style={{ gap: 10 }}>
+                  <MdOutlineEmail /> example@mail.com
+                </FlexCenter>
               </FlexBox>
               <FlexBox
                 style={{
@@ -168,6 +208,7 @@ const OrderDetails = () => {
                   h1=""
                   h2=""
                   h3={["Fulfillment status:Delivered", "Payment Status:Paid"]}
+                  status={1}
                 />
               </FlexBox>
               <FlexBox
@@ -275,16 +316,14 @@ const OrderDetails = () => {
             >
               Invoice #125863478945
             </h1>
-            <FlexBox style={{ gap: 10, flexDirection: "column" }}>
-              {[
+            <Card
+              h3={[
                 "Trident Beverages",
                 "Address : xxxxxx",
                 "example@mail.com",
                 "+91 xxxxxxxxxx",
-              ].map((item) => (
-                <div>{item}</div>
-              ))}
-            </FlexBox>
+              ]}
+            />
             <FlexBox
               style={{
                 gap: 20,
@@ -294,26 +333,23 @@ const OrderDetails = () => {
                 gridTemplateColumns: "1fr 1fr",
               }}
             >
-              <FlexBox style={{ gap: 10, flexDirection: "column" }}>
-                {[
+              <Card
+                h3={[
                   "Customer:",
-                  "Address : Paradise, Gachibowli,                Hyderabad, Telangana. xxxxxx",
+                  "Address : Paradise, Gachibowli,               Hyderabad, Telangana. xxxxxx",
                   "example@mail.com",
                   "+91 xxxxxxxxxx",
-                ].map((item) => (
-                  <div>{item}</div>
-                ))}
-              </FlexBox>
-              <FlexBox style={{ gap: 10, flexDirection: "column" }}>
-                {[
+                ]}
+              />
+              <Card
+                h3={[
                   "Order Details : ",
                   "Date : 12-02-2025",
                   "Status : Pending",
                   "Order ID : 002",
-                ].map((item) => (
-                  <div>{item}</div>
-                ))}
-              </FlexBox>
+                ]}
+                status={2}
+              />
             </FlexBox>
             <FlexBox
               flexDirection="column"
