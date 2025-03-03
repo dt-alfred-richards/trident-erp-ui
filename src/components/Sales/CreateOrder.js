@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import { FlexBox } from "../Navbar/styles";
 import InputField from "../utils/InputField";
 import DataTable from "../utils/Table";
@@ -9,6 +9,7 @@ import CustomModal from "../utils/Modal";
 import { toast, ToastContainer } from "react-toastify";
 import { useParams } from "react-router-dom";
 import BasicTable from "../Table/NormalTable";
+import { AppContext } from "../context/AppContext";
 
 const fieldsConfig = [
   {
@@ -152,6 +153,8 @@ const rows = [
 ];
 
 const CreateOrder = () => {
+  const { setIsLoading } = useContext(AppContext);
+
   const { orderId } = useParams();
   const [orderDetails, setOrderDetails] = useState(
     Object.fromEntries(fieldsConfig.map((item) => [item.name, item]))
@@ -193,6 +196,7 @@ const CreateOrder = () => {
 
   useEffect(() => {
     if (!orderId) return;
+    setIsLoading(true);
     getOrderDetails({ orderId })
       .then(({ data }) => {
         setOrderDetails(
@@ -206,6 +210,9 @@ const CreateOrder = () => {
       })
       .catch((error) => {
         console.log({ error });
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
   }, []);
 

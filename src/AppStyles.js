@@ -6,6 +6,7 @@ export const AppWrapper = newStyled.div({
   height: "100vh",
   flexDirection: "column",
   position: "relative",
+  fontFamily: "sen",
 });
 
 export const FlexCenter = newStyled(FlexBox)({

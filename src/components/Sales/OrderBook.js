@@ -1,58 +1,77 @@
 import { Button } from "@mui/material";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { IoFilterSharp } from "react-icons/io5";
 import { PiExportThin } from "react-icons/pi";
 import { RiDeleteBin5Line } from "react-icons/ri";
 import { toast } from "react-toastify";
-import {
-  deleteMultipleRecord,
-  deleteOrderBook,
-  getSalesOrders,
-} from "../../api";
+import { deleteMultipleRecord, getSalesOrders } from "../../api";
+import { AppContext } from "../context/AppContext";
 import { FlexBox } from "../Navbar/styles";
 import DataTable from "../utils/Table";
+import { useNavigate } from "react-router-dom";
 
-const columns = [
-  {
-    field: "orderId",
-    headerName: "Product ID",
-    width: 130,
-  },
-  { field: "date", headerName: "Date", width: 130 },
-  { field: "custId", headerName: "clientId", width: 130 },
-  { field: "name", headerName: "name", width: 130 },
-  { field: "invoiceNumber", headerName: "Invoice", width: 130 },
-  { field: "refernceName", headerName: "Reference", width: 130 },
-  { field: "poNumber", headerName: "PO Number", width: 130 },
-  { field: "poDate", headerName: "poDate", width: 130 },
-  { field: "poId", headerName: "PO Id", width: 130 },
-  { field: "dc", headerName: "DC", width: 130 },
-  { field: "dcDate", headerName: "DC Date", width: 130 },
-  { field: "status", headerName: "Status", width: 130 },
-];
-
-const rows = [
-  {
-    id: "some text",
-    date: "some text",
-    clientId: "some text",
-    name: "some text",
-    invoice: "some text",
-    reference: "some text",
-    poNumber: "some text",
-    poDate: "some text",
-    poId: "some text",
-    dc: "some text",
-    dcDate: "some text",
-    status: "some text",
-    orderId: "123",
-  },
-];
+const ChipRender = ({ status }) => {
+  if (!status) return "";
+  return <span style={{}}>{status}</span>;
+};
 
 const OrderBook = () => {
+  const { isLoading, setIsLoading } = useContext(AppContext);
   const fetchRef = useRef(true);
+  const navigate = useNavigate();
   const [data, setData] = useState({});
   const [selectedData, setSelectedRows] = useState([]);
+
+  const columns = useMemo(
+    () => [
+      {
+        field: "orderId",
+        headerName: "Product ID",
+        width: 130,
+        renderCell: ({ row: { orderId } }) => (
+          <span
+            style={{
+              cursor: "pointer",
+              color: "blue",
+              textDecoration: "underline",
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/sales/${orderId}`);
+            }}
+          >
+            {orderId}
+          </span>
+        ),
+      },
+      { field: "date", headerName: "Date", width: 130 },
+      { field: "custId", headerName: "clientId", width: 130 },
+      { field: "name", headerName: "name", width: 130 },
+      { field: "invoiceNumber", headerName: "Invoice", width: 130 },
+      { field: "refernceName", headerName: "Reference", width: 130 },
+      { field: "poNumber", headerName: "PO Number", width: 130 },
+      { field: "poDate", headerName: "poDate", width: 130 },
+      { field: "poId", headerName: "PO Id", width: 130 },
+      { field: "dc", headerName: "DC", width: 130 },
+      { field: "dcDate", headerName: "DC Date", width: 130 },
+      {
+        field: "status",
+        headerName: "Status",
+        width: 130,
+        renderCell: ({ row: { status = "" } }) => {
+          return <ChipRender status={status} />;
+        },
+      },
+    ],
+    []
+  );
 
   const fetchData = useCallback(() => {
     return getSalesOrders()
@@ -61,12 +80,14 @@ const OrderBook = () => {
       })
       .catch((error) => {
         console.log({ error });
-      });
-  }, []);
+      })
+      .finally(() => setIsLoading(false));
+  }, [isLoading]);
 
   useEffect(() => {
     if (!fetchRef.current) return;
     fetchRef.current = false;
+    setIsLoading(true);
     fetchData();
   }, []);
 
