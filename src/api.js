@@ -38,3 +38,6 @@ export const addOrder = async ({ payload }) => {
     .post(endpoint + "/fact_sales_duplicate", payload)
     .then((res) => res.data);
 };
+export const getClientDetails = async () => {
+  return await axios.get(endpoint + "/dim_client").then((res) => res.data);
+};

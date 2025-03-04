@@ -4,7 +4,7 @@ import InputField from "../utils/InputField";
 import DataTable from "../utils/Table";
 import { Button } from "@mui/material";
 import axios from "axios";
-import { addOrder, getOrderDetails } from "../../api";
+import { addOrder, getClientDetails, getOrderDetails } from "../../api";
 import CustomModal from "../utils/Modal";
 import { toast, ToastContainer } from "react-toastify";
 import { useParams } from "react-router-dom";
@@ -20,12 +20,13 @@ const fieldsConfig = [
     error: false,
   },
   {
-    label: "Client Name",
-    name: "clientName",
+    label: "Client ID",
+    name: "clientId",
     type: "text",
     value: "",
-    placeholder: "Bharat Traders",
+    placeholder: "ORDXXXXXX",
     error: false,
+    isDropdown: true,
   },
   {
     label: "Reference Name*",
@@ -36,11 +37,11 @@ const fieldsConfig = [
     error: false,
   },
   {
-    label: "Client ID",
-    name: "clientId",
+    label: "Client Name",
+    name: "clientName",
     type: "text",
     value: "",
-    placeholder: "ORDXXXXXX",
+    placeholder: "Bharat Traders",
     error: false,
   },
   {
@@ -163,6 +164,7 @@ const CreateOrder = () => {
   const [openCancel, setOpenCancel] = useState(false);
   const [showAddItem, setShowAddItem] = useState(false);
   const [productList, setProductList] = useState([...rows]);
+  const [clientDetails, setClientDetails] = useState([]);
   const [tempList, setTempProduct] = useState({
     productName: {
       label: "Product Name",
@@ -197,19 +199,30 @@ const CreateOrder = () => {
   useEffect(() => {
     if (!orderId) return;
     setIsLoading(true);
-    getOrderDetails({ orderId })
-      .then(({ data }) => {
+    Promise.allSettled([getClientDetails(), getOrderDetails({ orderId })])
+      .then((responses) => {
+        const clientResponse = responses[0].value?.data ?? [];
+        const orderRespose = responses[1].value?.data ?? [];
+
+        setClientDetails(clientResponse);
         setOrderDetails(
           Object.fromEntries(
             fieldsConfig.map((item) => [
               item.name,
-              { ...item, value: data[0][item.name] },
+              {
+                ...item,
+                value: orderRespose[0][item.name],
+                list:
+                  item.name === "clientId"
+                    ? clientResponse.map(({ name, clientId }) => ({
+                        label: name,
+                        value: clientId,
+                      }))
+                    : [],
+              },
             ])
           )
         );
-      })
-      .catch((error) => {
-        console.log({ error });
       })
       .finally(() => {
         setIsLoading(false);
@@ -266,6 +279,7 @@ const CreateOrder = () => {
         toast(error.response.data.message ?? error.message);
       });
   }, [orderDetails]);
+  console.log({ orderDetails });
   return (
     <FlexBox
       style={{

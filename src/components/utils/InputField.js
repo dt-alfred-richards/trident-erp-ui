@@ -1,6 +1,7 @@
 import * as React from "react";
 import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
+import BasicSelect from "../SelectDropdown/SelectDropdown";
 
 export default function InputField(props) {
   return (
@@ -17,7 +18,15 @@ export default function InputField(props) {
       noValidate
       autoComplete="off"
     >
-      {props.type === "date" ? (
+      {props.isDropdown && (
+        <BasicSelect
+          list={props.list}
+          value={props.value}
+          label={props.label}
+          handleChange={(value) => console.log({ value })}
+        />
+      )}
+      {props.type === "date" && (
         <TextField
           id="outlined-number"
           type="date"
@@ -29,7 +38,8 @@ export default function InputField(props) {
           }}
           {...props}
         />
-      ) : (
+      )}
+      {props.type != "date" && !props.isDropdown && (
         <TextField
           id="outlined-basic"
           defaultValue={props.type === "date" ? "19/11/1998" : props.value}

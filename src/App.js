@@ -54,7 +54,10 @@ function App() {
               <Route path="/sales/entry" Component={SalesEntry} />
               <Route path="/sales/orderbook" Component={OrderBook} />
               <Route path="/sales/create-order" Component={CreateOrder} />
-              <Route path="/sales/order-details" Component={OrderDetails} />
+              <Route
+                path="/sales/order-details/:orderId"
+                Component={OrderDetails}
+              />
               <Route path="/sales/:orderId" Component={CreateOrder} />
               <Route path="/login" Component={Login} />
               <Route path="*" Component={NotFound} />

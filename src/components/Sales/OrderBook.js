@@ -16,6 +16,14 @@ import { AppContext } from "../context/AppContext";
 import { FlexBox } from "../Navbar/styles";
 import DataTable from "../utils/Table";
 import { useNavigate } from "react-router-dom";
+import Dropdown from "../Menu/Menu";
+import { CiMenuKebab } from "react-icons/ci";
+import { CiDeliveryTruck } from "react-icons/ci";
+import { MdModeEdit } from "react-icons/md";
+import { MdOutlineCancel } from "react-icons/md";
+import { SiTicktick } from "react-icons/si";
+
+import { FlexCenter } from "../../AppStyles";
 
 const ChipRender = ({ status }) => {
   if (!status) return "";
@@ -28,6 +36,20 @@ const OrderBook = () => {
   const navigate = useNavigate();
   const [data, setData] = useState({});
   const [selectedData, setSelectedRows] = useState([]);
+
+  const handleMenu = ({ row: { orderId }, data }) => {
+    switch (data) {
+      case "edit":
+        navigate(`/sales/${orderId}`);
+        break;
+      case "track-order":
+        navigate(`/sales/order-details/${orderId}`);
+        break;
+      default:
+        toast("Havent implemented yet", { type: "error" });
+        break;
+    }
+  };
 
   const columns = useMemo(
     () => [
@@ -68,6 +90,55 @@ const OrderBook = () => {
         renderCell: ({ row: { status = "" } }) => {
           return <ChipRender status={status} />;
         },
+      },
+      {
+        field: "",
+        headerName: "",
+        width: 100,
+        renderCell: ({ row }) => (
+          <Dropdown
+            button={<CiMenuKebab />}
+            options={[
+              {
+                element: (
+                  <FlexCenter style={{ gap: 10, height: 32 }}>
+                    <MdModeEdit />
+                    Edit
+                  </FlexCenter>
+                ),
+                data: "edit",
+              },
+              {
+                element: (
+                  <FlexCenter style={{ gap: 10, height: 32 }}>
+                    <CiDeliveryTruck />
+                    Track order
+                  </FlexCenter>
+                ),
+                data: "track-order",
+              },
+              {
+                element: (
+                  <FlexCenter style={{ gap: 10, height: 32 }}>
+                    <SiTicktick />
+                    Approve
+                  </FlexCenter>
+                ),
+                data: "approve",
+              },
+              {
+                element: (
+                  <FlexCenter style={{ gap: 10, height: 32 }}>
+                    <MdOutlineCancel />
+                    Cancel order
+                  </FlexCenter>
+                ),
+                data: "cancel",
+              },
+            ]}
+            onOptionSelect={(data) => handleMenu({ row, data })}
+          />
+        ),
       },
     ],
     []
