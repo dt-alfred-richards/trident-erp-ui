@@ -55,7 +55,7 @@ const OrderBook = () => {
     () => [
       {
         field: "orderId",
-        headerName: "Product ID",
+        headerName: "Order id",
         width: 130,
         renderCell: ({ row: { orderId } }) => (
           <span

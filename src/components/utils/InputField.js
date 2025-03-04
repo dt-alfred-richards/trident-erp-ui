@@ -18,14 +18,7 @@ export default function InputField(props) {
       noValidate
       autoComplete="off"
     >
-      {props.isDropdown && (
-        <BasicSelect
-          list={props.list}
-          value={props.value}
-          label={props.label}
-          handleChange={(value) => console.log({ value })}
-        />
-      )}
+      {props.isDropdown && <BasicSelect {...props} />}
       {props.type === "date" && (
         <TextField
           id="outlined-number"
@@ -42,9 +35,10 @@ export default function InputField(props) {
       {props.type != "date" && !props.isDropdown && (
         <TextField
           id="outlined-basic"
-          defaultValue={props.type === "date" ? "19/11/1998" : props.value}
+          defaultValue={props.value}
           label={props.label}
           variant="outlined"
+          disabled={props.disabled}
           {...props}
         />
       )}

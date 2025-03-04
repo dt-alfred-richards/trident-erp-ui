@@ -1,10 +1,22 @@
-import React, { useCallback, useContext, useEffect, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { FlexBox } from "../Navbar/styles";
 import InputField from "../utils/InputField";
 import DataTable from "../utils/Table";
 import { Button } from "@mui/material";
-import axios from "axios";
-import { addOrder, getClientDetails, getOrderDetails } from "../../api";
+import { MdDelete } from "react-icons/md";
+import {
+  addOrder,
+  getByTableName,
+  getClientDetails,
+  getOrderDetails,
+  getProposedProductPrice,
+} from "../../api";
 import CustomModal from "../utils/Modal";
 import { toast, ToastContainer } from "react-toastify";
 import { useParams } from "react-router-dom";
@@ -20,8 +32,8 @@ const fieldsConfig = [
     error: false,
   },
   {
-    label: "Client ID",
-    name: "clientId",
+    label: "Client name",
+    name: "clientName",
     type: "text",
     value: "",
     placeholder: "ORDXXXXXX",
@@ -35,14 +47,16 @@ const fieldsConfig = [
     value: "",
     placeholder: "Anwar",
     error: false,
+    disabled: true,
   },
   {
-    label: "Client Name",
-    name: "clientName",
+    label: "Client ID",
+    name: "custId",
     type: "text",
     value: "",
     placeholder: "Bharat Traders",
     error: false,
+    disabled: true,
   },
   {
     label: "GST Number",
@@ -51,6 +65,7 @@ const fieldsConfig = [
     value: "",
     placeholder: "xxxxx",
     error: false,
+    disabled: true,
   },
   {
     label: "PAN Number",
@@ -59,6 +74,7 @@ const fieldsConfig = [
     value: "",
     placeholder: "xxxxx",
     error: false,
+    disabled: true,
   },
   {
     label: "Invoice Number",
@@ -116,43 +132,6 @@ const fieldsConfig = [
   },
 ];
 
-const columns = [
-  { field: "productName", headerName: "Product Name", width: 130 },
-  { field: "productId", headerName: "Product ", width: 130 },
-  { field: "cases", headerName: "Cases", width: 130 },
-  { field: "price", headerName: "Price", width: 100 },
-  {
-    field: "basePay",
-    headerName: "Base Pay",
-    width: 100,
-  },
-  {
-    field: "taxes",
-    headerName: "Taxes",
-    description: "This column has a value getter and is not sortable.",
-    sortable: false,
-    width: 100,
-  },
-  {
-    field: "amount",
-    headerName: "Amount",
-    sortable: false,
-    width: 160,
-  },
-];
-
-const rows = [
-  {
-    productId: 1,
-    productName: "asd",
-    cases: "Snow",
-    price: "Jon",
-    basePay: 35,
-    taxes: 123,
-    amount: 123,
-  },
-];
-
 const CreateOrder = () => {
   const { setIsLoading } = useContext(AppContext);
 
@@ -163,85 +142,161 @@ const CreateOrder = () => {
   const [openConfirm, setOpenConfirm] = useState(false);
   const [openCancel, setOpenCancel] = useState(false);
   const [showAddItem, setShowAddItem] = useState(false);
-  const [productList, setProductList] = useState([...rows]);
+  const [productList, setProductList] = useState([]);
   const [clientDetails, setClientDetails] = useState([]);
-  const [tempList, setTempProduct] = useState({
-    productName: {
-      label: "Product Name",
-      name: "productName",
-      type: "text",
-      value: "",
-      placeholder: "Please provide product name",
-      error: false,
-      style: { width: "100%" },
-    },
-    cases: {
-      label: "Cases",
-      name: "cases",
-      type: "number",
-      value: "",
-      placeholder: "Please provide cases",
-      error: false,
-      style: { width: "100%" },
-    },
-    price: {
-      label: "Price",
-      name: "price",
-      type: "number",
-      value: "",
-      placeholder: "Please provide price",
-      error: false,
-      style: { width: "100%" },
-    },
-  });
   const [addModal, setAddModal] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [availableProducts, setAvailableProducts] = useState([]);
+  const [newProduct, setNewProduct] = useState({});
+
+  const onDelete = ({ productId }) => {
+    setProductList((prev) =>
+      prev.filter((item) => item.productId !== productId)
+    );
+  };
+
+  const columns = useMemo(
+    () => [
+      { field: "brand", headerName: "Product Name", width: 130 },
+      { field: "productId", headerName: "Product id", width: 130, hide: true },
+      { field: "stock", headerName: "Cases", width: 130 },
+      { field: "proposedPrice", headerName: "Price", width: 100 },
+      {
+        field: "basePay",
+        headerName: "Base Pay",
+        width: 100,
+        renderCell: ({ row: { proposedPrice, stock } }) => {
+          return <span>{proposedPrice * stock}</span>;
+        },
+      },
+      {
+        field: "taxes",
+        headerName: "Taxes",
+        description: "This column has a value getter and is not sortable.",
+        sortable: false,
+        width: 100,
+        renderCell: ({ row: { proposedPrice, stock } }) => {
+          return <span>{proposedPrice * stock * 0.1}</span>;
+        },
+      },
+      {
+        field: "amount",
+        headerName: "Amount",
+        sortable: false,
+        width: 160,
+        renderCell: ({ row: { proposedPrice, stock } }) => {
+          return (
+            <span>{proposedPrice * stock + proposedPrice * stock * 0.1}</span>
+          );
+        },
+      },
+      {
+        field: "",
+        headerName: null,
+        sortable: false,
+        width: 160,
+        renderCell: ({ row }) => {
+          return <MdDelete cursor={"pointer"} onClick={() => onDelete(row)} />;
+        },
+      },
+    ],
+    []
+  );
+
+  const subTotal = useMemo(() => {
+    return productList.reduce((acc, { proposedPrice, stock }) => {
+      acc += proposedPrice * stock;
+      return acc;
+    }, 0);
+  }, [productList]);
+  const taxes = useMemo(() => {
+    return subTotal * 0.1;
+  }, [productList, subTotal]);
+
+  const total = useMemo(() => {
+    return (subTotal + taxes) * 0.9;
+  }, [subTotal, taxes]);
 
   useEffect(() => {
-    if (!orderId) return;
     setIsLoading(true);
-    Promise.allSettled([getClientDetails(), getOrderDetails({ orderId })])
+    Promise.allSettled([
+      getClientDetails(),
+      getOrderDetails({ orderId }),
+      getByTableName("client_proposed_price"),
+      getByTableName("dim_product"),
+      getByTableName("cumulative_inventory"),
+    ])
       .then((responses) => {
         const clientResponse = responses[0].value?.data ?? [];
-        const orderRespose = responses[1].value?.data ?? [];
+        const orderRespose = (responses[1].value?.data ?? [])[0] ?? {};
+        const proposedPrices = responses[2].value?.data ?? [];
+        let products = responses[3].value?.data ?? [];
+        const inventory = responses[4].value?.data ?? [];
 
+        products = products.map((item) => ({
+          ...item,
+          label: item.brand,
+          value: item.productId,
+          ...(proposedPrices.find((i) => i.productId === item.productId) ?? {}),
+          ...(inventory.find((i) => i.productId === item.productId) ?? {}),
+        }));
+
+        setAvailableProducts(products);
         setClientDetails(clientResponse);
-        setOrderDetails(
-          Object.fromEntries(
-            fieldsConfig.map((item) => [
-              item.name,
-              {
-                ...item,
-                value: orderRespose[0][item.name],
-                list:
-                  item.name === "clientId"
-                    ? clientResponse.map(({ name, clientId }) => ({
-                        label: name,
-                        value: clientId,
-                      }))
-                    : [],
-              },
-            ])
-          )
+
+        const updatedOrderDetails = Object.fromEntries(
+          fieldsConfig.map((item) => [
+            item.name,
+            {
+              ...item,
+              value: orderRespose[item.name],
+              list:
+                item.name === "clientName"
+                  ? clientResponse.map(({ name, clientId, ...item }) => ({
+                      label: name,
+                      value: clientId,
+                      ...item,
+                    }))
+                  : [],
+            },
+          ])
         );
+        if (orderId) {
+          const { reference, pan, gst } = clientResponse.find(
+            (item) => item.clientId === orderRespose.custId
+          );
+          updatedOrderDetails["referenceName"].value = reference;
+          updatedOrderDetails["panNumber"].value = pan;
+          updatedOrderDetails["gstNumber"].value = gst;
+          updatedOrderDetails["clientId"].value = orderRespose.custId;
+          updatedOrderDetails["clientName"].value = orderRespose.custId;
+        }
+        setOrderDetails(updatedOrderDetails);
       })
       .finally(() => {
         setIsLoading(false);
+        if (orderId) {
+          setIsEditMode(true);
+        }
       });
   }, []);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
-    setOrderDetails((prev) => ({
-      ...prev,
-      [name]: { ...(prev[name] ?? {}), value },
-    }));
-  };
-  const handleProduct = (event) => {
-    const { name, value } = event.target;
-    setTempProduct((prev) => ({
-      ...prev,
-      [name]: { ...(prev[name] ?? {}), value },
-    }));
+    setOrderDetails((prev) => {
+      const prevClone = { ...prev };
+      prevClone[name].value = value;
+      if (name === "clientName") {
+        const { reference, label, pan, gst } = prevClone[name].list.filter(
+          (item) => item.value === value
+        )[0];
+        prevClone["referenceName"].value = reference;
+        prevClone["panNumber"].value = pan;
+        prevClone["gstNumber"].value = gst;
+        prevClone["custId"].value = value;
+      }
+      return prevClone;
+    });
   };
 
   const checkValidations = useCallback(
@@ -266,11 +321,30 @@ const CreateOrder = () => {
     }
   };
 
+  const includes = [
+    "date",
+    "custId",
+    "productId",
+    "invoiceNumber",
+    "referenceName",
+    "remarks",
+    "poNumber",
+    "poDate",
+    "poId",
+    "dc",
+    "dcDate",
+  ];
+
   const onAddOrder = useCallback(() => {
     let payload = Object.fromEntries(
-      Object.values(orderDetails).map((item) => [item.name, item.value])
+      Object.values(orderDetails)
+        .filter((item) => includes.includes(item.name))
+        .map((item) => [item.name, item.value])
     );
-    if (!checkValidations(payload)) return;
+    if (!checkValidations(payload)) {
+      toast("Please check the required fields", { type: "error" });
+      return;
+    }
     addOrder({ payload })
       .then((res) => {
         toast("Order added");
@@ -279,7 +353,7 @@ const CreateOrder = () => {
         toast(error.response.data.message ?? error.message);
       });
   }, [orderDetails]);
-  console.log({ orderDetails });
+
   return (
     <FlexBox
       style={{
@@ -338,7 +412,12 @@ const CreateOrder = () => {
           onChange={handleChange}
           style={{ width: "100%", marginTop: 40 }}
         />
-        <BasicTable rows={productList} columns={columns} />
+        <DataTable
+          rows={productList}
+          columns={columns}
+          checkboxSelection={false}
+          uniqueField={"productId"}
+        />
         <Button
           variant="outlined"
           style={{ width: 150 }}
@@ -355,28 +434,53 @@ const CreateOrder = () => {
                 columnGap: 20,
               }}
             >
-              {Object.values(tempList).map((item) => (
-                <InputField {...item} onChange={handleProduct} />
-              ))}
+              <InputField
+                label="Product name"
+                name="productName"
+                value=""
+                placeholder="Please select product"
+                list={availableProducts}
+                isDropdown={true}
+                onChange={(event) => {
+                  const { name, value } = event.target;
+                  const productDetails = availableProducts.find(
+                    (item) => item.productId === value
+                  );
+                  setNewProduct(productDetails);
+                }}
+                style={{ width: "100%" }}
+              />
+              <InputField
+                label="Cases"
+                name="stock"
+                value={newProduct?.stock ?? ""}
+                placeholder=""
+                style={{ width: "100%" }}
+              />
+              <InputField
+                label="Price"
+                name="proposedPrice"
+                value={newProduct?.proposedPrice ?? ""}
+                placeholder=""
+                style={{ width: "100%" }}
+              />
             </FlexBox>
             <FlexBox style={{ gap: 20 }}>
-              <Button variant="outlined" onClick={() => setShowAddItem(false)}>
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setShowAddItem(false);
+                  setNewProduct({});
+                }}
+              >
                 Cancel
               </Button>
               <Button
                 variant="contained"
                 onClick={() => {
-                  setProductList((p) =>
-                    p.concat(
-                      Object.fromEntries(
-                        Object.values(tempList).map((item) => [
-                          item.name,
-                          item.value,
-                        ])
-                      )
-                    )
-                  );
+                  setProductList((prev) => prev.concat(newProduct));
                   setShowAddItem(false);
+                  setNewProduct({});
                 }}
               >
                 Confirm
@@ -413,17 +517,17 @@ const CreateOrder = () => {
             }}
           >
             <h1>
-              <span>Subtotal</span> : <strong>757575</strong>
+              <span>Subtotal</span> : <strong>{subTotal}</strong>
             </h1>
             <h1>
-              <span>Taxes</span> : <strong>757575</strong>
+              <span>Taxes</span> : <strong>{taxes}</strong>
             </h1>
             <h1>
-              <span>Discount</span> : <strong>757575</strong>
+              <span>Discount</span> :<strong>{(subTotal + taxes) * 0.1}</strong>
             </h1>
             <h1 style={{ color: "#0070FF" }}>
               <span>Total</span> :{" "}
-              <strong style={{ color: "#0070FF" }}>757575</strong>
+              <strong style={{ color: "#0070FF" }}>{total}</strong>
             </h1>
           </FlexBox>
         </FlexBox>
@@ -440,7 +544,7 @@ const CreateOrder = () => {
             <CustomModal
               header="Confirm cancel"
               setOpen={setOpenCancel}
-              label="Cancel"
+              label="Cancel order"
               open={openCancel}
               onConfirm={onUpdate}
               disabled={!checkValidations(orderDetails)}
@@ -448,7 +552,7 @@ const CreateOrder = () => {
               <span>Are you sure to cancel the order</span>
             </CustomModal>{" "}
             <CustomModal
-              header="Confirm update"
+              header="Approve order"
               setOpen={setOpenConfirm}
               label="Update"
               open={openConfirm}
@@ -508,7 +612,21 @@ const CreateOrder = () => {
                     <span>Anwar</span>
                   </FlexBox>
                 </FlexBox>
-                <BasicTable rows={productList} columns={columns} />
+                <DataTable
+                  rows={productList}
+                  columns={columns}
+                  checkboxSelection={false}
+                  uniqueField={"productId"}
+                />
+                <FlexBox
+                  style={{
+                    justifyContent: "space-between",
+                    height: 42,
+                    // borderBottom: "1px solid #D9D9D9",
+                  }}
+                >
+                  <span>Bill amount</span> {total}
+                </FlexBox>
               </CustomModal>
             </FlexBox>
           </>
