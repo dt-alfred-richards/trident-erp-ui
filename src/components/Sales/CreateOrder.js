@@ -16,6 +16,7 @@ import {
   getClientDetails,
   getOrderDetails,
   getProposedProductPrice,
+  updateByTableName,
 } from "../../api";
 import CustomModal from "../utils/Modal";
 import { toast, ToastContainer } from "react-toastify";
@@ -262,13 +263,17 @@ const CreateOrder = () => {
           ])
         );
         if (orderId) {
-          const { reference, pan, gst } = clientResponse.find(
+          const {
+            reference,
+            pan,
+            gst = "",
+          } = clientResponse.find(
             (item) => item.clientId === orderRespose.custId
           );
           updatedOrderDetails["referenceName"].value = reference;
           updatedOrderDetails["panNumber"].value = pan;
           updatedOrderDetails["gstNumber"].value = gst;
-          updatedOrderDetails["clientId"].value = orderRespose.custId;
+          updatedOrderDetails["custId"].value = orderRespose.custId;
           updatedOrderDetails["clientName"].value = orderRespose.custId;
         }
         setOrderDetails(updatedOrderDetails);
@@ -310,14 +315,41 @@ const CreateOrder = () => {
 
   const onUpdate = (event) => {
     if (!orderDetails) return;
-    let paylaod = Object.fromEntries(
-      Object.values(orderDetails).map((item) => [item.name, item.value])
+    let payload = Object.fromEntries(
+      Object.values(orderDetails)
+        .map((item) => [item.name, item.value])
+        .filter((item) => [
+          "clientName",
+          "gstNumber",
+          "panNumber",
+          "invoiceNumber",
+        ])
     );
-    if (checkValidations(paylaod)) {
+
+    if (!checkValidations(payload)) {
       toast("Failed to validate", { type: "error" });
       event.stopPropagation();
     } else {
-      toast("Successfully updated", { type: "success" });
+      const toastId = toast("Please wait...", { isLoading: true });
+      updateByTableName({
+        tableName: "fact_sales",
+        column: "orderId",
+        identifier: orderId,
+      })
+        .then((response) => {
+          toast.update(toastId, {
+            type: "success",
+            render: "Successfully updated",
+            isLoading: false,
+          });
+        })
+        .catch((error) => {
+          toast.update(toastId, {
+            type: "success",
+            render: "Failed to update",
+            isLoading: false,
+          });
+        });
     }
   };
 
@@ -341,10 +373,13 @@ const CreateOrder = () => {
         .filter((item) => includes.includes(item.name))
         .map((item) => [item.name, item.value])
     );
+
     if (!checkValidations(payload)) {
       toast("Please check the required fields", { type: "error" });
       return;
     }
+
+    payload["status"] = "pending";
     addOrder({ payload })
       .then((res) => {
         toast("Order added");
@@ -456,6 +491,12 @@ const CreateOrder = () => {
                 value={newProduct?.stock ?? ""}
                 placeholder=""
                 style={{ width: "100%" }}
+                onChange={(event) =>
+                  setNewProduct((prev) => ({
+                    ...prev,
+                    stock: event.target.value,
+                  }))
+                }
               />
               <InputField
                 label="Price"

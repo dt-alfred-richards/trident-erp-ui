@@ -16,7 +16,7 @@ export default function BasicSelect({
   const selected = React.useMemo(() => {
     return list.find((item) => item.value === value);
   }, [value]);
-
+  console.log({ selected: list.find((item) => item.value === value) });
   return (
     <Box
       sx={{
@@ -28,7 +28,8 @@ export default function BasicSelect({
         <Select
           labelId="demo-simple-select-label"
           id="demo-simple-select"
-          value={selected}
+          defaultValue={selected}
+          // value={selected}
           name={name}
           label={placeholder}
           onChange={onChange}

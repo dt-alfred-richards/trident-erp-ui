@@ -16,6 +16,7 @@ import SideBar from "./components/Sidebar/SideBar";
 import { AiOutlineLoading } from "react-icons/ai";
 import Loader from "./components/loader/Loader";
 import { AppProvider } from "./components/context/AppContext";
+import Inventory from "./components/Inventory/Inventory";
 
 const backEnabledRoutes = ["/sales/entry", "/sales/orderbook"];
 
@@ -59,6 +60,7 @@ function App() {
                 Component={OrderDetails}
               />
               <Route path="/sales/:orderId" Component={CreateOrder} />
+              <Route path="/inventory" Component={Inventory} />
               <Route path="/login" Component={Login} />
               <Route path="*" Component={NotFound} />
             </Routes>

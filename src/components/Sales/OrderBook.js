@@ -11,7 +11,11 @@ import { IoFilterSharp } from "react-icons/io5";
 import { PiExportThin } from "react-icons/pi";
 import { RiDeleteBin5Line } from "react-icons/ri";
 import { toast } from "react-toastify";
-import { deleteMultipleRecord, getSalesOrders } from "../../api";
+import {
+  deleteMultipleRecord,
+  getOrderDetails,
+  getSalesOrders,
+} from "../../api";
 import { AppContext } from "../context/AppContext";
 import { FlexBox } from "../Navbar/styles";
 import DataTable from "../utils/Table";
@@ -24,6 +28,7 @@ import { MdOutlineCancel } from "react-icons/md";
 import { SiTicktick } from "react-icons/si";
 
 import { FlexCenter } from "../../AppStyles";
+import GenericTable from "./GenericTable";
 
 const ChipRender = ({ status }) => {
   if (!status) return "";
@@ -77,9 +82,9 @@ const OrderBook = () => {
       { field: "custId", headerName: "clientId", width: 130 },
       { field: "name", headerName: "name", width: 130 },
       { field: "invoiceNumber", headerName: "Invoice", width: 130 },
-      { field: "refernceName", headerName: "Reference", width: 130 },
+      { field: "referenceName", headerName: "Reference", width: 130 },
       { field: "poNumber", headerName: "PO Number", width: 130 },
-      { field: "poDate", headerName: "poDate", width: 130 },
+      { field: "poDate", headerName: "Purchase date", width: 130 },
       { field: "poId", headerName: "PO Id", width: 130 },
       { field: "dc", headerName: "DC", width: 130 },
       { field: "dcDate", headerName: "DC Date", width: 130 },
@@ -177,103 +182,16 @@ const OrderBook = () => {
       });
   }, [selectedData]);
 
-  const notify = () => toast("Wow so easy !");
-
   return (
-    <FlexBox
-      flexDirection="column"
-      style={{
-        flex: 1,
-        padding: "24px 70px",
-        boxSizing: "border-box",
-        maxWidth: "100%",
-      }}
-    >
-      <FlexBox
-        style={{
-          justifyContent: "space-between",
-          backgroundColor: "white",
-          borderTopLeftRadius: "10px",
-          borderTopRightRadius: "10px",
-          padding: "10px 24px",
-        }}
-      >
-        <FlexBox
-          flexDirection="column"
-          style={{
-            marginBottom: 20,
-            "h1,h5": {
-              margin: 0,
-              fontWeight: 500,
-              display: "flex",
-              justifyContent: "flex-start",
-              alignItems: "center",
-            },
-            h5: { color: "#667085", fontWeight: 400 },
-          }}
-        >
-          <h1>
-            Sales{" "}
-            <span
-              style={{
-                fontSize: "14px",
-                padding: "3px",
-                borderRadius: "10px",
-                color: "#0070FF",
-                background: "#F7FAFF",
-                marginTop: 5,
-                marginLeft: 5,
-              }}
-            >
-              Order Book
-            </span>
-          </h1>
-          <h5>Only Admin can Edit the Content of Table</h5>
-        </FlexBox>
-        <FlexBox
-          style={{
-            justifyContent: "center",
-            alignItems: "center",
-            gap: 10,
-            button: {
-              display: "flex",
-              gap: 10,
-              height: 48,
-              borderRadius: 10,
-              textTransform: "unset",
-              color: "#344054",
-              width: 110,
-            },
-          }}
-        >
-          <Button onClick={deleteOrder}>
-            <RiDeleteBin5Line />
-            Delete
-          </Button>
-          <Button onClick={notify}>
-            <IoFilterSharp /> Filters
-          </Button>
-          <Button variant="outlined" style={{ border: "1px solid #D0D5DD" }}>
-            <PiExportThin fill="#344054" /> Export
-          </Button>
-        </FlexBox>
-      </FlexBox>
-      <FlexBox style={{ maxWidth: "100%", height: "100%" }}>
-        {data.length > 0 && (
-          <DataTable
-            columns={columns}
-            width={500}
-            height={"100%"}
-            rows={data}
-            pageSize={10}
-            uniqueField={"orderId"}
-            onRowSelect={(v) => {
-              setSelectedRows(v);
-            }}
-          />
-        )}
-      </FlexBox>
-    </FlexBox>
+    <GenericTable
+      setSelectedRows={setSelectedRows}
+      rows={data}
+      deleteOrder={deleteOrder}
+      columns={columns}
+      h1={"Sales"}
+      chipText={"Order Book"}
+      h5={"Only Admin can Edit the Content of Table"}
+    />
   );
 };
 

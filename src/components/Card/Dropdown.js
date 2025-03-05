@@ -31,6 +31,7 @@ export default function Dropdown({ label = "", options, onSelect, variant }) {
         anchorEl={anchorEl}
         open={open}
         onClose={handleClose}
+        style={{ border: "1px solid" }}
         MenuListProps={{
           "aria-labelledby": "basic-button",
         }}

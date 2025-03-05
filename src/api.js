@@ -45,3 +45,14 @@ export const getClientDetails = async () => {
 export const getByTableName = async (tableName) => {
   return await axios.get(endpoint + `/${tableName}`).then((res) => res.data);
 };
+
+export const updateByTableName = async ({
+  tableName,
+  column,
+  identifier,
+  payload,
+}) => {
+  return await axios
+    .patch(endpoint + `/${tableName}/${column}/${identifier}`, payload)
+    .then((res) => res.data);
+};

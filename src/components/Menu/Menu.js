@@ -5,7 +5,8 @@ import "@szhsin/react-menu/dist/transitions/zoom.css";
 export default function Dropdown({ button, options, onOptionSelect }) {
   return (
     <Menu
-      position="auto"
+      position="anchor"
+      direction="left"
       portal
       menuButton={
         <MenuButton
