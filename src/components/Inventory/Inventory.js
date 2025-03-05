@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { FlexCenter } from "../../AppStyles";
 import { FlexBox } from "../Navbar/styles";
 import Chart from "../charts/ReactECharts";
 import newStyled from "@emotion/styled";
 import GenericTable from "../Sales/GenericTable";
 import { getByTableName } from "../../api";
+import { AppContext } from "../context/AppContext";
 export const DashboardCard = newStyled(FlexBox)({
   backgroundColor: "white",
   borderRadius: 10,
@@ -13,6 +14,8 @@ export const DashboardCard = newStyled(FlexBox)({
 
 const Inventory = () => {
   const [rows, setRows] = useState([]);
+  const fetchRef = useRef(true);
+  const { setIsLoading } = useContext(AppContext);
   const columns = useMemo(() => {
     return [
       { field: "productId", headerName: "Product ID", width: 130 },
@@ -23,19 +26,24 @@ const Inventory = () => {
   });
 
   useEffect(() => {
+    if (!fetchRef.current) return;
+    fetchRef.current = false;
+    setIsLoading(true);
     Promise.allSettled([
       getByTableName("cumulative_inventory"),
       getByTableName("dim_product"),
-    ]).then((responses) => {
-      const inventoryRes = responses[0].value.data,
-        productRes = responses[1].value.data;
-      setRows(
-        inventoryRes.map((item) => ({
-          ...item,
-          ...(productRes.find((i) => i.productId === item.productId) ?? {}),
-        }))
-      );
-    });
+    ])
+      .then((responses) => {
+        const inventoryRes = responses[0].value.data,
+          productRes = responses[1].value.data;
+        setRows(
+          inventoryRes.map((item) => ({
+            ...item,
+            ...(productRes.find((i) => i.productId === item.productId) ?? {}),
+          }))
+        );
+      })
+      .finally(() => setIsLoading(false));
   }, []);
 
   console.log({ rows });
