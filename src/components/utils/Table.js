@@ -44,7 +44,7 @@ export default function DataTable({
             )
           );
         }}
-        rowSelection={rowSelection}
+        rowSelection={checkboxSelection && rowSelection}
         sx={{ border: 0 }}
         getRowId={(row) => row[uniqueField]}
       />

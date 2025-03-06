@@ -15,6 +15,7 @@ const GenericTable = ({
   chipText,
   h5,
   uniqueField = "orderId",
+  checkboxSelection = false,
 }) => {
   return (
     <FlexBox
@@ -105,6 +106,7 @@ const GenericTable = ({
             height={"100%"}
             rows={rows}
             pageSize={10}
+            checkboxSelection={checkboxSelection}
             uniqueField={uniqueField}
             onRowSelect={(v) => {
               setSelectedRows(v);
