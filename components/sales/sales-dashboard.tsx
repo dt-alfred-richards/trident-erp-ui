@@ -51,7 +51,7 @@ export function SalesDashboard() {
   const [activeTab, setActiveTab] = useState("order-book")
   const salesInstance = new DataByTableName("fact_sales");
   const productInstance = new DataByTableName("dim_product");
-  console.log({ refetchData })
+
   const convertSalesToOrders = useCallback((data: FactSales[], products: Product[]) => {
     return data.map(item => {
       const _products: OrderProduct[] = products.filter(p => p.productId === item.productId).map(p => {

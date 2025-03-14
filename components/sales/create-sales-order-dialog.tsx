@@ -371,8 +371,6 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
     setSelectedShippingAddressId("")
   }
 
-  console.log({ clientId, reference, clientName, expectedDeliveryDate })
-
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>

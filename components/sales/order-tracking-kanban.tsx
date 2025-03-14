@@ -20,7 +20,7 @@ export function OrderTrackingKanban() {
 
   // Define the status columns in the required order
   const statusColumns: OrderStatus[] = [
-    "pending_approval",
+    "pending",
     "approved",
     "ready",
     "dispatched",
