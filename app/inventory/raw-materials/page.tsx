@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { DashboardShell } from "@/components/dashboard-shell"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Search } from "lucide-react"
+import { DataByTableName } from "@/components/utils/api"
 
 // Define the raw material interface
 interface RawMaterial {
@@ -17,6 +18,13 @@ interface RawMaterial {
 
 export default function RawMaterialsPage() {
   const [searchTerm, setSearchTerm] = useState("")
+
+  const fetchData = useCallback(() => {
+    const rawInstance = new DataByTableName("fact_rm_inventory");
+    rawInstance.get().then((res) => {
+      const data = res.data as Response[]
+    })
+  }, [])
 
   // Mock data for raw materials
   const rawMaterials: RawMaterial[] = [
@@ -179,11 +187,10 @@ export default function RawMaterialsPage() {
                                 <TableCell className="text-right">{material.unit}</TableCell>
                                 <TableCell className="text-right">
                                   <span
-                                    className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                      isLowStock
-                                        ? "bg-destructive/10 text-destructive"
-                                        : "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                                    }`}
+                                    className={`px-2 py-1 rounded-full text-xs font-medium ${isLowStock
+                                      ? "bg-destructive/10 text-destructive"
+                                      : "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                                      }`}
                                   >
                                     {isLowStock ? "Low Stock" : "In Stock"}
                                   </span>

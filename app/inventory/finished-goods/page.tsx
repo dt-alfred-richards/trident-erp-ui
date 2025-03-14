@@ -30,7 +30,7 @@ export default function FinishedGoodsPage() {
   }
 
   return (
-    <DashboardShell className="p-6">
+    <DashboardShell className={"p-6"}>
       <CardHeader className="px-0 pt-0 pb-4 flex flex-row items-center justify-between">
         <CardTitle className="text-2xl font-bold">Finished Goods Inventory Management</CardTitle>
         <Button

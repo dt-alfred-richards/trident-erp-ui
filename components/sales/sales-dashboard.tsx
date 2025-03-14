@@ -37,6 +37,20 @@ export type Product = {
   productId: string
 }
 
+export type OrderDetails = {
+  "orderId": string,
+  "productId": string,
+  "cases": number,
+  "tradePrice": number,
+  "expectedDeliveryDate": number,
+  "status": string,
+  "clientId": string,
+  "casesDelivered": number,
+  "casesReserved": number,
+  "addressId"?: string,
+  "orderSubId": string
+}
+
 const getNumber = (str: string) => {
   const match = str.match(/^(\d+)(\D*)$/); // Match leading numbers and trailing characters
   return {
@@ -46,22 +60,28 @@ const getNumber = (str: string) => {
 };
 
 export function SalesDashboard() {
-  const { setOrders, clientProposedPrice, clientInfo, refetchData, updateNonSerilizedData, setRefetchData } = useOrders()
+  const { setOrders, clientProposedPrice, clientInfo, refetchData, updateNonSerilizedData, setRefetchData, productInfo } = useOrders()
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("order-book")
   const salesInstance = new DataByTableName("fact_sales");
-  const productInstance = new DataByTableName("dim_product");
+  const orderDetails = new DataByTableName("order_details");
 
-  const convertSalesToOrders = useCallback((data: FactSales[], products: Product[]) => {
+  const convertSalesToOrders = useCallback((data: FactSales[], orderDetails: OrderDetails[]) => {
     return data.map(item => {
-      const _products: OrderProduct[] = products.filter(p => p.productId === item.productId).map(p => {
-        const { quantity, units } = getNumber(p.size);
+      const _products: OrderProduct[] = orderDetails.filter(o => o.orderId === item.orderId).map(p => {
+        const { size, brand } = productInfo[p.productId];
+        const { quantity, units } = getNumber(size);
         return ({
           id: p.productId,
-          name: p.brand,
+          name: brand,
           price: clientProposedPrice[p.productId]?.proposedPrice ?? 0,
-          quantity,
-          sku: "",
+          quantity: orderDetails.filter(o => o.orderId === item.orderId).reduce((acc, curr) => {
+            acc += curr.cases
+            return acc;
+          }, 0),
+          allocated:p.casesReserved,
+          delivered:p.casesDelivered,
+          sku: size,
           units,
           status: "delivered"
         })
@@ -91,17 +111,17 @@ export function SalesDashboard() {
 
   const fetchSalesDetails = useCallback(() => {
     Promise.allSettled([
-      productInstance.get(),
+      orderDetails.get(),
       salesInstance.get()
     ]).then((responses: any[]) => {
-      const productData = responses[0]?.value.data;
+      const orderDetails = responses[0]?.value.data;
       const sales = responses[1]?.value.data;
-      const data = convertSalesToOrders(sales ?? [], productData)
+      const data = convertSalesToOrders(sales ?? [], orderDetails)
       setOrders(data as Order[]);
-      updateNonSerilizedData({
-        factSales: sales,
-        dimProduct: productData
-      })
+      // updateNonSerilizedData({
+      //   factSales: sales,
+      //   orderDetails
+      // })
     }).finally(() => {
       setRefetchData(false);
     })

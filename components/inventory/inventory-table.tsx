@@ -1,86 +1,83 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Search, ArrowUpDown } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { DataByTableName } from "../utils/api"
+import { useOrders } from "@/contexts/order-context"
 
 interface InventoryTableProps {
   onAllocate?: (sku: string) => void
 }
 
+type FinalProduction = {
+  date: string,
+  productId: string,
+  opening: number,
+  production: number,
+  outward: number,
+  closing: number
+}
+
+type Cummulative = {
+  date: string,
+  productId: string,
+  stock: number
+}
+
+
+type InventoryData = {
+  sku: string,
+  available: number,
+  reserved: number,
+  inProduction: number,
+}
+
 export function InventoryTable({ onAllocate }: InventoryTableProps) {
   const [searchTerm, setSearchTerm] = useState("")
+  const { productInfo, refetchData } = useOrders();
   const [sortColumn, setSortColumn] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const { toast } = useToast()
+  const [inventoryData, setInventoryData] = useState<InventoryData[]>([])
 
-  // This would come from your API in a real application
-  const inventoryData = [
-    {
-      sku: "500ml",
-      available: 250,
-      reserved: 1000,
-      inProduction: 2000,
-    },
-    {
-      sku: "750ml",
-      available: 1200,
-      reserved: 0,
-      inProduction: 1500,
-    },
-    {
-      sku: "1000ml",
-      available: 200,
-      reserved: 600,
-      inProduction: 1000,
-    },
-    {
-      sku: "2000ml",
-      available: 1000,
-      reserved: 500,
-      inProduction: 500,
-    },
-    {
-      sku: "Custom-A",
-      available: 0,
-      reserved: 0,
-      inProduction: 800,
-    },
-    // Adding 5 more rows
-    {
-      sku: "Premium-500ml",
-      available: 350,
-      reserved: 800,
-      inProduction: 1500,
-    },
-    {
-      sku: "Premium-750ml",
-      available: 900,
-      reserved: 200,
-      inProduction: 1200,
-    },
-    {
-      sku: "Premium-1000ml",
-      available: 150,
-      reserved: 400,
-      inProduction: 800,
-    },
-    {
-      sku: "Limited-Edition",
-      available: 50,
-      reserved: 300,
-      inProduction: 200,
-    },
-    {
-      sku: "Gift-Pack",
-      available: 75,
-      reserved: 150,
-      inProduction: 300,
-    },
-  ]
+  const fetchRef = useRef(true);
+
+  const fetchInventory = useCallback(() => {
+    if (!fetchRef.current) return;
+    fetchRef.current = false;
+
+    const finalInstance = new DataByTableName("fact_fp_inventory");
+    const cummulativeInstance = new DataByTableName("cumulative_inventory");
+
+    Promise.allSettled([finalInstance.get(), cummulativeInstance.get()]).then((responses: any[]) => {
+      const finalInventory = responses[0].value.data ?? [] as FinalProduction[]
+      const cummulativeInventory = responses[1].value.data ?? [] as Cummulative[]
+      const inventory = Object.fromEntries((finalInventory as FinalProduction[]).map(item => [item.productId, item])) as Record<string, FinalProduction & Cummulative>
+
+      cummulativeInventory.forEach((item: Cummulative) => {
+        if (inventory[item.productId]) {
+          inventory[item.productId] = {
+            ...inventory[item.productId],
+            ...item
+          }
+        }
+      })
+
+      const _inventoryData: InventoryData[] = Object.values(inventory).map((item) => ({
+        sku: productInfo[item.productId]?.size || "",
+        available: item.stock,
+        reserved: 0,
+        inProduction: item.production,
+      })) as InventoryData[]
+      setInventoryData(_inventoryData)
+    })
+  }, [refetchData])
+
+  useEffect(fetchInventory, [refetchData])
 
   // Filter data based on search term
   const filteredData = inventoryData.filter((item) => item.sku.toLowerCase().includes(searchTerm.toLowerCase()))
