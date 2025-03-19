@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, Dispatch, SetStateAction, useContext, useMemo, useState, type ReactNode } from "react"
-import { type Order, type OrderStatus, ClientInfo, ClientProposedPrice, OrderActionService } from "@/types/order"
+import { type Order, type OrderStatus, ClientAddress, clientAddress, ClientInfo, ClientProposedPrice, OrderActionService } from "@/types/order"
 import { Product } from "@/components/sales/sales-dashboard"
 
 interface OrderContextType {
@@ -14,14 +14,15 @@ interface OrderContextType {
   deliverProducts: (orderId: string, productId: string, quantity: number) => void
   getOrderById: (orderId: string) => Order | undefined,
   setOrders: Dispatch<SetStateAction<Order[]>>
-  createClientProposedPrice: (data: ClientProposedPrice[], clientInfo: ClientInfo[], productInfo: Product[]) => void
+  createClientProposedPrice: (data: ClientProposedPrice[], clientInfo: ClientInfo[], productInfo: Product[], clientAddress: clientAddress[]) => void
   clientProposedPrice: Record<string, ClientProposedPrice>,
   productInfo: Record<string, Product>,
   clientInfo: Record<string, ClientInfo>,
   refetchData: boolean,
   nonSerializedData: Record<string, any>,
   updateNonSerilizedData: (data: any) => void,
-  setRefetchData: Dispatch<SetStateAction<boolean>>
+  setRefetchData: Dispatch<SetStateAction<boolean>>,
+  clientAddress: Record<string, ClientAddress>
 }
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined)
@@ -31,9 +32,11 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const [refetchData, setRefetchData] = useState(false);
   const [clientInfo, setClientInfo] = useState<Record<string, ClientInfo>>({});
   const [productInfo, setProductInfo] = useState<Record<string, Product>>({});
+  const [clientAddress, setClientAddress] = useState<Record<string, clientAddress>>({});
   const [clientProposedPrice, setClientProposedPrice] = useState<Record<string, ClientProposedPrice>>({})
   const [currentUser, setCurrentUser] = useState<string>("Current User") // In a real app, this would come from authentication
   const [rootLoaded, setRootLoaded] = useState(false)
+
   const [nonSerializedData, setNonSerializedData] = useState<Record<string, any>>({})
   // Get filtered orders by status
   const filteredOrders = (status: OrderStatus | "all") => {
@@ -110,10 +113,11 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const createClientProposedPrice = (priceData: ClientProposedPrice[], clientInfo: ClientInfo[], productInfo: Product[]) => {
+  const createClientProposedPrice = (priceData: ClientProposedPrice[], clientInfo: ClientInfo[], productInfo: Product[], clientAddress: ClientAddress[]) => {
     setClientProposedPrice(Object.fromEntries(priceData.map(item => [item.productId, item])))
     setClientInfo(Object.fromEntries(clientInfo.map(item => [item.clientId, item])))
     setProductInfo(Object.fromEntries(productInfo.map(item => [item.productId, item])))
+    setClientAddress(Object.fromEntries(clientAddress.map(item => [item.clientId, item])))
     setRefetchData(true);
   }
 

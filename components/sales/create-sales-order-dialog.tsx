@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { format } from "date-fns"
 import { CalendarIcon, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { v4 as uuidv4 } from 'uuid';
 import {
   Dialog,
   DialogContent,
@@ -32,97 +33,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { FactSales } from "./sales-dashboard"
 import { DataByTableName } from "../utils/api"
-
-// Mock data for clients
-const CLIENTS = [
-  {
-    id: "CL001",
-    name: "ABC Corp",
-    gstNumber: "29ABCDE1234F1Z5",
-    panNumber: "ABCDE1234F",
-    references: ["REF-A001", "REF-A002", "REF-A003"],
-    shippingAddresses: [
-      {
-        id: "ADDR-001",
-        name: "ABC Corp Headquarters",
-        address: "123 Business Park, Industrial Area\nBangalore, Karnataka 560001\nIndia",
-        isDefault: true,
-      },
-      {
-        id: "ADDR-002",
-        name: "ABC Corp Warehouse",
-        address: "456 Logistics Zone, Outer Ring Road\nBangalore, Karnataka 560037\nIndia",
-        isDefault: false,
-      },
-    ],
-  },
-  {
-    id: "CL002",
-    name: "XYZ Industries",
-    gstNumber: "27FGHIJ5678G1Z3",
-    panNumber: "FGHIJ5678G",
-    references: ["REF-X001", "REF-X002"],
-    shippingAddresses: [
-      {
-        id: "ADDR-003",
-        name: "XYZ Industries Main Office",
-        address: "789 Tech Park, Electronic City\nBangalore, Karnataka 560100\nIndia",
-        isDefault: true,
-      },
-    ],
-  },
-  {
-    id: "CL003",
-    name: "Global Foods",
-    gstNumber: "24KLMNO9012H1Z8",
-    panNumber: "KLMNO9012H",
-    references: ["REF-G001"],
-    shippingAddresses: [
-      {
-        id: "ADDR-004",
-        name: "Global Foods Distribution Center",
-        address: "101 Food Processing Zone\nMumbai, Maharashtra 400001\nIndia",
-        isDefault: true,
-      },
-      {
-        id: "ADDR-005",
-        name: "Global Foods Regional Office",
-        address: "202 Business Hub\nDelhi, Delhi 110001\nIndia",
-        isDefault: false,
-      },
-      {
-        id: "ADDR-006",
-        name: "Global Foods Storage Facility",
-        address: "303 Cold Storage Complex\nChennai, Tamil Nadu 600001\nIndia",
-        isDefault: false,
-      },
-    ],
-  },
-  {
-    id: "CL004",
-    name: "TechStart Inc",
-    gstNumber: "06PQRST3456I1Z2",
-    panNumber: "PQRST3456I",
-    references: ["REF-T001", "REF-T002", "REF-T003", "REF-T004"],
-    shippingAddresses: [
-      {
-        id: "ADDR-007",
-        name: "TechStart Inc Office",
-        address: "404 Innovation Center\nPune, Maharashtra 411001\nIndia",
-        isDefault: true,
-      },
-    ],
-  },
-]
-
-// Mock data for products
-const PRODUCTS = [
-  { id: "P001", name: "500ml Bottle", price: 120.0, taxRate: 18 },
-  { id: "P002", name: "750ml Bottle", price: 180.0, taxRate: 18 },
-  { id: "P003", name: "1000ml Bottle", price: 220.0, taxRate: 18 },
-  { id: "P004", name: "2000ml Bottle", price: 350.0, taxRate: 18 },
-  { id: "P005", name: "Custom-A Bottle", price: 280.0, taxRate: 18 },
-]
+import { useOrders } from "@/contexts/order-context"
 
 interface OrderItem {
   id: string
@@ -140,8 +51,23 @@ interface CreateSalesOrderDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
+type ClientType = {
+  id: string,
+  name: string,
+  gstNumber: string,
+  panNumber: string,
+  references: string[],
+  shippingAddresses: {
+    id: string,
+    name: string,
+    address: string,
+    isDefault: boolean,
+  }[]
+}
+
 export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderDialogProps) {
   // Order header state
+  const { clientInfo, productInfo, clientAddress = {}, clientProposedPrice, setRefetchData } = useOrders()
   const [orderDate] = useState<Date>(new Date()) // Remove setOrderDate since it's now fixed
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<Date | undefined>(undefined)
   const [clientId, setClientId] = useState("")
@@ -149,6 +75,32 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
   const [poDate, setPoDate] = useState<Date | undefined>(undefined)
   const [poId, setPoId] = useState("")
   const [remarks, setRemarks] = useState("")
+  const products = useMemo(() => {
+    return Object.values(productInfo).map(product => ({
+      id: product.productId, name: product.brand, price: clientProposedPrice[product.productId].proposedPrice, taxRate: 0
+    }))
+  }, [productInfo])
+  const clients = useMemo(() => {
+    return Object.values(clientInfo).map(client => {
+      if (!clientAddress) return
+      const { addressId = "", addressLine1 = "" } = clientAddress[client.clientId] ?? ""
+      return ({
+        id: client.clientId,
+        name: client.name,
+        gstNumber: client.gst,
+        panNumber: client.pan,
+        references: [client.reference],
+        shippingAddresses: [
+          {
+            id: client.address,
+            name: client.address,
+            address: client.address,
+            isDefault: true,
+          }
+        ]
+      }) as ClientType
+    })
+  }, [clientInfo, clientAddress])
 
   // Client details (auto-populated)
   const [clientName, setClientName] = useState("")
@@ -187,7 +139,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
   // Update client details when client changes
   useEffect(() => {
     if (clientId) {
-      const selectedClient = CLIENTS.find((client) => client.id === clientId)
+      const selectedClient = clients.find((client) => client?.id === clientId)
       if (selectedClient) {
         setClientName(selectedClient.name)
         setGstNumber(selectedClient.gstNumber)
@@ -197,6 +149,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
 
         // Set shipping addresses
         if (selectedClient.shippingAddresses) {
+          console.log(selectedClient, clientInfo[clientId])
           setShippingAddresses(selectedClient.shippingAddresses)
 
           // Auto-select if there's only one address or a default address
@@ -242,7 +195,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
       return
     }
 
-    const product = PRODUCTS.find((p) => p.id === selectedProductId)
+    const product = products.find((p) => p.id === selectedProductId)
     if (!product) return
 
     const quantity = Number(cases)
@@ -307,50 +260,23 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
       poDate: dateConverter(new Date()),
       poId,
       poNumber: "",
-      productId: "",
-      referenceName: "",
+      productId: orderItems[0].productId ?? "",
+      referenceName: reference,
       remarks,
-      status: "pending"
+      orderId: uuidv4(),
+      status: "pending_approval"
     }
     const factSalesInstance = new DataByTableName("fact_sales");
+    const orderDetailsPayload = {
+      
+    }
 
     factSalesInstance.post(orderDetails).then(res => {
-      console.log({
-        res
-      })
+      resetForm();
+    }).finally(() => {
+      setRefetchData(p => !p)
+      onOpenChange(false)
     })
-    // Here you would submit the order to your API
-    // console.log("Submitting order:", {
-    //   orderDate,
-    //   expectedDeliveryDate,
-    //   clientId,
-    //   clientName,
-    //   reference,
-    //   poDate,
-    //   poId,
-    //   remarks,
-    //   shippingAddress: selectedAddress
-    //     ? {
-    //       id: selectedAddress.id,
-    //       name: selectedAddress.name,
-    //       address: selectedAddress.address,
-    //     }
-    //     : undefined,
-    //   items: orderItems,
-    //   summary: {
-    //     subtotal,
-    //     taxTotal,
-    //     discount,
-    //     total,
-    //   },
-    // })
-
-    // // Close dialogs
-    // setShowConfirmation(false)
-    // onOpenChange(false)
-
-    // // Reset form for next use
-    // resetForm()
   }
 
   // Reset the form to initial state
@@ -426,14 +352,16 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                   <Label htmlFor="client">
                     Client Name <span className="text-red-500">*</span>
                   </Label>
-                  <Select value={clientId} onValueChange={setClientId}>
+                  <Select value={clientId} onValueChange={value => {
+                    setClientId(value)
+                  }}>
                     <SelectTrigger id="client">
                       <SelectValue placeholder="Select client" />
                     </SelectTrigger>
                     <SelectContent>
-                      {CLIENTS.map((client) => (
-                        <SelectItem key={client.id} value={client.id}>
-                          {client.name}
+                      {clients.map((client) => (
+                        <SelectItem key={`key_ ${client?.id ?? ""}`} value={client?.id ?? ""}>
+                          {client?.name ?? ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -578,7 +506,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                             <SelectValue placeholder="Select product" />
                           </SelectTrigger>
                           <SelectContent>
-                            {PRODUCTS.map((product) => (
+                            {products.map((product) => (
                               <SelectItem key={product.id} value={product.id}>
                                 {product.name}
                               </SelectItem>
@@ -607,7 +535,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                           id="price"
                           value={
                             selectedProductId
-                              ? `₹${PRODUCTS.find((p) => p.id === selectedProductId)?.price.toFixed(2) || "0.00"}`
+                              ? `₹${products.find((p) => p.id === selectedProductId)?.price.toFixed(2) || "0.00"}`
                               : ""
                           }
                           readOnly

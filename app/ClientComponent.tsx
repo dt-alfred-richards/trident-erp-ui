@@ -17,12 +17,14 @@ const ClientComponent = () => {
                 const clientInstance = new DataByTableName("client_proposed_price");
                 const dimClient = new DataByTableName("dim_client");
                 const dimProduct = new DataByTableName("dim_product");
+                const clientAddress = new DataByTableName("client_address");
 
                 const clientPrice = await clientInstance.get();
                 const clientDetails = await dimClient.get();
                 const productInfo = await dimProduct.get();
+                const clientAddressInfo = await clientAddress.get();
 
-                createClientProposedPrice(clientPrice.data, clientDetails.data, productInfo.data);
+                createClientProposedPrice(clientPrice.data, clientDetails.data, productInfo.data, clientAddressInfo.data);
             } catch (error) {
                 console.error("Error fetching client_proposed_price:", error);
             }

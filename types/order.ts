@@ -40,6 +40,12 @@ export type ClientProposedPrice = {
   proposedPrice: number,
 }
 
+export type ClientAddress = {
+  clientId: string,
+  addressId: string,
+  addressLine1: string
+}
+
 export type ClientInfo = {
   clientId: string,
   name: string,
