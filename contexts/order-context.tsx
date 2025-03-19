@@ -51,7 +51,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   // Approve an order
   const approveOrder = ({ id: orderId, status }: Order) => {
     try {
-      if (status !== "pending") {
+      if (status !== "pending_approval") {
         throw new Error("Only pending orders can be approved")
       }
 

@@ -20,7 +20,7 @@ export function OrderTrackingKanban() {
 
   // Define the status columns in the required order
   const statusColumns: OrderStatus[] = [
-    "pending",
+    "pending_approval",
     "approved",
     "ready",
     "dispatched",
@@ -83,13 +83,12 @@ export function OrderTrackingKanban() {
                 groupedOrders[status].map((order) => (
                   <Card
                     key={order.id}
-                    className={`border-l-4 ${
-                      order.priority === "high"
+                    className={`border-l-4 ${order.priority === "high"
                         ? "border-l-red-500"
                         : order.priority === "medium"
                           ? "border-l-amber-500"
                           : "border-l-green-500"
-                    } hover:shadow-md transition-shadow cursor-pointer`}
+                      } hover:shadow-md transition-shadow cursor-pointer`}
                     onClick={() => handleViewOrder(order.id)}
                   >
                     <CardHeader className="p-3 pb-0">

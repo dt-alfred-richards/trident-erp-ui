@@ -5,15 +5,15 @@ import { ProcurementDashboard } from "@/components/procurement/procurement-dashb
 
 export const metadata: Metadata = {
   title: "Procurement",
-  description: "Manage raw material sourcing, supplier management, and inventory replenishment",
+  description: "Manage purchase orders and goods receiving for raw materials and supplies",
 }
 
 export default function ProcurementPage() {
   return (
     <DashboardShell>
       <DashboardHeader
-        heading="Procurement Dashboard"
-        text="Manage raw material sourcing, supplier management, and inventory replenishment"
+        heading="Procurement"
+        text="Manage purchase orders and goods receiving for raw materials and supplies"
       />
       <ProcurementDashboard />
     </DashboardShell>

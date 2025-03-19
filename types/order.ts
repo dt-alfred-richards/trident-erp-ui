@@ -1,6 +1,5 @@
 import { DataByTableName } from "@/components/utils/api"
 
-// Product status types
 export type ProductStatus =
   | "pending"
   | "ready"
@@ -11,7 +10,7 @@ export type ProductStatus =
   | "partially_delivered"
 
 // Order status types
-export type OrderStatus = "pending" | "approved" | "ready" | "dispatched" | "delivered" | "partial_fulfillment" | "out_for_delivery" | "processing" | "cancelled"
+export type OrderStatus = "pending_approval" | "approved" | "ready" | "dispatched" | "delivered" | "partial_fulfillment"
 
 // Product item within an order
 export interface OrderProduct {
@@ -21,7 +20,7 @@ export interface OrderProduct {
   quantity: number
   price: number,
   units: string,
-  status: ProductStatus
+  status?: ProductStatus
   allocated?: number
   dispatched?: number
   delivered?: number

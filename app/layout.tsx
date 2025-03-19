@@ -6,13 +6,13 @@ import { ThemeProvider } from "@/components/theme/theme-provider"
 import { AppSidebar } from "@/components/layout/app-sidebar"
 import { BreadcrumbNav } from "@/components/layout/breadcrumb-nav"
 import { OrderProvider } from "@/contexts/order-context"
+import ClientComponent from "./ClientComponent"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Dhaara ERP",
   description: "Factory Management System",
-  generator: 'v0.dev'
 }
 
 export default function RootLayout({
@@ -25,9 +25,9 @@ export default function RootLayout({
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <OrderProvider>
-            <ClientComponent />
             <div className="flex h-screen w-full overflow-hidden bg-muted/20">
               <AppSidebar />
+              <ClientComponent />
               <div className="flex-1 flex flex-col min-w-0 m-2 ml-0">
                 <div className="flex h-16 items-center border-b px-4 bg-background rounded-t-xl">
                   <div className="ml-4">
@@ -43,9 +43,4 @@ export default function RootLayout({
     </html>
   )
 }
-
-
-
-import './globals.css'
-import ClientComponent from "./ClientComponent"
 

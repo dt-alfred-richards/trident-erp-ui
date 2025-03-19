@@ -28,6 +28,9 @@ export type FactSales = {
   referenceName: string,
   remarks: string,
   status: OrderStatus,
+  createdBy?: string,
+  createdOn?: number,
+  modifiedOn: string
 }
 
 export type Product = {
@@ -43,7 +46,7 @@ export type OrderDetails = {
   "cases": number,
   "tradePrice": number,
   "expectedDeliveryDate": number,
-  "status": string,
+  "status": OrderStatus,
   "clientId": string,
   "casesDelivered": number,
   "casesReserved": number,
@@ -66,6 +69,16 @@ export function SalesDashboard() {
   const salesInstance = new DataByTableName("fact_sales");
   const orderDetails = new DataByTableName("order_details");
 
+  const getPriority = useCallback((quantity: number) => {
+    if (quantity <= 1000) {
+      return "low"
+    } else if (quantity <= 10000) {
+      return "medium"
+    } else {
+      return "high"
+    }
+  }, [])
+
   const convertSalesToOrders = useCallback((data: FactSales[], orderDetails: OrderDetails[]) => {
     return data.map(item => {
       const _products: OrderProduct[] = orderDetails.filter(o => o.orderId === item.orderId).map(p => {
@@ -79,24 +92,28 @@ export function SalesDashboard() {
             acc += curr.cases
             return acc;
           }, 0),
-          allocated:p.casesReserved,
-          delivered:p.casesDelivered,
+          allocated: p.casesReserved,
+          delivered: p.casesDelivered,
           sku: size,
-          units,
-          status: "delivered"
+          units
         })
       })
       const { name = "", contactNumber: customerNumber = "", email: customerEmail = "", address } = clientInfo[item.custId] ?? {}
       return ({
         createdAt: "",
-        createdBy: "", customerNumber, customerEmail,
+        createdBy: item?.createdBy ?? "",
+        customerNumber,
+        customerEmail,
         billingAddress: address,
         shippingAddress: address,
         customer: name,
         deliveryDate: item.dcDate,
         id: item.orderId,
         orderDate: item.date,
-        priority: "medium",
+        priority: getPriority(_products.reduce((acc, curr) => {
+          acc += curr.quantity ?? 0;
+          return acc;
+        }, 0)),
         products: _products,
         reference: item.referenceName,
         status: item.status,
@@ -118,10 +135,6 @@ export function SalesDashboard() {
       const sales = responses[1]?.value.data;
       const data = convertSalesToOrders(sales ?? [], orderDetails)
       setOrders(data as Order[]);
-      // updateNonSerilizedData({
-      //   factSales: sales,
-      //   orderDetails
-      // })
     }).finally(() => {
       setRefetchData(false);
     })

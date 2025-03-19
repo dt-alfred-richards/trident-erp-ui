@@ -1,12 +1,14 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useState, useEffect } from "react"
 import { DashboardShell } from "@/components/dashboard-shell"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
-import { Search } from "lucide-react"
-import { DataByTableName } from "@/components/utils/api"
+import { Search, Package, Layers, Box, AlertCircle, Clock } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { cn } from "@/lib/utils"
 
 // Define the raw material interface
 interface RawMaterial {
@@ -18,13 +20,7 @@ interface RawMaterial {
 
 export default function RawMaterialsPage() {
   const [searchTerm, setSearchTerm] = useState("")
-
-  const fetchData = useCallback(() => {
-    const rawInstance = new DataByTableName("fact_rm_inventory");
-    rawInstance.get().then((res) => {
-      const data = res.data as Response[]
-    })
-  }, [])
+  const [activeCategory, setActiveCategory] = useState<string | null>(null)
 
   // Mock data for raw materials
   const rawMaterials: RawMaterial[] = [
@@ -63,156 +59,222 @@ export default function RawMaterialsPage() {
     { category: "Consumables", type: "Best Code Wash Bottles", quantity: 25, unit: "Boxes" },
   ]
 
-  // Filter raw materials based on search term
-  const filteredMaterials = rawMaterials.filter(
-    (material) =>
-      material.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      material.type.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
-
-  // Group materials by category
-  const groupedMaterials: { [key: string]: RawMaterial[] } = {}
-  filteredMaterials.forEach((material) => {
-    if (!groupedMaterials[material.category]) {
-      groupedMaterials[material.category] = []
-    }
-    groupedMaterials[material.category].push(material)
-  })
-
   // Get unique categories and sort them in the specified order
   const categoryOrder = ["Labels", "Pre-Form", "Shrink", "Caps", "Consumables"]
-  const categories = Object.keys(groupedMaterials).sort((a, b) => categoryOrder.indexOf(a) - categoryOrder.indexOf(b))
+  const categories = Array.from(new Set(rawMaterials.map((item) => item.category))).sort(
+    (a, b) => categoryOrder.indexOf(a) - categoryOrder.indexOf(b),
+  )
+
+  // Set default active category to first category on initial load
+  useEffect(() => {
+    if (!activeCategory && categories.length > 0) {
+      setActiveCategory(categories[0])
+    }
+  }, [categories, activeCategory])
+
+  // Filter raw materials based on search term and active category
+  const filteredMaterials = rawMaterials.filter(
+    (material) =>
+      (activeCategory === null || material.category === activeCategory) &&
+      (material.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        material.type.toLowerCase().includes(searchTerm.toLowerCase())),
+  )
+
+  // Calculate summary metrics
+  const totalMaterials = rawMaterials.length
+  const lowStockCount = rawMaterials.filter(
+    (material) =>
+      (material.quantity < 30 && material.unit === "Boxes") ||
+      (material.quantity < 10000 && material.unit === "Pieces") ||
+      (material.quantity < 20 && material.unit === "Rolls"),
+  ).length
+  const pendingOrdersCount = 12 // Mock data for pending orders
+
+  // Get category icon
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case "Labels":
+        return <Layers className="h-4 w-4" />
+      case "Pre-Form":
+        return <Box className="h-4 w-4" />
+      case "Shrink":
+        return <Package className="h-4 w-4" />
+      case "Caps":
+        return <Package className="h-4 w-4" />
+      case "Consumables":
+        return <Package className="h-4 w-4" />
+      default:
+        return <Package className="h-4 w-4" />
+    }
+  }
+
+  // Handle tab change
+  const handleTabChange = (value: string) => {
+    setActiveCategory(value)
+  }
 
   return (
     <DashboardShell className="p-6">
       <div className="space-y-6">
-        {/* Summary cards */}
-        <div className="grid gap-2 grid-cols-2 sm:grid-cols-4 lg:grid-cols-4">
-          <Card className="bg-gradient-to-br from-card to-muted/30">
-            <CardHeader className="pb-0 pt-3 px-3">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Total Materials</CardTitle>
-            </CardHeader>
-            <CardContent className="pb-3 pt-1 px-3">
-              <div className="text-base font-bold">{rawMaterials.length}</div>
-              <p className="text-[10px] text-muted-foreground">Across {categories.length} categories</p>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Raw Materials</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage and track your manufacturing materials inventory
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search materials..."
+                className="pl-9 w-full md:w-[240px] h-9 bg-background"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            {searchTerm && (
+              <Badge variant="outline" className="gap-1 px-2 py-1 h-9" onClick={() => setSearchTerm("")}>
+                <span>{searchTerm}</span>
+                <span className="cursor-pointer">×</span>
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        {/* Summary metrics */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card className="bg-background border-0 shadow-sm">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="bg-primary/10 p-2 rounded-full">
+                <Package className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Total Materials</p>
+                <p className="text-2xl font-semibold">{totalMaterials}</p>
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-card to-muted/30">
-            <CardHeader className="pb-0 pt-3 px-3">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Total Value</CardTitle>
-            </CardHeader>
-            <CardContent className="pb-3 pt-1 px-3">
-              <div className="text-base font-bold">₹24.7M</div>
-              <p className="text-[10px] text-muted-foreground">Estimated value</p>
+          <Card className="bg-background border-0 shadow-sm">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="bg-amber-500/10 p-2 rounded-full">
+                <Clock className="h-5 w-5 text-amber-500" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Pending Orders</p>
+                <p className="text-2xl font-semibold">{pendingOrdersCount}</p>
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-card to-muted/30">
-            <CardHeader className="pb-0 pt-3 px-3">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Low Stock</CardTitle>
-            </CardHeader>
-            <CardContent className="pb-3 pt-1 px-3">
-              <div className="text-base font-bold">12</div>
-              <p className="text-[10px] text-muted-foreground">Below threshold</p>
+          <Card className="bg-background border-0 shadow-sm">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="bg-destructive/10 p-2 rounded-full">
+                <AlertCircle className="h-5 w-5 text-destructive" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Low Stock</p>
+                <p className="text-2xl font-semibold">{lowStockCount}</p>
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-card to-muted/30">
-            <CardHeader className="pb-0 pt-3 px-3">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Pending</CardTitle>
-            </CardHeader>
-            <CardContent className="pb-3 pt-1 px-3">
-              <div className="text-base font-bold">7</div>
-              <p className="text-[10px] text-muted-foreground">Awaiting delivery</p>
+          <Card className="bg-background border-0 shadow-sm">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="bg-primary/10 p-2 rounded-full">
+                <Box className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Total Value</p>
+                <p className="text-2xl font-semibold">₹24.7M</p>
+              </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Main content card */}
-        <Card className="border-0 shadow-md bg-card">
-          <CardHeader className="border-b bg-muted/30 rounded-t-lg">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div>
-                <CardTitle className="text-xl">Raw Materials Inventory</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">Complete inventory of all manufacturing materials</p>
-              </div>
-              <div className="relative w-full md:w-64">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Search materials..."
-                  className="pl-9 pr-4 py-2 border-muted bg-background"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </div>
+        {/* Category tabs and table */}
+        <Card className="border-0 shadow-sm overflow-hidden">
+          <CardHeader className="px-6 py-4 border-b bg-muted/20">
+            <Tabs defaultValue={categories[0]} value={activeCategory || categories[0]} onValueChange={handleTabChange}>
+              <TabsList className="bg-transparent p-0 h-auto space-x-2">
+                {categories.map((category) => (
+                  <TabsTrigger
+                    key={category}
+                    value={category}
+                    className="px-3 py-1.5 h-auto text-sm rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm flex items-center gap-1.5"
+                  >
+                    {getCategoryIcon(category)}
+                    {category}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
           </CardHeader>
-          <CardContent className="p-6">
-            <div className="space-y-8">
-              {categories.length > 0 ? (
-                categories.map((category) => (
-                  <div key={category} className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-semibold">{category}</h3>
-                      <div className="h-px flex-1 bg-border"></div>
-                      <span className="text-sm text-muted-foreground">{groupedMaterials[category].length} items</span>
-                    </div>
-                    <div className="rounded-md border border-border/60 overflow-hidden">
-                      <Table>
-                        <TableHeader className="bg-muted/30">
-                          <TableRow>
-                            <TableHead className="w-[40%]">Type</TableHead>
-                            <TableHead className="text-right">Quantity</TableHead>
-                            <TableHead className="text-right">Unit</TableHead>
-                            <TableHead className="text-right">Status</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {groupedMaterials[category].map((material, index) => {
-                            // Determine status based on quantity
-                            const isLowStock =
-                              (material.quantity < 30 && material.unit === "Boxes") ||
-                              (material.quantity < 10000 && material.unit === "Pieces") ||
-                              (material.quantity < 20 && material.unit === "Rolls")
 
-                            return (
-                              <TableRow
-                                key={`${material.category}-${material.type}-${index}`}
-                                className={isLowStock ? "bg-destructive/5" : ""}
-                              >
-                                <TableCell className="font-medium">{material.type}</TableCell>
-                                <TableCell className="text-right">{material.quantity.toLocaleString()}</TableCell>
-                                <TableCell className="text-right">{material.unit}</TableCell>
-                                <TableCell className="text-right">
-                                  <span
-                                    className={`px-2 py-1 rounded-full text-xs font-medium ${isLowStock
-                                      ? "bg-destructive/10 text-destructive"
-                                      : "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                                      }`}
-                                  >
-                                    {isLowStock ? "Low Stock" : "In Stock"}
-                                  </span>
-                                </TableCell>
-                              </TableRow>
-                            )
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-12 text-muted-foreground">
-                  <div className="mx-auto w-24 h-24 rounded-full bg-muted flex items-center justify-center mb-4">
-                    <Search className="h-12 w-12 text-muted-foreground/50" />
-                  </div>
-                  <h3 className="text-lg font-medium mb-1">No materials found</h3>
-                  <p>Try adjusting your search terms</p>
+          <CardContent className="p-0">
+            {filteredMaterials.length > 0 ? (
+              <div className="overflow-auto">
+                <Table>
+                  <TableHeader className="bg-muted/10">
+                    <TableRow>
+                      <TableHead className="w-[40%]">Material Type</TableHead>
+                      <TableHead className="text-right">Quantity</TableHead>
+                      <TableHead className="text-right">Unit</TableHead>
+                      <TableHead className="text-right">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredMaterials.map((material, index) => {
+                      // Determine status based on quantity
+                      const isLowStock =
+                        (material.quantity < 30 && material.unit === "Boxes") ||
+                        (material.quantity < 10000 && material.unit === "Pieces") ||
+                        (material.quantity < 20 && material.unit === "Rolls")
+
+                      return (
+                        <TableRow
+                          key={`${material.category}-${material.type}-${index}`}
+                          className="hover:bg-muted/20 transition-colors"
+                        >
+                          <TableCell className="font-medium">{material.type}</TableCell>
+                          <TableCell className="text-right font-medium">{material.quantity.toLocaleString()}</TableCell>
+                          <TableCell className="text-right text-muted-foreground">{material.unit}</TableCell>
+                          <TableCell className="text-right">
+                            <Badge
+                              variant={isLowStock ? "destructive" : "outline"}
+                              className={cn(
+                                "font-normal",
+                                isLowStock
+                                  ? "bg-destructive/10 text-destructive hover:bg-destructive/20"
+                                  : "bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/40",
+                              )}
+                            >
+                              {isLowStock ? "Low Stock" : "In Stock"}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                <div className="bg-muted/30 p-4 rounded-full mb-4">
+                  <Search className="h-6 w-6 text-muted-foreground" />
                 </div>
-              )}
-            </div>
+                <h3 className="text-lg font-medium mb-1">No materials found</h3>
+                <p className="text-muted-foreground max-w-sm">
+                  {searchTerm
+                    ? `No results for "${searchTerm}". Try adjusting your search terms.`
+                    : "No materials found in this category."}
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
