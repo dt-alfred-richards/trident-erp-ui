@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Search, Filter, FileText, CalendarIcon } from "lucide-react"
+import { Search, Filter, FileText, CalendarIcon, XCircle, ClipboardCheck } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +23,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import type { DateRange } from "react-day-picker"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 interface PurchaseOrderTabProps {
   onNewOrder?: () => void
@@ -38,6 +40,12 @@ export function PurchaseOrderTab({ onNewOrder }: PurchaseOrderTabProps) {
     from: undefined,
     to: undefined,
   })
+
+  // Add new state variables for cancel confirmation and GRN view
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
+  const [poToCancel, setPoToCancel] = useState<string>("")
+  const [grnViewDialogOpen, setGrnViewDialogOpen] = useState(false)
+  const [selectedGrnPo, setSelectedGrnPo] = useState<string>("")
 
   // Mock data for purchase orders with simplified statuses
   const purchaseOrders = [
@@ -160,6 +168,28 @@ export function PurchaseOrderTab({ onNewOrder }: PurchaseOrderTabProps) {
     setViewDialogOpen(true)
   }
 
+  // Add a new function to handle cancel button click
+  const handleCancelClick = (poId: string) => {
+    setPoToCancel(poId)
+    setCancelDialogOpen(true)
+  }
+
+  // Add a new function to handle GRN view button click
+  const handleGrnViewClick = (poId: string) => {
+    setSelectedGrnPo(poId)
+    setGrnViewDialogOpen(true)
+  }
+
+  // Add a function to confirm cancellation
+  const confirmCancelOrder = () => {
+    // Here you would typically call an API to cancel the order
+    console.log(`Cancelling order ${poToCancel}`)
+
+    // For demo purposes, we'll just close the dialog
+    setCancelDialogOpen(false)
+    setPoToCancel("")
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -278,14 +308,61 @@ export function PurchaseOrderTab({ onNewOrder }: PurchaseOrderTabProps) {
                               Receive
                             </Button>
                           )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={() => handleViewClick(po.id)}
-                          >
-                            <FileText className="h-4 w-4" />
-                          </Button>
+                          {po.status === "pending" && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-100"
+                                    onClick={() => handleCancelClick(po.id)}
+                                  >
+                                    <XCircle className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Cancel Order</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                          {(po.status === "completed" || po.status === "partial") && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 text-green-500 hover:text-green-700 hover:bg-green-100"
+                                    onClick={() => handleGrnViewClick(po.id)}
+                                  >
+                                    <ClipboardCheck className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>View GRN</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => handleViewClick(po.id)}
+                                >
+                                  <FileText className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>View Order Details</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -337,6 +414,88 @@ export function PurchaseOrderTab({ onNewOrder }: PurchaseOrderTabProps) {
 
       {viewDialogOpen && (
         <PurchaseOrderViewDialog open={viewDialogOpen} onOpenChange={setViewDialogOpen} poId={selectedPO} />
+      )}
+
+      {cancelDialogOpen && (
+        <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Cancel Purchase Order</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <p className="text-muted-foreground">
+                Are you sure you want to cancel purchase order <span className="font-medium">{poToCancel}</span>? This
+                action cannot be undone.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
+                No, Keep Order
+              </Button>
+              <Button variant="destructive" onClick={confirmCancelOrder}>
+                Yes, Cancel Order
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {grnViewDialogOpen && (
+        <Dialog open={grnViewDialogOpen} onOpenChange={setGrnViewDialogOpen}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Goods Received Note for PO {selectedGrnPo}</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date Received</TableHead>
+                      <TableHead>Material</TableHead>
+                      <TableHead>Quantity</TableHead>
+                      <TableHead>Quality Check</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {/* Mock GRN data - in a real app, this would be fetched based on the PO */}
+                    <TableRow>
+                      <TableCell>2023-06-05</TableCell>
+                      <TableCell>Plastic Resin</TableCell>
+                      <TableCell>250 kg</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                          Passed
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell>2023-06-07</TableCell>
+                      <TableCell>Plastic Resin</TableCell>
+                      <TableCell>250 kg</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                          Passed
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="mt-4">
+                <h4 className="text-sm font-medium mb-2">Notes</h4>
+                <p className="text-sm text-muted-foreground">
+                  Material received in good condition. Quality check performed on samples from both batches.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button variant="outline" onClick={() => setGrnViewDialogOpen(false)}>
+                Close
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   )
