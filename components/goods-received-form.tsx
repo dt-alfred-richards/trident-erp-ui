@@ -12,19 +12,25 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle, Check, ImageIcon, Upload, X } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Checkbox } from "@/components/ui/checkbox"
 
 interface GoodsReceivedFormProps {
   poNumber?: string
 }
 
 export function GoodsReceivedForm({ poNumber }: GoodsReceivedFormProps) {
-  const [selectedPO, setSelectedPO] = useState<string>(poNumber || "")
+  // First, update the formData state to include the substitutionMaterial field
   const [formData, setFormData] = useState({
     receivedQuantity: "",
     qualityStatus: "accept",
     notes: "",
+    useSubstitution: false,
+    substitutionCategory: "",
+    substitutionMaterial: "",
+    substitutionQuantity: "",
   })
   const [imageUploaded, setImageUploaded] = useState(false)
+  const [selectedPO, setSelectedPO] = useState<string | undefined>(undefined)
 
   // This would come from your API in a real application
   const pendingPOs = [
@@ -56,10 +62,87 @@ export function GoodsReceivedForm({ poNumber }: GoodsReceivedFormProps) {
     }))
   }
 
+  const rawMaterialCategories = [
+    "Plastic Resins",
+    "Metal Components",
+    "Adhesives",
+    "Labels",
+    "Packaging Materials",
+    "Colorants",
+    "Chemicals",
+    "Fasteners",
+  ]
+
+  const handleSubstitutionChange = (checked: boolean) => {
+    setFormData((prev) => ({
+      ...prev,
+      useSubstitution: checked,
+      // Reset substitution values when unchecked
+      ...(checked ? {} : { substitutionCategory: "", substitutionMaterial: "", substitutionQuantity: "" }),
+    }))
+  }
+
+  // Add a function to get materials by category
+  const getMaterialsByCategory = (category: string) => {
+    // This would come from your API in a real application
+    const materialsByCategory: Record<string, string[]> = {
+      "Plastic Resins": ["PET Resin", "HDPE Resin", "PVC Resin", "LDPE Resin"],
+      "Metal Components": ["Aluminum Sheets", "Steel Rods", "Copper Wire", "Zinc Plates"],
+      Adhesives: ["Label Adhesive", "Packaging Glue", "Industrial Epoxy", "Hot Melt Adhesive"],
+      Labels: ["Paper Labels", "Plastic Labels", "Metallic Labels", "Fabric Labels"],
+      "Packaging Materials": ["Cardboard Boxes", "Plastic Wraps", "Bubble Wrap", "Foam Inserts"],
+      Colorants: ["Red Dye", "Blue Pigment", "Yellow Colorant", "Black Tint"],
+      Chemicals: ["Cleaning Solution", "Preservatives", "Stabilizers", "Catalysts"],
+      Fasteners: ["Screws", "Bolts", "Rivets", "Clips"],
+    }
+
+    return materialsByCategory[category] || []
+  }
+
+  // Add a handler for category change to reset material
+  const handleCategoryChange = (category: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      substitutionCategory: category,
+      substitutionMaterial: "", // Reset material when category changes
+    }))
+  }
+
+  // Update the isValidSubstitutionQuantity function to check for material too
+  const isValidSubstitutionQuantity = () => {
+    if (!formData.useSubstitution) return true
+    if (!formData.substitutionCategory || !formData.substitutionMaterial) return false
+
+    const quantity = Number(formData.substitutionQuantity)
+    return !isNaN(quantity) && quantity > 0
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Validate substitution data if enabled
+    if (formData.useSubstitution && !isValidSubstitutionQuantity()) {
+      alert("Please enter a valid substitution quantity")
+      return
+    }
+
     // Here you would submit the GRN to your API
-    console.log("Creating GRN:", { poId: selectedPO, ...formData })
+    // Inside handleSubmit, update the console.log to include substitutionMaterial:
+    console.log("Creating GRN:", {
+      poId: selectedPO,
+      ...formData,
+      // Only include substitution data if enabled
+      ...(formData.useSubstitution
+        ? {
+            substitution: {
+              category: formData.substitutionCategory,
+              material: formData.substitutionMaterial,
+              quantity: formData.substitutionQuantity,
+            },
+          }
+        : {}),
+    })
+
     alert("Goods received note created successfully!")
   }
 
@@ -189,6 +272,83 @@ export function GoodsReceivedForm({ poNumber }: GoodsReceivedFormProps) {
                   placeholder="Add notes about the received goods, quality issues, etc."
                   className="h-20"
                 />
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="use-substitution"
+                    checked={formData.useSubstitution}
+                    onCheckedChange={handleSubstitutionChange}
+                  />
+                  <Label htmlFor="use-substitution">Use Material Substitution</Label>
+                </div>
+
+                {formData.useSubstitution && (
+                  <div className="space-y-4 p-4 border rounded-md">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <Label htmlFor="substitution-category" className="block mb-2">
+                          Category
+                        </Label>
+                        <Select value={formData.substitutionCategory} onValueChange={handleCategoryChange}>
+                          <SelectTrigger id="substitution-category" className="w-full">
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {rawMaterialCategories.map((category) => (
+                              <SelectItem key={category} value={category}>
+                                {category}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="substitution-material" className="block mb-2">
+                          Material
+                        </Label>
+                        <Select
+                          value={formData.substitutionMaterial}
+                          onValueChange={(value) => handleChange("substitutionMaterial", value)}
+                          disabled={!formData.substitutionCategory}
+                        >
+                          <SelectTrigger id="substitution-material" className="w-full">
+                            <SelectValue placeholder="Select material" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {getMaterialsByCategory(formData.substitutionCategory).map((material) => (
+                              <SelectItem key={material} value={material}>
+                                {material}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="substitution-quantity" className="block mb-2">
+                          Quantity
+                        </Label>
+                        <Input
+                          id="substitution-quantity"
+                          type="number"
+                          value={formData.substitutionQuantity}
+                          onChange={(e) => handleChange("substitutionQuantity", e.target.value)}
+                          min="0.1"
+                          step="0.1"
+                          placeholder="Enter quantity"
+                          disabled={!formData.substitutionMaterial}
+                          className="w-full"
+                        />
+                        {formData.substitutionQuantity && Number(formData.substitutionQuantity) <= 0 && (
+                          <p className="text-sm text-red-500">Quantity must be greater than zero</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
