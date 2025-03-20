@@ -298,7 +298,7 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                Allocate Stock to Order
+                Allocate Stock to Order 1
               </div>
             ) : (
               "Allocate Stock to Order"

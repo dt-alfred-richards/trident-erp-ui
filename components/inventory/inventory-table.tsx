@@ -8,6 +8,7 @@ import { Search, ArrowUpDown } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { DataByTableName } from "../utils/api"
 import { useOrders } from "@/contexts/order-context"
+import { Order } from "@/types/order"
 
 interface InventoryTableProps {
   onAllocate?: (sku: string) => void
@@ -67,9 +68,9 @@ export function InventoryTable({ onAllocate }: InventoryTableProps) {
         }
       })
 
-      const _inventoryData: InventoryData[] = Object.values(inventory).map((item) => ({
-        sku: productInfo[item.productId]?.size || "",
-        available: item.stock,
+      const _inventoryData: InventoryData[] = Object.values(inventory).map((item, index) => ({
+        sku: productInfo[item.productId]?.brand || "" + index,
+        available: item.opening,
         reserved: 0,
         inProduction: item.production,
       })) as InventoryData[]

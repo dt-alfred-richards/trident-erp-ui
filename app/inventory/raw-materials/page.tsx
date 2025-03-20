@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { DashboardShell } from "@/components/dashboard-shell"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -9,6 +9,7 @@ import { Search, Package, Layers, Box, AlertCircle, Clock } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
+import { DataByTableName } from "@/components/utils/api"
 
 // Define the raw material interface
 interface RawMaterial {
@@ -18,46 +19,36 @@ interface RawMaterial {
   unit: string
 }
 
+type Response = {
+  materialId: string
+  name: string
+  size: string
+  type: string
+  unitMeasure: string
+  value: number
+}
+
 export default function RawMaterialsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
+  const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>([])
 
-  // Mock data for raw materials
-  const rawMaterials: RawMaterial[] = [
-    // Labels
-    { category: "Labels", type: "500ml Standard", quantity: 25000, unit: "Pieces" },
-    { category: "Labels", type: "1L Premium", quantity: 15000, unit: "Pieces" },
-    { category: "Labels", type: "2L Economy", quantity: 10000, unit: "Pieces" },
-    { category: "Labels", type: "750ml Special", quantity: 8000, unit: "Pieces" },
-    { category: "Labels", type: "330ml Mini", quantity: 30000, unit: "Pieces" },
+  const fetchData = useCallback(async () => {
+    try {
+      const instance = new DataByTableName("dim_raw_materials");
+      const response = await instance.get();
+      const data: Response[] = response.data ?? []
 
-    // Pre-Form
-    { category: "Pre-Form", type: "9.3", quantity: 150, unit: "Boxes" },
-    { category: "Pre-Form", type: "12.5", quantity: 200, unit: "Boxes" },
-    { category: "Pre-Form", type: "19", quantity: 175, unit: "Boxes" },
-    { category: "Pre-Form", type: "32", quantity: 120, unit: "Boxes" },
-    { category: "Pre-Form", type: "26", quantity: 90, unit: "Boxes" },
+      const _rawMaterials: RawMaterial[] = data.map(item => ({ category: item.type, type: item.name, quantity: item.size, unit: item.unitMeasure }))
+      setRawMaterials(_rawMaterials)
+    } catch (error) {
+      console.log({ error })
+    }
+  }, [])
 
-    // Shrink
-    { category: "Shrink", type: "480mm", quantity: 50, unit: "Rolls" },
-    { category: "Shrink", type: "530mm", quantity: 45, unit: "Rolls" },
-
-    // Caps
-    { category: "Caps", type: "Red", quantity: 50000, unit: "Pieces" },
-    { category: "Caps", type: "White", quantity: 45000, unit: "Pieces" },
-    { category: "Caps", type: "Black", quantity: 30000, unit: "Pieces" },
-    { category: "Caps", type: "Pink", quantity: 25000, unit: "Pieces" },
-    { category: "Caps", type: "Yellow", quantity: 20000, unit: "Pieces" },
-    { category: "Caps", type: "Blue", quantity: 35000, unit: "Pieces" },
-    { category: "Caps", type: "Orange", quantity: 15000, unit: "Pieces" },
-
-    // Consumables
-    { category: "Consumables", type: "Red Handle", quantity: 75, unit: "Boxes" },
-    { category: "Consumables", type: "White Handle", quantity: 60, unit: "Boxes" },
-    { category: "Consumables", type: "Nilkamal Ink Bottle", quantity: 40, unit: "Boxes" },
-    { category: "Consumables", type: "Nilkamal Makeup", quantity: 35, unit: "Boxes" },
-    { category: "Consumables", type: "Best Code Wash Bottles", quantity: 25, unit: "Boxes" },
-  ]
+  useEffect(() => {
+    fetchData();
+  }, [])
 
   // Get unique categories and sort them in the specified order
   const categoryOrder = ["Labels", "Pre-Form", "Shrink", "Caps", "Consumables"]

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,188 +11,22 @@ import { CalendarIcon, Download, Search } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format } from "date-fns"
+import { useOrders } from "@/contexts/order-context"
+import { OrderDetails } from "../sales/sales-dashboard"
+import { DataByTableName } from "../utils/api"
+import { Allocations } from "@/app/inventory/finished-goods/page"
 
-export function AllocationHistory() {
+
+
+export function AllocationHistory({ allocations }: { allocations: Allocations[] }) {
   const [startDate, setStartDate] = useState<Date>()
   const [endDate, setEndDate] = useState<Date>()
   const [filterSku, setFilterSku] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState<string>("")
   const [filterStatus, setFilterStatus] = useState<string>("all")
 
-  // This would come from your API in a real application
-  const allocationHistory = [
-    {
-      id: "ALLOC-001",
-      timestamp: "2023-10-12T10:15:00",
-      user: "John Smith",
-      orderId: "SO-1003",
-      customer: "Urgent Pharma",
-      sku: "500ml",
-      allocated: 200,
-      requested: 200,
-      status: "complete",
-      reason: "Urgent request from Pharma customer",
-    },
-    {
-      id: "ALLOC-002",
-      timestamp: "2023-10-12T10:20:00",
-      user: "John Smith",
-      orderId: "SO-1001",
-      customer: "ABC Corp",
-      sku: "500ml",
-      allocated: 300,
-      requested: 300,
-      status: "complete",
-      reason: "High-value customer",
-    },
-    {
-      id: "ALLOC-003",
-      timestamp: "2023-10-12T10:25:00",
-      user: "John Smith",
-      orderId: "SO-1002",
-      customer: "XYZ Retail",
-      sku: "500ml",
-      allocated: 300,
-      requested: 300,
-      status: "complete",
-      reason: "Standard allocation",
-    },
-    {
-      id: "ALLOC-004",
-      timestamp: "2023-10-13T09:30:00",
-      user: "Sarah Johnson",
-      orderId: "SO-1005",
-      customer: "Premium Stores",
-      sku: "750ml",
-      allocated: 400,
-      requested: 400,
-      status: "complete",
-      reason: "High-value customer",
-    },
-    {
-      id: "ALLOC-005",
-      timestamp: "2023-10-13T14:45:00",
-      user: "Sarah Johnson",
-      orderId: "SO-1004",
-      customer: "Global Foods",
-      sku: "750ml",
-      allocated: 600,
-      requested: 800,
-      status: "partial",
-      reason: "Partial allocation due to limited stock",
-    },
-    {
-      id: "ALLOC-006",
-      timestamp: "2023-10-14T11:30:00",
-      user: "Current User",
-      orderId: "SO-1001",
-      customer: "ABC Corp",
-      sku: "750ml",
-      allocated: 150,
-      requested: 200,
-      status: "partial",
-      reason: "Partial allocation for high-value customer",
-    },
-    {
-      id: "ALLOC-007",
-      timestamp: "2023-10-14T11:35:00",
-      user: "Current User",
-      orderId: "SO-1001",
-      customer: "ABC Corp",
-      sku: "1000ml",
-      allocated: 100,
-      requested: 100,
-      status: "complete",
-      reason: "Complete allocation for high-value customer",
-    },
-    {
-      id: "ALLOC-008",
-      timestamp: "2023-10-15T09:15:00",
-      user: "Michael Brown",
-      orderId: "SO-1006",
-      customer: "Mega Distributors",
-      sku: "500ml",
-      allocated: 500,
-      requested: 500,
-      status: "complete",
-      reason: "Strategic partner allocation",
-    },
-    {
-      id: "ALLOC-009",
-      timestamp: "2023-10-15T14:20:00",
-      user: "Michael Brown",
-      orderId: "SO-1007",
-      customer: "City Grocers",
-      sku: "750ml",
-      allocated: 250,
-      requested: 400,
-      status: "partial",
-      reason: "Limited stock availability",
-    },
-    {
-      id: "ALLOC-010",
-      timestamp: "2023-10-16T10:45:00",
-      user: "Emily Davis",
-      orderId: "SO-1008",
-      customer: "Health Essentials",
-      sku: "1000ml",
-      allocated: 300,
-      requested: 300,
-      status: "complete",
-      reason: "Regular customer order",
-    },
-    {
-      id: "ALLOC-011",
-      timestamp: "2023-10-16T11:30:00",
-      user: "Emily Davis",
-      orderId: "SO-1009",
-      customer: "Wellness Chain",
-      sku: "500ml",
-      allocated: 450,
-      requested: 450,
-      status: "complete",
-      reason: "Promotional campaign support",
-    },
-    {
-      id: "ALLOC-012",
-      timestamp: "2023-10-17T09:00:00",
-      user: "Robert Wilson",
-      orderId: "SO-1010",
-      customer: "Global Retail",
-      sku: "750ml",
-      allocated: 350,
-      requested: 500,
-      status: "partial",
-      reason: "Stock constraints due to high demand",
-    },
-    {
-      id: "ALLOC-013",
-      timestamp: "2023-10-17T15:15:00",
-      user: "Robert Wilson",
-      orderId: "SO-1011",
-      customer: "Prime Markets",
-      sku: "1000ml",
-      allocated: 200,
-      requested: 200,
-      status: "complete",
-      reason: "New customer onboarding",
-    },
-    {
-      id: "ALLOC-014",
-      timestamp: "2023-10-18T10:30:00",
-      user: "Current User",
-      orderId: "SO-1012",
-      customer: "Regional Stores",
-      sku: "500ml",
-      allocated: 275,
-      requested: 300,
-      status: "partial",
-      reason: "Partial allocation due to production delay",
-    },
-  ]
-
   // Filter history based on date range, SKU, status, and search query
-  const filteredHistory = allocationHistory.filter((item) => {
+  const filteredHistory = allocations.filter((item) => {
     const itemDate = new Date(item.timestamp)
     const matchesDateRange = (!startDate || itemDate >= startDate) && (!endDate || itemDate <= endDate)
     const matchesSku = filterSku === "all" || item.sku === filterSku
@@ -208,7 +42,7 @@ export function AllocationHistory() {
   })
 
   // Get unique SKUs for filter dropdown
-  const uniqueSkus = Array.from(new Set(allocationHistory.map((item) => item.sku)))
+  const uniqueSkus = Array.from(new Set(allocations.map((item) => item.sku))).filter(item => item)
 
   // Group allocations by order ID to show order-level status
   const orderAllocations = filteredHistory.reduce(
@@ -231,7 +65,7 @@ export function AllocationHistory() {
 
       return acc
     },
-    {} as Record<string, { orderId: string; customer: string; items: typeof allocationHistory; timestamp: string }>,
+    {} as Record<string, { orderId: string; customer: string; items: typeof allocations; timestamp: string }>,
   )
 
   return (
@@ -269,7 +103,7 @@ export function AllocationHistory() {
 
         <div className="space-y-2">
           <Label htmlFor="filter-sku">SKU</Label>
-          <Select value={filterSku} onValueChange={setFilterSku}>
+          <Select value={filterSku ?? ""} onValueChange={setFilterSku}>
             <SelectTrigger id="filter-sku" className="w-full">
               <SelectValue placeholder="Filter by SKU" />
             </SelectTrigger>
@@ -286,7 +120,7 @@ export function AllocationHistory() {
 
         <div className="space-y-2">
           <Label htmlFor="filter-status">Status</Label>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <Select value={filterStatus ?? ""} onValueChange={setFilterStatus}>
             <SelectTrigger id="filter-status" className="w-full">
               <SelectValue placeholder="Filter by Status" />
             </SelectTrigger>

@@ -59,11 +59,12 @@ export function SalesTable() {
 
     // Search query (across multiple fields)
     if (searchQuery) {
+      const { id = "", customer = "", reference = "", products = [] } = order
       const query = searchQuery.toLowerCase()
-      const matchesId = order.id.toLowerCase().includes(query)
-      const matchesCustomer = order.customer.toLowerCase().includes(query)
-      const matchesReference = order.reference.toLowerCase().includes(query)
-      const matchesSku = order.products.some((p) => p.sku.toLowerCase().includes(query))
+      const matchesId = id.toLowerCase().includes(query)
+      const matchesCustomer = customer.toLowerCase().includes(query)
+      const matchesReference = reference.toLowerCase().includes(query)
+      const matchesSku = products.some((p) => p?.sku?.toLowerCase()?.includes(query))
 
       if (!(matchesId || matchesCustomer || matchesReference || matchesSku)) {
         return false

@@ -64,7 +64,7 @@ export function SalesTable() {
       const matchesId = order.id.toLowerCase().includes(query)
       const matchesCustomer = order.customer.toLowerCase().includes(query)
       const matchesReference = order.reference.toLowerCase().includes(query)
-      const matchesSku = order.products.some((p) => p.sku.toLowerCase().includes(query))
+      const matchesSku = order.products.some((p) => p?.sku?.toLowerCase()?.includes(query))
 
       if (!(matchesId || matchesCustomer || matchesReference || matchesSku)) {
         return false

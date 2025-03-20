@@ -43,7 +43,10 @@ export type ClientProposedPrice = {
 export type ClientAddress = {
   clientId: string,
   addressId: string,
-  addressLine1: string
+  addressLine_1: string,
+  addressLine_2: string,
+  cityDistrictState: string,
+  pincode: number
 }
 
 export type ClientInfo = {
@@ -64,7 +67,7 @@ export interface Order {
   orderDate: string
   customer: string,
   customerEmail: string,
-  customerNumber: string,
+  customerNumber: number,
   billingAddress: string,
   shippingAddress: string,
   reference: string
@@ -76,7 +79,7 @@ export interface Order {
   products: OrderProduct[]
   // Audit information
   createdBy: string
-  createdAt: string
+  createdAt?: string
   approvedBy?: string
   approvedAt?: string
   // History of status changes for audit trail

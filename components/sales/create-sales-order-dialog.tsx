@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo, useCallback } from "react"
-import { format } from "date-fns"
+import { add, format } from "date-fns"
 import { CalendarIcon, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { v4 as uuidv4 } from 'uuid';
@@ -83,21 +83,22 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
   const clients = useMemo(() => {
     return Object.values(clientInfo).map(client => {
       if (!clientAddress) return
-      const { addressId = "", addressLine1 = "" } = clientAddress[client.clientId] ?? ""
+      const address = clientAddress[client.clientId] ?? []
+      if (address.length > 0) {
+        console.log({ address })
+      }
       return ({
         id: client.clientId,
         name: client.name,
         gstNumber: client.gst,
         panNumber: client.pan,
         references: [client.reference],
-        shippingAddresses: [
-          {
-            id: client.address,
-            name: client.address,
-            address: client.address,
-            isDefault: true,
-          }
-        ]
+        shippingAddresses: address.map((a, index) => ({
+          id: a.addressId,
+          name: [a.addressLine_1, a.addressLine_2, a.cityDistrictState, a.pincode].join(","),
+          address: [a.addressLine_1, a.addressLine_2, a.cityDistrictState, a.pincode].join(","),
+          isDefault: index === 0,
+        }))
       }) as ClientType
     })
   }, [clientInfo, clientAddress])
@@ -149,7 +150,6 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
 
         // Set shipping addresses
         if (selectedClient.shippingAddresses) {
-          console.log(selectedClient, clientInfo[clientId])
           setShippingAddresses(selectedClient.shippingAddresses)
 
           // Auto-select if there's only one address or a default address
@@ -281,7 +281,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
       expectedDeliveryDate,
       orderSubId: `${orderId}_${order.productId}`,
       productId: order.productId,
-      addressId: null,
+      addressId: selectedAddress?.id,
       orderId,
       status: "pending_approval",
       tradePrice: order.pricePerCase

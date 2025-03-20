@@ -37,7 +37,9 @@ export type Product = {
   size: string,
   type: string,
   brand: string,
-  productId: string
+  productId: string,
+  sku: string,
+  units: string
 }
 
 export type OrderDetails = {
@@ -51,10 +53,13 @@ export type OrderDetails = {
   "casesDelivered": number,
   "casesReserved": number,
   "addressId"?: string | null,
-  "orderSubId": string
+  "orderSubId": string,
+  modifiedOn: Date,
+  brand: string
 }
 
 const getNumber = (str: string) => {
+  if (!str) return {}
   const match = str.match(/^(\d+)(\D*)$/); // Match leading numbers and trailing characters
   return {
     quantity: match ? parseInt(match[1]) : NaN, // Extract number
@@ -63,11 +68,11 @@ const getNumber = (str: string) => {
 };
 
 export function SalesDashboard() {
-  const { setOrders, clientProposedPrice, clientInfo, refetchData, updateNonSerilizedData, setRefetchData, productInfo } = useOrders()
+  const { setOrders, clientProposedPrice, clientInfo, refetchData, updateNonSerilizedData, setRefetchData, productInfo, clientAddress } = useOrders()
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("order-book")
   const salesInstance = new DataByTableName("fact_sales");
-  const orderDetails = new DataByTableName("order_details");
+  const orderDetails = new DataByTableName("order_details") as any;
 
   const getPriority = useCallback((quantity: number) => {
     if (quantity <= 1000) {
@@ -81,40 +86,39 @@ export function SalesDashboard() {
 
   const convertSalesToOrders = useCallback((data: FactSales[], orderDetails: OrderDetails[]) => {
     return data.map(item => {
-      const _products: OrderProduct[] = orderDetails.filter(o => o.orderId === item.orderId).map(p => {
-        const { size, brand } = productInfo[p.productId];
-        const { quantity, units } = getNumber(size);
+      const orderProducts = orderDetails.filter(order => order.orderId === item.orderId).map(({ productId, casesReserved, casesDelivered, cases }) => {
+        const { brand, size = "0", sku = "", units = "" } = productInfo[productId] ?? {}
         return ({
-          id: p.productId,
+          id: productId,
           name: brand,
-          price: clientProposedPrice[p.productId]?.proposedPrice ?? 0,
-          quantity: orderDetails.filter(o => o.orderId === item.orderId).reduce((acc, curr) => {
-            acc += curr.cases
-            return acc;
-          }, 0),
-          allocated: p.casesReserved,
-          delivered: p.casesDelivered,
-          sku: size,
+          price: clientProposedPrice[item.custId]?.proposedPrice ?? 0,
+          quantity: cases,
+          allocated: casesReserved,
+          delivered: casesDelivered,
+          sku,
           units
         })
       })
-      const { name = "", contactNumber: customerNumber = "", email: customerEmail = "", address } = clientInfo[item.custId] ?? {}
+      const { contactNumber, email, gst, name = "", pan, reference, type, clientId } = clientInfo[item.custId] ?? {}
+
+      const { addressLine_1 = "", addressLine_2 = "", cityDistrictState = "", pincode } = (clientAddress[clientId] ?? [])[0] ?? {}
+
+      const address = [addressLine_1, addressLine_2, cityDistrictState, pincode].filter(item => item).join(",") ?? ""
       return ({
-        createdAt: "",
         createdBy: item?.createdBy ?? "",
-        customerNumber,
-        customerEmail,
+        customerNumber: contactNumber,
+        customerEmail: email,
         billingAddress: address,
         shippingAddress: address,
         customer: name,
         deliveryDate: item.dcDate,
         id: item.orderId,
         orderDate: item.date,
-        priority: getPriority(_products.reduce((acc, curr) => {
+        priority: getPriority(orderProducts.reduce((acc, curr) => {
           acc += curr.quantity ?? 0;
           return acc;
         }, 0)),
-        products: _products,
+        products: orderProducts,
         reference: item.referenceName,
         status: item.status,
         statusHistory: [],

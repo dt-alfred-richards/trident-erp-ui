@@ -22,7 +22,7 @@ interface OrderContextType {
   nonSerializedData: Record<string, any>,
   updateNonSerilizedData: (data: any) => void,
   setRefetchData: Dispatch<SetStateAction<boolean>>,
-  clientAddress: Record<string, ClientAddress>
+  clientAddress: Record<string, ClientAddress[]>
 }
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined)
@@ -32,7 +32,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const [refetchData, setRefetchData] = useState(false);
   const [clientInfo, setClientInfo] = useState<Record<string, ClientInfo>>({});
   const [productInfo, setProductInfo] = useState<Record<string, Product>>({});
-  const [clientAddress, setClientAddress] = useState<Record<string, clientAddress>>({});
+  const [clientAddress, setClientAddress] = useState<Record<string, clientAddress[]>>({});
   const [clientProposedPrice, setClientProposedPrice] = useState<Record<string, ClientProposedPrice>>({})
   const [currentUser, setCurrentUser] = useState<string>("Current User") // In a real app, this would come from authentication
   const [rootLoaded, setRootLoaded] = useState(false)
@@ -116,7 +116,14 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     setClientProposedPrice(Object.fromEntries(priceData.map(item => [item.productId, item])))
     setClientInfo(Object.fromEntries(clientInfo.map(item => [item.clientId, item])))
     setProductInfo(Object.fromEntries(productInfo.map(item => [item.productId, item])))
-    setClientAddress(Object.fromEntries(clientAddress.map(item => [item.clientId, item])))
+    setClientAddress(
+      clientAddress.reduce((acc, curr) => {
+        if (!acc[curr.clientId]) {
+          acc[curr.clientId] = acc[curr.clientId] ?? []
+        }
+        acc[curr.clientId].push(curr)
+        return acc;
+      }, {} as Record<string, ClientAddress[]>))
     setRefetchData(true);
   }
 
@@ -145,6 +152,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     nonSerializedData,
     updateNonSerilizedData,
     setRefetchData,
+    clientAddress,
     productInfo
   }), [orders, clientProposedPrice, refetchData])
   return <OrderContext.Provider value={value}>{children}</OrderContext.Provider>

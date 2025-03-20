@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import {
   Dialog,
   DialogContent,
@@ -32,6 +32,9 @@ import { Separator } from "@/components/ui/separator"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
+import { DataByTableName } from "../utils/api"
+import { OrderDetails } from "../sales/sales-dashboard"
+import { useOrders } from "@/contexts/order-context"
 
 interface Order {
   id: string
@@ -54,76 +57,19 @@ interface AllocationDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onAllocate: (orderId: string, products: { id: string; quantity: number }[]) => void
-  initialSku?: string | null
+  initialSku?: string | null,
+  orders: Order[]
 }
 
-export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = null }: AllocationDialogProps) {
+export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = null, orders }: AllocationDialogProps) {
+  const { productInfo, clientProposedPrice } = useOrders();
   const [searchTerm, setSearchTerm] = useState("")
   const [searchType, setSearchType] = useState<"sku" | "order" | "customer">("order")
-  const [orders, setOrders] = useState<Order[]>([])
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [allocations, setAllocations] = useState<Record<string, number>>({})
   const [priorityFilter, setPriorityFilter] = useState<string>("all")
   const { toast } = useToast()
-
-  // Mock data for orders
-  useEffect(() => {
-    const mockOrders: Order[] = [
-      {
-        id: "SO-1001",
-        customer: "ABC Corp",
-        dueDate: "2023-10-15",
-        priority: "high-value",
-        status: "pending",
-        products: [
-          { id: "P1", name: "Premium Water Bottle", sku: "500ml", quantity: 300, allocated: 100 },
-          { id: "P2", name: "Premium Water Bottle", sku: "750ml", quantity: 200, allocated: 0 },
-          { id: "P3", name: "Premium Water Bottle", sku: "1000ml", quantity: 100, allocated: 50 },
-        ],
-      },
-      {
-        id: "SO-1002",
-        customer: "XYZ Retail",
-        dueDate: "2023-10-20",
-        priority: "standard",
-        status: "pending",
-        products: [
-          { id: "P4", name: "Premium Water Bottle", sku: "500ml", quantity: 150, allocated: 75 },
-          { id: "P5", name: "Premium Water Bottle", sku: "2000ml", quantity: 300, allocated: 150 },
-        ],
-      },
-      {
-        id: "SO-1003",
-        customer: "Urgent Pharma",
-        dueDate: "2023-10-10",
-        priority: "urgent",
-        status: "pending",
-        products: [{ id: "P6", name: "Premium Water Bottle", sku: "750ml", quantity: 200, allocated: 0 }],
-      },
-      {
-        id: "SO-1004",
-        customer: "Global Foods",
-        dueDate: "2023-10-18",
-        priority: "standard",
-        status: "pending",
-        products: [
-          { id: "P7", name: "Premium Water Bottle", sku: "500ml", quantity: 400, allocated: 200 },
-          { id: "P8", name: "Premium Water Bottle", sku: "750ml", quantity: 400, allocated: 400 },
-        ],
-      },
-      {
-        id: "SO-1005",
-        customer: "Premium Stores",
-        dueDate: "2023-10-12",
-        priority: "high-value",
-        status: "pending",
-        products: [{ id: "P9", name: "Premium Water Bottle", sku: "1000ml", quantity: 600, allocated: 300 }],
-      },
-    ]
-
-    setOrders(mockOrders)
-  }, [])
 
   // Reset state when dialog opens/closes
   useEffect(() => {
@@ -194,41 +140,22 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
   }
 
   // Handle allocation submission
-  const handleSubmitAllocation = () => {
-    if (!selectedOrder) return
-
-    // Filter out products with zero allocation
-    const productsToAllocate = Object.entries(allocations)
-      .filter(([_, quantity]) => quantity > 0)
-      .map(([productId, quantity]) => ({ id: productId, quantity }))
-
-    if (productsToAllocate.length === 0) {
-      toast({
-        title: "No allocations specified",
-        description: "Please allocate at least one product before submitting",
-        variant: "destructive",
-      })
-      return
+  const handleSubmitAllocation = async () => {
+    try {
+      if (!selectedOrder) return
+      const { id: orderId } = selectedOrder
+      const instance = new DataByTableName("order_details");
+      const { data, error } = await instance.patch({
+        key: "orderId",
+        value: orderId
+      }, { "casesReserved": allocations })
+      if (error) {
+        throw new Error(error.message)
+      }
+      onOpenChange(false)
+    } catch (error) {
+      console.log({ error })
     }
-
-    // Validate allocations don't exceed remaining quantities
-    const invalidAllocations = productsToAllocate.filter(({ id, quantity }) => {
-      const product = selectedOrder.products.find((p) => p.id === id)
-      if (!product) return true
-      return quantity > getRemainingQuantity(product)
-    })
-
-    if (invalidAllocations.length > 0) {
-      toast({
-        title: "Invalid allocation",
-        description: "Some allocations exceed the remaining quantity",
-        variant: "destructive",
-      })
-      return
-    }
-
-    onAllocate(selectedOrder.id, productsToAllocate)
-    onOpenChange(false)
   }
 
   // Get priority badge
