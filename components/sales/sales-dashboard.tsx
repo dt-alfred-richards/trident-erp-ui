@@ -45,12 +45,12 @@ export type OrderDetails = {
   "productId": string,
   "cases": number,
   "tradePrice": number,
-  "expectedDeliveryDate": number,
+  "expectedDeliveryDate": Date,
   "status": OrderStatus,
   "clientId": string,
   "casesDelivered": number,
   "casesReserved": number,
-  "addressId"?: string,
+  "addressId"?: string | null,
   "orderSubId": string
 }
 
@@ -71,11 +71,11 @@ export function SalesDashboard() {
 
   const getPriority = useCallback((quantity: number) => {
     if (quantity <= 1000) {
-      return "low"
+      return "high"
     } else if (quantity <= 10000) {
       return "medium"
     } else {
-      return "high"
+      return "low"
     }
   }, [])
 
@@ -123,7 +123,7 @@ export function SalesDashboard() {
         carrier: "",
         trackingId: ""
       })
-    })
+    }).sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime())
   }, [clientInfo, clientProposedPrice])
 
   const fetchSalesDetails = useCallback(() => {

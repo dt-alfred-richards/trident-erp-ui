@@ -57,7 +57,6 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       if (status !== "pending_approval") {
         throw new Error("Only pending orders can be approved")
       }
-
       OrderActionService.approveOrder(orderId, currentUser).finally(() => {
         setRefetchData(true)
       })

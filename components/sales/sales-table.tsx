@@ -25,7 +25,7 @@ import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
 import { OrderSummaryDialog } from "@/components/sales/order-summary-dialog"
 import { TrackOrderDialog } from "@/components/sales/track-order-dialog"
-import type { OrderStatus } from "@/types/order"
+import type { Order, OrderStatus } from "@/types/order"
 import { useOrders } from "@/contexts/order-context"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
@@ -152,7 +152,7 @@ export function SalesTable() {
     setIsTrackOrderOpen(true)
   }
 
-  const handleApproveOrder = (order) => {
+  const handleApproveOrder = (order: Order) => {
     approveOrder(order)
   }
 
@@ -365,7 +365,7 @@ export function SalesTable() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end space-x-2">
-                      {order.status === "pending" ? (
+                      {order.status === "pending_approval" ? (
                         <>
                           <Button
                             variant="outline"

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { format } from "date-fns"
 import { CalendarIcon, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -31,7 +31,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { FactSales } from "./sales-dashboard"
+import { FactSales, OrderDetails } from "./sales-dashboard"
 import { DataByTableName } from "../utils/api"
 import { useOrders } from "@/contexts/order-context"
 
@@ -244,11 +244,15 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
     return date.toISOString().split("T")[0]
   }
 
+  const orderId = useMemo(() => {
+    return uuidv4()
+  }, [orderItems, clientId])
+
   // Handle final submission after confirmation
-  const handleConfirmedSubmit = () => {
+  const handleConfirmedSubmit = useCallback(() => {
     // Get the selected shipping address details
     const selectedAddress = shippingAddresses.find((addr) => addr.id === selectedShippingAddressId)
-    const orderDetails: FactSales = {
+    const salesPayload: FactSales = {
       amount: total,
       custId: clientId,
       date: dateConverter(orderDate),
@@ -260,24 +264,36 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
       poDate: dateConverter(new Date()),
       poId,
       poNumber: "",
-      productId: orderItems[0].productId ?? "",
+      productId: orderItems[0]?.productId ?? "",
       referenceName: reference,
       remarks,
-      orderId: uuidv4(),
+      orderId,
       status: "pending_approval"
     }
     const factSalesInstance = new DataByTableName("fact_sales");
-    const orderDetailsPayload = {
-      
-    }
+    const orderDetailsInstance = new DataByTableName("order_details");
 
-    factSalesInstance.post(orderDetails).then(res => {
-      resetForm();
-    }).finally(() => {
-      setRefetchData(p => !p)
-      onOpenChange(false)
-    })
-  }
+    const orderDetailsPayload = orderItems.map(order => ({
+      cases: order.cases,
+      casesDelivered: 0,
+      casesReserved: 0,
+      clientId,
+      expectedDeliveryDate,
+      orderSubId: `${orderId}_${order.productId}`,
+      productId: order.productId,
+      addressId: null,
+      orderId,
+      status: "pending_approval",
+      tradePrice: order.pricePerCase
+    } as OrderDetails))
+
+    factSalesInstance.post(salesPayload).then(res => {
+      return orderDetailsInstance.post(orderDetailsPayload)
+    }).then(resetForm)
+      .catch(error => {
+        alert(error.message)
+      })
+  }, [orderItems, clientId, reference, selectedProductId, orderId])
 
   // Reset the form to initial state
   const resetForm = () => {
@@ -295,6 +311,8 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
     setCases("")
     setShippingAddresses([])
     setSelectedShippingAddressId("")
+    onOpenChange(false)
+    setRefetchData(p => !p)
   }
 
   return (
