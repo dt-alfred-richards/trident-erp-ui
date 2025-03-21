@@ -86,7 +86,7 @@ export default function FinishedGoodsPage() {
       const mockOrders: Order[] = orders.map((order: OrderDetails) => ({
         id: Math.floor(Math.random() * 100000) + "",
         customer: order.clientId,
-        dueDate: new Date(order.expectedDeliveryDate).toDateString(),
+        dueDate: new Date(order.expectedDeliveryDate)?.toDateString(),
         priority: getPriority(order.expectedDeliveryDate),
         status: order.status,
         products: orders.filter(item => order.orderId === item.orderId).map(({ productId, casesReserved, casesDelivered, cases }, index) => {
@@ -105,7 +105,7 @@ export default function FinishedGoodsPage() {
       }))
       const _allocations = orders.map((order, index) => ({
         id: Math.floor(Math.random() * 10000) + "",
-        timestamp: order.modifiedOn.toLocaleString(),
+        timestamp: order.modifiedOn?.toLocaleString(),
         user: "",
         orderId: order.orderId,
         customer: clientInfo[order.clientId]?.name ?? "",
