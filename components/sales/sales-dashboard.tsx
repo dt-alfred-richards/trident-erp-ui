@@ -24,7 +24,6 @@ export type FactSales = {
   poDate: string,
   poId: string,
   poNumber: string,
-  productId: string,
   referenceName: string,
   remarks: string,
   status: OrderStatus,

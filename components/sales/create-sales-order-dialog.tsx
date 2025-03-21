@@ -252,23 +252,19 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
   const handleConfirmedSubmit = useCallback(() => {
     // Get the selected shipping address details
     const selectedAddress = shippingAddresses.find((addr) => addr.id === selectedShippingAddressId)
-    const salesPayload: FactSales = {
-      amount: total,
-      clientId: clientId,
-      date: dateConverter(orderDate),
-      dc: "",
-      dcDate: dateConverter(new Date()),
-      expectedDeliveryDate: dateConverter(expectedDeliveryDate),
-      invoiceNumber: "",
-      numOrders: 0,
-      poDate: dateConverter(new Date()),
+    const salesPayload: Partial<FactSales> = {
+      "amount": total,
+      "clientId": clientId,
+      "date": dateConverter(orderDate),
+      "expectedDeliveryDate": dateConverter(new Date()),
+      "invoiceNumber": "",
+      "numOrders": 0,
+      "poDate": dateConverter(new Date()),
       poId,
-      poNumber: "",
-      productId: orderItems[0]?.productId ?? "",
-      referenceName: reference,
-      remarks,
-      orderId,
-      status: "pending_approval"
+      "poNumber": "",
+      "referenceName": reference,
+      "remarks": "",
+      "status": "pending_approval"
     }
     const factSalesInstance = new DataByTableName("fact_sales");
     const orderDetailsInstance = new DataByTableName("order_details");
@@ -279,7 +275,6 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
       casesReserved: 0,
       clientId,
       expectedDeliveryDate,
-      orderSubId: `${orderId}_${order.productId}`,
       productId: order.productId,
       addressId: selectedAddress?.id,
       orderId,
