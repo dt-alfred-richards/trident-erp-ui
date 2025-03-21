@@ -13,7 +13,7 @@ import { Order, OrderProduct, OrderStatus } from "@/types/order"
 
 export type FactSales = {
   amount: number,
-  custId: string,
+  clientId: string,
   date: string,
   dc: string,
   dcDate: string,
@@ -91,7 +91,7 @@ export function SalesDashboard() {
         return ({
           id: productId,
           name: brand,
-          price: clientProposedPrice[item.custId]?.proposedPrice ?? 0,
+          price: clientProposedPrice[item.clientId]?.proposedPrice ?? 0,
           quantity: cases,
           allocated: casesReserved,
           delivered: casesDelivered,

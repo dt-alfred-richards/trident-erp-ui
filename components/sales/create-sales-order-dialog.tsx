@@ -254,7 +254,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
     const selectedAddress = shippingAddresses.find((addr) => addr.id === selectedShippingAddressId)
     const salesPayload: FactSales = {
       amount: total,
-      custId: clientId,
+      clientId: clientId,
       date: dateConverter(orderDate),
       dc: "",
       dcDate: dateConverter(new Date()),
