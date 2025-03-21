@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Search, Edit, MoreHorizontal, Eye } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
@@ -10,95 +10,26 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
+import { DataByTableName } from "../utils/api"
 
-// Sample employee data
-const employees = [
-  {
-    id: "EMP001",
-    firstName: "Rajesh",
-    lastName: "Kumar",
-    email: "rajesh.kumar@dhaara.com",
-    role: "Production Manager",
-    department: "Production",
-    employeeType: "Full-time",
-    shift: "Morning (8AM-5PM)",
-    salary: 65000,
-    contactNumber: "+91 98765 43210",
-    dateOfJoining: "2022-05-15",
-    gender: "Male",
-  },
-  {
-    id: "EMP002",
-    firstName: "Priya",
-    lastName: "Sharma",
-    email: "priya.sharma@dhaara.com",
-    role: "Line Supervisor",
-    department: "Production",
-    employeeType: "Full-time",
-    shift: "Morning (8AM-5PM)",
-    salary: 45000,
-    contactNumber: "+91 98765 43211",
-    dateOfJoining: "2022-06-10",
-    gender: "Female",
-  },
-  {
-    id: "EMP003",
-    firstName: "Amit",
-    lastName: "Patel",
-    email: "amit.patel@dhaara.com",
-    role: "Line Worker",
-    department: "Production",
-    employeeType: "Full-time",
-    shift: "Morning (8AM-5PM)",
-    salary: 30000,
-    contactNumber: "+91 98765 43212",
-    dateOfJoining: "2022-07-05",
-    gender: "Male",
-  },
-  {
-    id: "EMP004",
-    firstName: "Sneha",
-    lastName: "Gupta",
-    email: "sneha.gupta@dhaara.com",
-    role: "Line Worker",
-    department: "Production",
-    employeeType: "Part-time",
-    shift: "Evening (2PM-10PM)",
-    salary: 200, // hourly rate
-    contactNumber: "+91 98765 43213",
-    dateOfJoining: "2022-08-20",
-    gender: "Female",
-  },
-  {
-    id: "EMP005",
-    firstName: "Vikram",
-    lastName: "Singh",
-    email: "vikram.singh@dhaara.com",
-    role: "Quality Control",
-    department: "Production",
-    employeeType: "Full-time",
-    shift: "Morning (8AM-5PM)",
-    salary: 40000,
-    contactNumber: "+91 98765 43214",
-    dateOfJoining: "2022-09-15",
-    gender: "Male",
-  },
-  {
-    id: "EMP006",
-    firstName: "Neha",
-    lastName: "Verma",
-    email: "neha.verma@dhaara.com",
-    role: "HR Executive",
-    department: "HR",
-    employeeType: "Full-time",
-    shift: "General (9AM-6PM)",
-    salary: 50000,
-    contactNumber: "+91 98765 43215",
-    dateOfJoining: "2022-04-10",
-    gender: "Female",
-  },
-]
-
+type Employee = {
+  "empId": string,
+  "name": string,
+  "lastName": string,
+  "contactNumber": number,
+  "email": string
+  "dob": string,
+  "address": string,
+  "joiningDate": string,
+  "department": string,
+  "role": string,
+  "salary": number,
+  "bloodGroup": string,
+  "averageWorkingHours": number,
+  "monthlyPayment": boolean,
+  "basePay": number,
+  "sundayHoliday": boolean
+}
 export function EmployeeManagement() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedEmployeeType, setSelectedEmployeeType] = useState("all")
@@ -106,6 +37,37 @@ export function EmployeeManagement() {
   const [selectedRole, setSelectedRole] = useState("all")
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null)
   const [showEmployeeDetails, setShowEmployeeDetails] = useState(false)
+  const [employees, setEmployees] = useState([]);
+
+  const fetchData = async () => {
+    try {
+      const instance = new DataByTableName("dim_employee")
+      const { data, error } = await instance.get();
+      const employeeData = data.map((item: Employee) => (
+        {
+          id: item.empId,
+          firstName: item.name,
+          lastName: item.lastName ?? "",
+          email: item.email,
+          role: item.role,
+          department: item.department,
+          employeeType: "",
+          shift: "",
+          salary: item.salary,
+          contactNumber: item.contactNumber,
+          dateOfJoining: item.joiningDate,
+          gender: "",
+        }
+      ))
+      setEmployees(employeeData)
+    } catch (error) {
+      console.log({ error })
+    }
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [])
 
   // Filter employees based on search query and selected filters
   const filteredEmployees = employees.filter((employee) => {
