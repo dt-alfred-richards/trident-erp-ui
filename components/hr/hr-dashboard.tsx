@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -10,9 +10,78 @@ import { AttendanceTracking } from "./attendance-tracking"
 import { LeaveManagement } from "./leave-management"
 import { PayrollManagement } from "./payroll-management"
 import { AddEmployeeDialog } from "./add-employee-dialog"
+import { DataByTableName } from "../utils/api"
+
+type Employee = {
+  "empId": string,
+  "name": string,
+  "lastName": string,
+  "contactNumber": number,
+  "email": string
+  "dob": string,
+  "address": string,
+  "joiningDate": string,
+  "department": string,
+  "role": string,
+  "salary": number,
+  "bloodGroup": string,
+  "averageWorkingHours": string,
+  "monthlyPayment": boolean,
+  "basePay": number,
+  "sundayHoliday": boolean
+}
+
+export type EmployeeRow = {
+  id: string,
+  firstName: string,
+  lastName: string,
+  email: string,
+  role: string,
+  department: string,
+  employeeType: string,
+  shift: string,
+  salary: Employee["salary"],
+  contactNumber: Employee["contactNumber"],
+  dateOfJoining: string,
+  gender: string,
+  averageWorkingHours: string
+}
 
 export function HRDashboard() {
   const [showAddEmployeeDialog, setShowAddEmployeeDialog] = useState(false)
+
+  const [employees, setEmployees] = useState<EmployeeRow[]>([]);
+
+  const fetchData = async () => {
+    try {
+      const instance = new DataByTableName("dim_employee")
+      const { data, error } = await instance.get();
+      const employeeData = data.map((item: Employee) => (
+        {
+          id: item.empId,
+          firstName: item.name,
+          lastName: item.lastName ?? "",
+          email: item.email,
+          role: item.role,
+          department: item.department,
+          employeeType: "",
+          shift: "",
+          salary: item.salary,
+          contactNumber: item.contactNumber,
+          dateOfJoining: item.joiningDate,
+          gender: "",
+          averageWorkingHours: item.averageWorkingHours
+        }
+      ))
+      setEmployees(employeeData)
+    } catch (error) {
+      console.log({ error })
+    }
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [])
 
   return (
     <div className="space-y-6">
@@ -79,11 +148,11 @@ export function HRDashboard() {
         </TabsList>
 
         <TabsContent value="employees" className="space-y-4">
-          <EmployeeManagement />
+          <EmployeeManagement employees={employees} />
         </TabsContent>
 
         <TabsContent value="attendance" className="space-y-4">
-          <AttendanceTracking />
+          <AttendanceTracking employees={employees} />
         </TabsContent>
 
         <TabsContent value="leave" className="space-y-4">

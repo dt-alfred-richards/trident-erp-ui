@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { CalendarIcon, Filter, Download, Search, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -22,78 +22,37 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { EmployeeRow } from "./hr-dashboard"
+import { DataByTableName } from "../utils/api"
 
-// Sample attendance data
-const attendanceData = [
-  {
-    id: 1,
-    employeeId: "EMP001",
-    employeeName: "Rajesh Kumar",
-    date: "2023-10-25",
-    checkIn: "08:55",
-    checkOut: "17:05",
-    totalHours: "8:10",
-    breakDuration: "00:30",
-    status: "present",
-  },
-  {
-    id: 2,
-    employeeId: "EMP002",
-    employeeName: "Priya Sharma",
-    date: "2023-10-25",
-    checkIn: "08:50",
-    checkOut: "17:30",
-    totalHours: "8:40",
-    breakDuration: "00:30",
-    status: "present",
-  },
-  {
-    id: 3,
-    employeeId: "EMP003",
-    employeeName: "Amit Patel",
-    date: "2023-10-25",
-    checkIn: "08:45",
-    checkOut: "17:15",
-    totalHours: "8:30",
-    breakDuration: "00:30",
-    status: "present",
-  },
-  {
-    id: 4,
-    employeeId: "EMP004",
-    employeeName: "Sneha Gupta",
-    date: "2023-10-25",
-    checkIn: "14:00",
-    checkOut: "22:05",
-    totalHours: "8:05",
-    breakDuration: "00:30",
-    status: "present",
-  },
-  {
-    id: 5,
-    employeeId: "EMP005",
-    employeeName: "Vikram Singh",
-    date: "2023-10-25",
-    status: "absent",
-  },
-  {
-    id: 6,
-    employeeId: "EMP006",
-    employeeName: "Neha Verma",
-    date: "2023-10-25",
-    checkIn: "09:10",
-    checkOut: "18:05",
-    totalHours: "8:55",
-    breakDuration: "00:30",
-    status: "present",
-  },
-]
+type AttendanceRowData = {
+  id: string,
+  employeeId: string,
+  employeeName: string,
+  date: string,
+  checkIn: string,
+  checkOut: string,
+  totalHours: string,
+  breakDuration: string,
+  status: string,
+}
 
-export function AttendanceTracking() {
+
+type AttendanceData = {
+  date: string,
+  empId: string,
+  loginTime: string,
+  logoutTime: string
+}
+
+export function AttendanceTracking({ employees }: { employees: EmployeeRow[] }) {
   const [date, setDate] = useState<Date | undefined>(new Date())
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("all")
   const [showAddAttendanceDialog, setShowAddAttendanceDialog] = useState(false)
+  const [attendanceData, setAttendanceData] = useState<AttendanceRowData[]>([])
+
+
   const [newAttendance, setNewAttendance] = useState({
     employeeId: "",
     date: format(new Date(), "yyyy-MM-dd"),
@@ -101,6 +60,56 @@ export function AttendanceTracking() {
     checkOut: "",
     breakDuration: "00:30",
   })
+
+  const getTime = useCallback((data: string) => {
+    const _date = new Date(data); // Your date object
+    const hours = String(_date.getHours()).padStart(2, '0');
+    const minutes = String(_date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  }, [])
+
+  const getTotalHours = useCallback((login: string, logout: string) => {
+    const from = new Date(login).getTime();
+    const to = new Date(logout).getTime();
+    const diffMs = to - from; // Difference in milliseconds
+
+    const hours = Math.floor(diffMs / (1000 * 60 * 60)); // Convert to hours
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60)); // Convert remaining ms to minutes
+
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  }, []);
+
+  const fetchAttendance = useCallback(async () => {
+    try {
+      const instance = new DataByTableName("emp_attendence")
+      const employeeMapper = Object.fromEntries(employees.map(item => [item.id, item]));
+      const { data = [], error } = await instance.get();
+
+      const attendance: AttendanceRowData[] = data.map((item: AttendanceData, index: number) => {
+        const { firstName = "", lastName = "", averageWorkingHours = 0 } = employeeMapper[item.empId] ?? {}
+        return ({
+          employeeId: item.empId,
+          date: item.date,
+          employeeName: [firstName, lastName].filter(item => item).join(" "),
+          status: "",
+          breakDuration: "",
+          checkIn: getTime(item.loginTime),
+          checkOut: getTime(item.logoutTime),
+          totalHours: getTotalHours(item.loginTime, item.logoutTime),
+          id: index + ""
+        }) as AttendanceRowData
+      })
+      setAttendanceData(attendance)
+      if (error) {
+        throw new Error(error);
+      }
+      console.log({ data })
+    } catch (error) {
+      console.log({ error })
+    }
+  }, [employees])
+
+  useEffect(() => { fetchAttendance() }, [])
 
   // Filter attendance data based on search query and selected status
   const filteredAttendance = attendanceData.filter((record) => {

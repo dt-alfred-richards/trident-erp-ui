@@ -11,63 +11,15 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
 import { DataByTableName } from "../utils/api"
+import { EmployeeRow } from "./hr-dashboard"
 
-type Employee = {
-  "empId": string,
-  "name": string,
-  "lastName": string,
-  "contactNumber": number,
-  "email": string
-  "dob": string,
-  "address": string,
-  "joiningDate": string,
-  "department": string,
-  "role": string,
-  "salary": number,
-  "bloodGroup": string,
-  "averageWorkingHours": number,
-  "monthlyPayment": boolean,
-  "basePay": number,
-  "sundayHoliday": boolean
-}
-export function EmployeeManagement() {
+export function EmployeeManagement({ employees }: { employees: EmployeeRow[] }) {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedEmployeeType, setSelectedEmployeeType] = useState("all")
   const [selectedDepartment, setSelectedDepartment] = useState("all")
   const [selectedRole, setSelectedRole] = useState("all")
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null)
   const [showEmployeeDetails, setShowEmployeeDetails] = useState(false)
-  const [employees, setEmployees] = useState([]);
-
-  const fetchData = async () => {
-    try {
-      const instance = new DataByTableName("dim_employee")
-      const { data, error } = await instance.get();
-      const employeeData = data.map((item: Employee) => (
-        {
-          id: item.empId,
-          firstName: item.name,
-          lastName: item.lastName ?? "",
-          email: item.email,
-          role: item.role,
-          department: item.department,
-          employeeType: "",
-          shift: "",
-          salary: item.salary,
-          contactNumber: item.contactNumber,
-          dateOfJoining: item.joiningDate,
-          gender: "",
-        }
-      ))
-      setEmployees(employeeData)
-    } catch (error) {
-      console.log({ error })
-    }
-  }
-
-  useEffect(() => {
-    fetchData()
-  }, [])
 
   // Filter employees based on search query and selected filters
   const filteredEmployees = employees.filter((employee) => {
