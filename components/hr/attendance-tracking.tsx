@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { CalendarIcon, Filter, Download, Search, Plus, Eye, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
@@ -17,7 +17,7 @@ import { AddAttendanceDialog } from "./add-attendance-dialog"
 import { EditAttendanceDialog } from "./edit-attendance-dialog"
 import { AttendanceCalendar } from "./attendance-calendar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { AttendanceData } from "./hr-dashboard"
+import { AttendanceData, useHrContext } from "@/contexts/hr-context"
 
 // Sample attendance data
 const attendanceData = [
@@ -165,7 +165,8 @@ const pastLeavesData = {
   ],
 }
 
-export function AttendanceTracking({ attendanceData }: { attendanceData: AttendanceData[] }) {
+export function AttendanceTracking() {
+  const { attendanceDetails } = useHrContext();
   const [date, setDate] = useState<Date | undefined>(new Date())
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("all")
@@ -176,9 +177,15 @@ export function AttendanceTracking({ attendanceData }: { attendanceData: Attenda
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null)
   const [selectedAttendance, setSelectedAttendance] = useState<any | null>(null)
   const [showEditAttendanceDialog, setShowEditAttendanceDialog] = useState(false)
-  const [attendanceRecords, setAttendanceRecords] = useState([...attendanceData])
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceData[]>([])
   const [showCalendarDialog, setShowCalendarDialog] = useState(false)
   const [calendarEmployee, setCalendarEmployee] = useState<{ id: string; name: string } | null>(null)
+
+  useEffect(() => {
+    if (attendanceRecords.length == 0) {
+      setAttendanceRecords([...attendanceDetails].slice(0, 100))
+    }
+  }, [attendanceDetails])
 
   // Filter attendance data based on search query and selected status
   const filteredAttendance = attendanceRecords.filter((record) => {

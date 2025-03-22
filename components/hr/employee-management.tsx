@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { Search, Edit, Eye } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
 import { EditEmployeeDialog } from "./edit-employee-dialog"
-import { EmployeeRow } from "./hr-dashboard"
+import { EmployeeRow, useHrContext } from "@/contexts/hr-context"
 
 // Sample employee data
 const employees = [
@@ -94,7 +94,8 @@ const employees = [
   },
 ]
 
-export function EmployeeManagement({ employees }: { employees: EmployeeRow[] }) {
+export function EmployeeManagement() {
+  const { employeeDetails } = useHrContext();
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedEmployeeType, setSelectedEmployeeType] = useState("all")
   const [selectedDepartment, setSelectedDepartment] = useState("all")
@@ -102,10 +103,17 @@ export function EmployeeManagement({ employees }: { employees: EmployeeRow[] }) 
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null)
   const [showEmployeeDetails, setShowEmployeeDetails] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
-  const [employeeData, setEmployeeData] = useState([...employees])
+  const [employeeData, setEmployeeData] = useState<EmployeeRow[]>([])
+
+  useEffect(() => {
+    if (employeeData.length == 0) {
+      setEmployeeData(employeeDetails)
+    }
+  }, [employeeDetails])
+
 
   // Filter employees based on search query and selected filters
-  const filteredEmployees = useMemo(() => employeeData.filter((employee) => {
+  const filteredEmployees = employeeData.filter((employee) => {
     const matchesSearch =
       employee.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       employee.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -119,7 +127,7 @@ export function EmployeeManagement({ employees }: { employees: EmployeeRow[] }) 
     const matchesRole = selectedRole === "all" || employee.role === selectedRole
 
     return matchesSearch && matchesEmployeeType && matchesDepartment && matchesRole
-  }), [])
+  })
 
   const handleViewDetails = (id: string) => {
     setSelectedEmployee(id)

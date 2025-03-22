@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -19,20 +19,23 @@ import { Check, Search } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
-import { EmployeeRow } from "./hr-dashboard"
-
-// Sample employees data for the combobox
+import { useHrContext } from "@/contexts/hr-context"
+import { DataByTableName } from "../utils/api"
+import moment from 'moment'
 
 interface AddAttendanceDialogProps {
   open: boolean
-  onOpenChange: (open: boolean) => void,
-  employees: EmployeeRow[]
+  onOpenChange: (open: boolean) => void
 }
 
-export function AddAttendanceDialog({ open, onOpenChange, employees: empData = [] }: AddAttendanceDialogProps) {
-  const [openCombobox, setOpenCombobox] = useState(false)
-  const [employees, setEmployees] = useState([...empData.map(item => ({ label: `${item.id}-${item.firstName}`, value: item.id }))])
+export function AddAttendanceDialog({ open, onOpenChange }: AddAttendanceDialogProps) {
+  const { employeeDetails, refetchData } = useHrContext();
 
+  const employees = useMemo(() => {
+    return employeeDetails.map(item => ({ label: `${item.id}-${item.firstName}`, value: item.id }))
+  }, [employeeDetails])
+
+  const [openCombobox, setOpenCombobox] = useState(false)
   const [formData, setFormData] = useState({
     employeeId: "",
     date: format(new Date(), "yyyy-MM-dd"),
@@ -45,11 +48,28 @@ export function AddAttendanceDialog({ open, onOpenChange, employees: empData = [
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = () => {
-    // Validation logic would go here
-    console.log("New attendance:", formData)
-    onOpenChange(false)
-  }
+  const generateLoginData = useCallback((date: string, time: string) => {
+    return moment(`${date} ${time}`, 'YYYY-MM-DD HH:mm').format('YYYY-MM-DD HH:mm:ss');
+  }, [formData])
+
+
+  const handleSubmit = useCallback(() => {
+    const payload = {
+      "empId": formData.employeeId,
+      "date": formData.date,
+      "loginTime": generateLoginData(formData.date, formData.checkIn),
+      "logoutTime": generateLoginData(formData.date, formData.checkOut)
+    }
+
+    const instance = new DataByTableName("emp_attendence");
+
+    instance.post(payload).then(res => {
+      refetchData();
+      onOpenChange(false)
+    }).catch((error) => {
+      console.log({ error })
+    })
+  }, [formData])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
