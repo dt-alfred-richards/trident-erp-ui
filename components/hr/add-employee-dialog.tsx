@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -24,6 +24,7 @@ interface AddEmployeeDialogProps {
 
 export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps) {
   const [activeTab, setActiveTab] = useState("personal")
+  // Update the formData state to include aadhaarImage
   const [formData, setFormData] = useState({
     firstName: "",
     middleName: "",
@@ -38,9 +39,9 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
     aadhaarNumber: "",
     sundayOn: "no",
     bloodGroup: "",
-    shiftTime: "",
     salary: "",
     bankName: "",
+    bankBranch: "",
     accountNumber: "",
     ifscCode: "",
     address: "",
@@ -48,7 +49,12 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
     shiftDuration: "8",
     role: "",
     department: "",
+    leaves: "20",
   })
+
+  // Add state for the Aadhaar image file
+  const [aadhaarImage, setAadhaarImage] = useState<File | null>(null)
+  const [aadhaarImagePreview, setAadhaarImagePreview] = useState<string | null>(null)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -59,9 +65,38 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
+  // Automatically set Sunday Off for full-time employees
+  useEffect(() => {
+    if (formData.employeeType === "Full-time") {
+      setFormData((prev) => ({ ...prev, [name]: "no" }))
+    }
+  }, [formData.employeeType])
+
+  // Add a function to handle file upload
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0]
+      setAadhaarImage(file)
+
+      // Create a preview URL for the image
+      const reader = new FileReader()
+      reader.onload = () => {
+        setAadhaarImagePreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  // Update the handleSubmit function to include the Aadhaar image
   const handleSubmit = () => {
-    // Validation logic would go here
+    // Validation logic for required fields
+    if (!aadhaarImage) {
+      alert("Please upload Aadhaar card image")
+      return
+    }
+
     console.log("Form submitted:", formData)
+    console.log("Aadhaar image:", aadhaarImage)
     onOpenChange(false)
   }
 
@@ -142,14 +177,13 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="personalEmail">Personal Email *</Label>
+                <Label htmlFor="personalEmail">Personal Email</Label>
                 <Input
                   id="personalEmail"
                   name="personalEmail"
                   type="email"
                   value={formData.personalEmail}
                   onChange={handleChange}
-                  required
                 />
               </div>
             </div>
@@ -171,13 +205,83 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
               </div>
             </div>
 
+            {/* Add the Aadhaar image upload field below the Aadhaar number field */}
+            {/* Find the div containing the Aadhaar number field in the personal tab */}
+            {/* After this div: */}
+            {/* <div className="space-y-2">
+              <Label htmlFor="aadhaarNumber">Aadhaar Number *</Label>
+              <Input
+                id="aadhaarNumber"
+                name="aadhaarNumber"
+                value={formData.aadhaarNumber}
+                onChange={handleChange}
+                required
+              />
+            </div> */}
+
+            {/* Add this new div right after the Aadhaar number field: */}
+            <div className="space-y-2">
+              <Label htmlFor="aadhaarImage">Aadhaar Card Image *</Label>
+              <div className="flex flex-col gap-2">
+                <Input
+                  id="aadhaarImage"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="cursor-pointer"
+                  required
+                />
+                {aadhaarImagePreview && (
+                  <div className="relative mt-2 h-32 w-full overflow-hidden rounded-md border">
+                    <img
+                      src={aadhaarImagePreview || "/placeholder.svg"}
+                      alt="Aadhaar card preview"
+                      className="h-full w-full object-contain"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute right-2 top-2"
+                      onClick={() => {
+                        setAadhaarImage(null)
+                        setAadhaarImagePreview(null)
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="address">Address *</Label>
               <Input id="address" name="address" value={formData.address} onChange={handleChange} required />
             </div>
 
             <div className="flex justify-end">
-              <Button onClick={() => setActiveTab("employment")}>Next</Button>
+              <Button
+                onClick={() => {
+                  // Check if required fields in personal tab are filled
+                  if (
+                    !formData.firstName ||
+                    !formData.lastName ||
+                    !formData.gender ||
+                    !formData.contactNumber ||
+                    !formData.dob ||
+                    !formData.aadhaarNumber ||
+                    !aadhaarImage ||
+                    !formData.address
+                  ) {
+                    alert("Please fill all required fields including Aadhaar card image")
+                    return
+                  }
+                  setActiveTab("employment")
+                }}
+              >
+                Next
+              </Button>
             </div>
           </TabsContent>
 
@@ -245,20 +349,6 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="shiftTime">Shift Time *</Label>
-                <Select value={formData.shiftTime} onValueChange={(value) => handleSelectChange("shiftTime", value)}>
-                  <SelectTrigger id="shiftTime">
-                    <SelectValue placeholder="Select shift time" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Morning (8AM-5PM)">Morning (8AM-5PM)</SelectItem>
-                    <SelectItem value="Evening (2PM-10PM)">Evening (2PM-10PM)</SelectItem>
-                    <SelectItem value="Night (10PM-6AM)">Night (10PM-6AM)</SelectItem>
-                    <SelectItem value="General (9AM-6PM)">General (9AM-6PM)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
                 <Label htmlFor="shiftDuration">Shift Duration (hours) *</Label>
                 <Select
                   value={formData.shiftDuration}
@@ -276,6 +366,11 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
               </div>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="leaves">Annual Leaves *</Label>
+              <Input id="leaves" name="leaves" type="number" value={formData.leaves} onChange={handleChange} required />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="payCycle">Pay Cycle *</Label>
@@ -284,8 +379,9 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
                     <SelectValue placeholder="Select pay cycle" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="daily">Daily</SelectItem>
                     <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -315,7 +411,7 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="salary">
-                  {formData.employeeType === "Full-time" ? "Monthly Salary *" : "Hourly Rate *"}
+                  {formData.employeeType === "Full-time" ? "Monthly Salary *" : "Salary (Year) *"}
                 </Label>
                 <Input
                   id="salary"
@@ -327,31 +423,31 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="panNumber">PAN Number *</Label>
-                <Input id="panNumber" name="panNumber" value={formData.panNumber} onChange={handleChange} required />
+                <Label htmlFor="panNumber">PAN Number</Label>
+                <Input id="panNumber" name="panNumber" value={formData.panNumber} onChange={handleChange} />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="bankName">Bank Name *</Label>
-                <Input id="bankName" name="bankName" value={formData.bankName} onChange={handleChange} required />
+                <Label htmlFor="bankName">Bank Name</Label>
+                <Input id="bankName" name="bankName" value={formData.bankName} onChange={handleChange} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="accountNumber">Account Number *</Label>
-                <Input
-                  id="accountNumber"
-                  name="accountNumber"
-                  value={formData.accountNumber}
-                  onChange={handleChange}
-                  required
-                />
+                <Label htmlFor="bankBranch">Bank Branch</Label>
+                <Input id="bankBranch" name="bankBranch" value={formData.bankBranch} onChange={handleChange} />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="ifscCode">IFSC Code *</Label>
-              <Input id="ifscCode" name="ifscCode" value={formData.ifscCode} onChange={handleChange} required />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="accountNumber">Account Number</Label>
+                <Input id="accountNumber" name="accountNumber" value={formData.accountNumber} onChange={handleChange} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ifscCode">IFSC Code</Label>
+                <Input id="ifscCode" name="ifscCode" value={formData.ifscCode} onChange={handleChange} />
+              </div>
             </div>
 
             <div className="flex justify-between">

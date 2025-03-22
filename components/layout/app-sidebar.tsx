@@ -13,10 +13,10 @@ import {
   DollarSign,
   ChevronDown,
   Package,
-  ClipboardList,
   Workflow,
   BookOpen,
   Menu,
+  ShoppingBag,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ThemeToggle } from "@/components/theme/theme-toggle"
@@ -71,9 +71,9 @@ const navigationItems = [
         icon: Truck,
       },
       {
-        href: "/work-orders",
-        label: "Work Orders",
-        icon: ClipboardList,
+        href: "/procurement",
+        label: "Procurement",
+        icon: ShoppingBag,
       },
     ],
   },

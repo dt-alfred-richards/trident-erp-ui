@@ -1,365 +1,438 @@
 "use client"
 
 import { useState } from "react"
-import { Download, DollarSign, Calendar, Filter, Search, MoreHorizontal } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Search, Download, Printer, Eye, CheckCircle } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Card, CardContent } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 // Sample payroll data
 const payrollData = [
   {
-    id: 1,
-    employeeId: "EMP001",
-    employeeName: "Rajesh Kumar",
-    employeeType: "Full-time",
-    payPeriod: "October 2023",
-    basicSalary: 65000,
-    overtime: 0,
-    deductions: 6500,
-    netSalary: 58500,
-    status: "processed",
+    id: "EMP001",
+    name: "Rajesh Kumar",
+    department: "Production",
+    role: "Production Manager",
+    salary: 65000,
+    attendance: 22,
+    overtime: 5,
+    bonus: 2000,
+    deductions: 1500,
+    netPay: 67500,
+    status: "Pending",
+    month: "2025-03",
   },
   {
-    id: 2,
-    employeeId: "EMP002",
-    employeeName: "Priya Sharma",
-    employeeType: "Full-time",
-    payPeriod: "October 2023",
-    basicSalary: 45000,
-    overtime: 2500,
-    deductions: 4750,
-    netSalary: 42750,
-    status: "processed",
+    id: "EMP002",
+    name: "Priya Sharma",
+    department: "Production",
+    role: "Line Supervisor",
+    salary: 45000,
+    attendance: 21,
+    overtime: 8,
+    bonus: 1500,
+    deductions: 1000,
+    netPay: 47500,
+    status: "Processed",
+    month: "2025-03",
   },
   {
-    id: 3,
-    employeeId: "EMP003",
-    employeeName: "Amit Patel",
-    employeeType: "Full-time",
-    payPeriod: "October 2023",
-    basicSalary: 30000,
-    overtime: 1800,
-    deductions: 3180,
-    netSalary: 28620,
-    status: "processed",
+    id: "EMP003",
+    name: "Amit Patel",
+    department: "Production",
+    role: "Line Worker",
+    salary: 30000,
+    attendance: 20,
+    overtime: 10,
+    bonus: 1000,
+    deductions: 800,
+    netPay: 31700,
+    status: "Pending",
+    month: "2025-03",
   },
   {
-    id: 4,
-    employeeId: "EMP004",
-    employeeName: "Sneha Gupta",
-    employeeType: "Part-time",
-    payPeriod: "October 2023",
-    hoursWorked: 80,
-    hourlyRate: 200,
-    basicSalary: 16000, // 80 * 200
-    overtime: 0,
-    deductions: 1600,
-    netSalary: 14400,
-    status: "processed",
+    id: "EMP004",
+    name: "Sneha Gupta",
+    department: "Production",
+    role: "Line Worker",
+    salary: 28000,
+    attendance: 22,
+    overtime: 6,
+    bonus: 800,
+    deductions: 700,
+    netPay: 29100,
+    status: "Pending",
+    month: "2025-02",
   },
   {
-    id: 5,
-    employeeId: "EMP005",
-    employeeName: "Vikram Singh",
-    employeeType: "Full-time",
-    payPeriod: "October 2023",
-    basicSalary: 40000,
-    overtime: 0,
-    deductions: 4000,
-    netSalary: 36000,
-    status: "pending",
+    id: "EMP005",
+    name: "Vikram Singh",
+    department: "Production",
+    role: "Quality Control",
+    salary: 40000,
+    attendance: 21,
+    overtime: 4,
+    bonus: 1200,
+    deductions: 900,
+    netPay: 41300,
+    status: "Processed",
+    month: "2025-02",
+  },
+  {
+    id: "EMP006",
+    name: "Neha Verma",
+    department: "HR",
+    role: "HR Executive",
+    salary: 50000,
+    attendance: 22,
+    overtime: 2,
+    bonus: 1500,
+    deductions: 1200,
+    netPay: 51300,
+    status: "Processed",
+    month: "2025-01",
   },
 ]
 
+// Get current month in YYYY-MM format
+const getCurrentMonth = () => {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+}
+
+// Format month for display
+const formatMonth = (monthStr: string) => {
+  const [year, month] = monthStr.split("-")
+  return new Date(Number.parseInt(year), Number.parseInt(month) - 1).toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  })
+}
+
+// Get list of available months from data
+const getAvailableMonths = () => {
+  const months = new Set<string>()
+  payrollData.forEach((employee) => {
+    if (employee.month) {
+      months.add(employee.month)
+    }
+  })
+  return Array.from(months).sort().reverse()
+}
+
 export function PayrollManagement() {
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedPayPeriod, setSelectedPayPeriod] = useState("october2023")
-  const [selectedEmployeeType, setSelectedEmployeeType] = useState("all")
-  const [showPayslipDialog, setShowPayslipDialog] = useState(false)
-  const [selectedPayroll, setSelectedPayroll] = useState<number | null>(null)
+  const [selectedStatus, setSelectedStatus] = useState("all")
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth())
+  const [selectedEmployees, setSelectedEmployees] = useState<string[]>([])
+  const [viewPayslip, setViewPayslip] = useState<(typeof payrollData)[0] | null>(null)
 
-  // Filter payroll data based on search query and selected filters
-  const filteredPayroll = payrollData.filter((record) => {
+  // Filter payroll data based on search query, selected filters, and month
+  const filteredPayroll = payrollData.filter((employee) => {
     const matchesSearch =
-      record.employeeId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      record.employeeName.toLowerCase().includes(searchQuery.toLowerCase())
+      employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      employee.id.toLowerCase().includes(searchQuery.toLowerCase())
 
-    const matchesPayPeriod =
-      selectedPayPeriod === "all" ||
-      record.payPeriod.toLowerCase().replace(/\s+/g, "") === selectedPayPeriod.toLowerCase()
+    const matchesStatus = selectedStatus === "all" || employee.status === selectedStatus
 
-    const matchesEmployeeType = selectedEmployeeType === "all" || record.employeeType === selectedEmployeeType
+    const matchesMonth = employee.month === selectedMonth
 
-    return matchesSearch && matchesPayPeriod && matchesEmployeeType
+    return matchesSearch && matchesStatus && matchesMonth
   })
 
-  const handleViewPayslip = (id: number) => {
-    setSelectedPayroll(id)
-    setShowPayslipDialog(true)
-  }
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "processed":
-        return <Badge className="bg-green-500">Processed</Badge>
-      case "pending":
-        return <Badge className="bg-yellow-500">Pending</Badge>
-      default:
-        return <Badge>Unknown</Badge>
+  // Handle select all checkbox
+  const handleSelectAll = () => {
+    if (selectedEmployees.length === filteredPayroll.length) {
+      setSelectedEmployees([])
+    } else {
+      setSelectedEmployees(filteredPayroll.map((employee) => employee.id))
     }
   }
 
-  const payroll = selectedPayroll ? payrollData.find((p) => p.id === selectedPayroll) : null
+  // Handle individual checkbox selection
+  const handleSelectEmployee = (id: string) => {
+    if (selectedEmployees.includes(id)) {
+      setSelectedEmployees(selectedEmployees.filter((empId) => empId !== id))
+    } else {
+      setSelectedEmployees([...selectedEmployees, id])
+    }
+  }
 
-  // Calculate totals for summary
-  const totalBasicSalary = filteredPayroll.reduce((sum, record) => sum + record.basicSalary, 0)
-  const totalOvertime = filteredPayroll.reduce((sum, record) => sum + record.overtime, 0)
-  const totalDeductions = filteredPayroll.reduce((sum, record) => sum + record.deductions, 0)
-  const totalNetSalary = filteredPayroll.reduce((sum, record) => sum + record.netSalary, 0)
+  // Process selected payrolls
+  const handleProcessPayroll = (id?: string) => {
+    if (id) {
+      alert(`Processing payroll for employee ${id}`)
+    } else {
+      alert(`Processing payroll for ${selectedEmployees.length} employees`)
+    }
+    // In a real application, you would call an API to process the payroll
+  }
+
+  // View payslip
+  const handleViewPayslip = (employee: (typeof payrollData)[0]) => {
+    setViewPayslip(employee)
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
         <h3 className="text-lg font-medium">Payroll Management</h3>
         <div className="flex flex-wrap gap-2">
+          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+            <SelectTrigger className="h-9 w-[180px]">
+              <SelectValue placeholder="Select Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {getAvailableMonths().map((month) => (
+                <SelectItem key={month} value={month}>
+                  {formatMonth(month)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search employees..."
-              className="pl-8 h-9 md:w-[200px]"
+              className="pl-8 h-9 md:w-[200px] lg:w-[250px]"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
-          <Select value={selectedPayPeriod} onValueChange={setSelectedPayPeriod}>
+          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
             <SelectTrigger className="h-9 w-[130px]">
-              <Calendar className="mr-2 h-4 w-4" />
-              <span>Pay Period</span>
+              <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Periods</SelectItem>
-              <SelectItem value="october2023">October 2023</SelectItem>
-              <SelectItem value="september2023">September 2023</SelectItem>
-              <SelectItem value="august2023">August 2023</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={selectedEmployeeType} onValueChange={setSelectedEmployeeType}>
-            <SelectTrigger className="h-9 w-[130px]">
-              <Filter className="mr-2 h-4 w-4" />
-              <span>Employee Type</span>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="Full-time">Full-time</SelectItem>
-              <SelectItem value="Part-time">Part-time</SelectItem>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="Pending">Pending</SelectItem>
+              <SelectItem value="Processed">Processed</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
 
+      {selectedEmployees.length > 0 && (
+        <div className="flex items-center gap-2 bg-muted p-2 rounded-md">
+          <span className="text-sm font-medium">{selectedEmployees.length} employees selected</span>
+          <Button size="sm" onClick={() => handleProcessPayroll()}>
+            Process Payroll
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setSelectedEmployees([])}>
+            Clear Selection
+          </Button>
+        </div>
+      )}
+
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle>Payroll</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Employee ID</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Pay Period</TableHead>
-                  <TableHead>Employee Type</TableHead>
-                  <TableHead>Basic Salary</TableHead>
-                  <TableHead>Overtime</TableHead>
-                  <TableHead>Deductions</TableHead>
-                  <TableHead>Net Salary</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[50px]">
+                  <Checkbox
+                    checked={filteredPayroll.length > 0 && selectedEmployees.length === filteredPayroll.length}
+                    onCheckedChange={handleSelectAll}
+                    aria-label="Select all"
+                  />
+                </TableHead>
+                <TableHead>Employee ID</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Attendance</TableHead>
+                <TableHead>Overtime (hrs)</TableHead>
+                <TableHead>Net Pay (₹)</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredPayroll.map((employee) => (
+                <TableRow key={employee.id}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedEmployees.includes(employee.id)}
+                      onCheckedChange={() => handleSelectEmployee(employee.id)}
+                      aria-label={`Select ${employee.name}`}
+                    />
+                  </TableCell>
+                  <TableCell>{employee.id}</TableCell>
+                  <TableCell className="font-medium">{employee.name}</TableCell>
+                  <TableCell>{employee.role}</TableCell>
+                  <TableCell>{employee.attendance} days</TableCell>
+                  <TableCell>{employee.overtime} hrs</TableCell>
+                  <TableCell className="font-medium">₹{employee.netPay.toLocaleString()}</TableCell>
+                  <TableCell>
+                    <Badge variant={employee.status === "Processed" ? "success" : "outline"}>{employee.status}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={() => handleViewPayslip(employee)}>
+                              <Eye className="h-4 w-4" />
+                              <span className="sr-only">View Payslip</span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>View Payslip</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleProcessPayroll(employee.id)}
+                              disabled={employee.status === "Processed"}
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                              <span className="sr-only">Process Payroll</span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Process Payroll</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredPayroll.map((record) => (
-                  <TableRow key={record.id}>
-                    <TableCell>{record.employeeId}</TableCell>
-                    <TableCell className="font-medium">{record.employeeName}</TableCell>
-                    <TableCell>{record.payPeriod}</TableCell>
-                    <TableCell>{record.employeeType}</TableCell>
-                    <TableCell>₹{record.basicSalary.toLocaleString()}</TableCell>
-                    <TableCell>₹{record.overtime.toLocaleString()}</TableCell>
-                    <TableCell>₹{record.deductions.toLocaleString()}</TableCell>
-                    <TableCell className="font-medium">₹{record.netSalary.toLocaleString()}</TableCell>
-                    <TableCell>{getStatusBadge(record.status)}</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleViewPayslip(record.id)}>View Payslip</DropdownMenuItem>
-                          <DropdownMenuItem>Download Payslip</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle>Payroll Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Total Basic Salary</p>
-              <p className="text-2xl font-bold">₹{totalBasicSalary.toLocaleString()}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Total Overtime</p>
-              <p className="text-2xl font-bold">₹{totalOvertime.toLocaleString()}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Total Deductions</p>
-              <p className="text-2xl font-bold">₹{totalDeductions.toLocaleString()}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Total Net Salary</p>
-              <p className="text-2xl font-bold">₹{totalNetSalary.toLocaleString()}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="flex justify-end space-x-2">
-        <Button variant="outline">
-          <Download className="mr-2 h-4 w-4" />
-          Export Payroll
-        </Button>
-        <Button>
-          <DollarSign className="mr-2 h-4 w-4" />
-          Process Payroll
-        </Button>
+      <div className="flex justify-between items-center">
+        <div className="text-sm text-muted-foreground">
+          Showing {filteredPayroll.length} of {payrollData.filter((emp) => emp.month === selectedMonth).length}{" "}
+          employees for {formatMonth(selectedMonth)}
+        </div>
+        <div className="flex space-x-2">
+          <Button variant="outline" size="sm">
+            <Printer className="h-4 w-4 mr-2" />
+            Print
+          </Button>
+          <Button variant="outline" size="sm">
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+        </div>
       </div>
 
       {/* Payslip Dialog */}
-      <Dialog open={showPayslipDialog} onOpenChange={setShowPayslipDialog}>
+      <Dialog open={!!viewPayslip} onOpenChange={(open) => !open && setViewPayslip(null)}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Employee Payslip</DialogTitle>
             <DialogDescription>
-              {payroll?.payPeriod} | {payroll?.employeeName} ({payroll?.employeeId})
+              {viewPayslip && `${viewPayslip.name} (${viewPayslip.id}) - ${formatMonth(viewPayslip.month || "")}`}
             </DialogDescription>
           </DialogHeader>
 
-          {payroll && (
-            <div className="py-4">
-              <div className="border-b pb-4 mb-4">
-                <div className="flex justify-between items-center">
+          {viewPayslip && (
+            <div className="space-y-4">
+              <div className="border rounded-md p-4 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <h3 className="text-lg font-medium">{payroll.employeeName}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {payroll.employeeId} • {payroll.employeeType}
-                    </p>
+                    <p className="text-sm text-muted-foreground">Employee</p>
+                    <p className="font-medium">{viewPayslip.name}</p>
                   </div>
-                  <div className="text-right">
-                    <h4 className="font-medium">Payslip #{payroll.id}</h4>
-                    <p className="text-sm text-muted-foreground">{payroll.payPeriod}</p>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Employee ID</p>
+                    <p className="font-medium">{viewPayslip.id}</p>
                   </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-8">
-                <div>
-                  <h4 className="font-medium mb-3">Earnings</h4>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span>Basic Salary</span>
-                      <span>₹{payroll.basicSalary.toLocaleString()}</span>
-                    </div>
-                    {payroll.overtime > 0 && (
-                      <div className="flex justify-between">
-                        <span>Overtime</span>
-                        <span>₹{payroll.overtime.toLocaleString()}</span>
-                      </div>
-                    )}
-                    {"hoursWorked" in payroll && (
-                      <div className="flex justify-between">
-                        <span>Hours Worked</span>
-                        <span>
-                          {payroll.hoursWorked} hrs @ ₹{payroll.hourlyRate}/hr
-                        </span>
-                      </div>
-                    )}
-                    <div className="flex justify-between font-medium pt-2 border-t">
-                      <span>Total Earnings</span>
-                      <span>₹{(payroll.basicSalary + payroll.overtime).toLocaleString()}</span>
-                    </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Department</p>
+                    <p className="font-medium">{viewPayslip.department}</p>
                   </div>
-                </div>
-
-                <div>
-                  <h4 className="font-medium mb-3">Deductions</h4>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span>Provident Fund</span>
-                      <span>₹{(payroll.deductions * 0.6).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Professional Tax</span>
-                      <span>₹{(payroll.deductions * 0.1).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Income Tax</span>
-                      <span>₹{(payroll.deductions * 0.3).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between font-medium pt-2 border-t">
-                      <span>Total Deductions</span>
-                      <span>₹{payroll.deductions.toLocaleString()}</span>
-                    </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Role</p>
+                    <p className="font-medium">{viewPayslip.role}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-medium">Net Salary</h3>
-                  <span className="text-xl font-bold">₹{payroll.netSalary.toLocaleString()}</span>
+              <div className="border rounded-md p-4">
+                <h4 className="font-medium mb-2">Earnings</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Basic Salary</span>
+                    <span>₹{viewPayslip.salary.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Overtime ({viewPayslip.overtime} hrs)</span>
+                    <span>₹{(viewPayslip.overtime * (viewPayslip.salary / 176)).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Bonus</span>
+                    <span>₹{viewPayslip.bonus.toLocaleString()}</span>
+                  </div>
+                  <div className="border-t pt-2 flex justify-between font-medium">
+                    <span>Total Earnings</span>
+                    <span>
+                      ₹
+                      {(
+                        viewPayslip.salary +
+                        viewPayslip.bonus +
+                        viewPayslip.overtime * (viewPayslip.salary / 176)
+                      ).toLocaleString()}
+                    </span>
+                  </div>
                 </div>
+              </div>
+
+              <div className="border rounded-md p-4">
+                <h4 className="font-medium mb-2">Deductions</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Tax</span>
+                    <span>₹{(viewPayslip.deductions * 0.6).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Provident Fund</span>
+                    <span>₹{(viewPayslip.deductions * 0.3).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Other Deductions</span>
+                    <span>₹{(viewPayslip.deductions * 0.1).toFixed(2)}</span>
+                  </div>
+                  <div className="border-t pt-2 flex justify-between font-medium">
+                    <span>Total Deductions</span>
+                    <span>₹{viewPayslip.deductions.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-muted p-4 rounded-md flex justify-between font-medium text-lg">
+                <span>Net Pay</span>
+                <span>₹{viewPayslip.netPay.toLocaleString()}</span>
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setViewPayslip(null)}>
+                  Close
+                </Button>
+                <Button>
+                  <Printer className="h-4 w-4 mr-2" />
+                  Print Payslip
+                </Button>
               </div>
             </div>
           )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPayslipDialog(false)}>
-              Close
-            </Button>
-            <Button>
-              <Download className="mr-2 h-4 w-4" />
-              Download Payslip
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

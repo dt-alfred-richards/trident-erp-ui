@@ -110,7 +110,7 @@ export function SalesDashboard() {
         billingAddress: address,
         shippingAddress: address,
         customer: name,
-        deliveryDate: item.dcDate,
+        deliveryDate: item.expectedDeliveryDate,
         id: item.orderId,
         orderDate: item.date,
         priority: getPriority(orderProducts.reduce((acc, curr) => {
