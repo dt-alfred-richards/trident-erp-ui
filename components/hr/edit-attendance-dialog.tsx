@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -79,9 +79,9 @@ export function EditAttendanceDialog({ open, onOpenChange, attendance, onUpdate 
     return `${hours}:${minutes.toString().padStart(2, "0")}`
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     onUpdate(formData)
-  }
+  }, [formData])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

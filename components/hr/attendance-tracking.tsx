@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { CalendarIcon, Filter, Download, Search, Plus, Eye, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
@@ -13,11 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/u
 import { format } from "date-fns"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { AddAttendanceDialog } from "./add-attendance-dialog"
+import { AddAttendanceDialog, generateLoginData } from "./add-attendance-dialog"
 import { EditAttendanceDialog } from "./edit-attendance-dialog"
 import { AttendanceCalendar } from "./attendance-calendar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { AttendanceData, useHrContext } from "@/contexts/hr-context"
+import { DataByTableName } from "../utils/api"
 
 // Sample attendance data
 const attendanceData = [
@@ -166,7 +167,7 @@ const pastLeavesData = {
 }
 
 export function AttendanceTracking() {
-  const { attendanceDetails } = useHrContext();
+  const { attendanceDetails, refetchData } = useHrContext();
   const [date, setDate] = useState<Date | undefined>(new Date())
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("all")
@@ -225,10 +226,24 @@ export function AttendanceTracking() {
   }
 
   // Handle update attendance
-  const handleUpdateAttendance = (updatedRecord: any) => {
-    setAttendanceRecords(attendanceRecords.map((record) => (record.id === updatedRecord.id ? updatedRecord : record)))
-    setShowEditAttendanceDialog(false)
-  }
+  const handleUpdateAttendance = useCallback((updatedRecord: any) => {
+    const payload = {
+      "date": updatedRecord.date,
+      "loginTime": generateLoginData(updatedRecord.date, updatedRecord.checkIn),
+      "logoutTime": generateLoginData(updatedRecord.date, updatedRecord.checkOut)
+    }
+
+    const instance = new DataByTableName("emp_attendence");
+
+    instance.patch({ key: "empId", value: updatedRecord.employeeId }, payload).then(_ => {
+      setShowEditAttendanceDialog(false)
+      refetchData()
+    }).catch(error => {
+      console.log({ error })
+    })
+    // setAttendanceRecords(attendanceRecords.map((record) => (record.id === updatedRecord.id ? updatedRecord : record)))
+    // setShowEditAttendanceDialog(false)
+  }, [])
 
   // Calculate total hours
   const calculateTotalHours = (checkIn: string, checkOut: string) => {

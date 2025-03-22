@@ -28,6 +28,10 @@ interface AddAttendanceDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
+export const generateLoginData = (date: string, time: string) => {
+  return moment(`${date} ${time}`, 'YYYY-MM-DD HH:mm').format('YYYY-MM-DD HH:mm:ss');
+}
+
 export function AddAttendanceDialog({ open, onOpenChange }: AddAttendanceDialogProps) {
   const { employeeDetails, refetchData } = useHrContext();
 
@@ -48,9 +52,6 @@ export function AddAttendanceDialog({ open, onOpenChange }: AddAttendanceDialogP
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const generateLoginData = useCallback((date: string, time: string) => {
-    return moment(`${date} ${time}`, 'YYYY-MM-DD HH:mm').format('YYYY-MM-DD HH:mm:ss');
-  }, [formData])
 
 
   const handleSubmit = useCallback(() => {
