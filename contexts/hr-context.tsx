@@ -33,19 +33,25 @@ export type DimEmployee = {
     sundayHoliday: boolean,
     employmentType: string,
     fullName: string,
-    gender: string
+    gender: string,
+    aadhaarNumber: number,
+    shiftDuration: number,
+    leaves: number,
+    payCycle: string,
 }
 
 export type EmployeeRow = {
     id: string,
     firstName: string,
     lastName: string,
+    middleName?: string,
+    bloodGroup: string,
     email: string,
     role: string,
     department: string,
     employeeType: string,
-    salary: number,
-    contactNumber: number,
+    salary?: number,
+    contactNumber?: number,
     dateOfJoining: string,
     gender: string,
     address: string,
@@ -53,7 +59,12 @@ export type EmployeeRow = {
     pfNumber: string,
     sundayHoliday: boolean,
     esiNumber: string,
-    bankDetails: EmployeeBankDetails
+    bankDetails: EmployeeBankDetails,
+    aadhaarNumber: number,
+    dob: string,
+    shiftDuration: number,
+    leaves: number,
+    payCycle: string,
 }
 
 export type AttendanceData = {
@@ -130,7 +141,13 @@ export function HrProvider({ children }: { children: ReactNode }) {
                     role: textCapitalize(item.role),
                     salary: item.salary,
                     sundayHoliday: item.sundayHoliday,
-                    bankDetails: bankMapper[item.empId] ?? {}
+                    bankDetails: bankMapper[item.empId] ?? {},
+                    bloodGroup: item.bloodGroup,
+                    aadhaarNumber: item.aadhaarNumber,
+                    dob: item.dob,
+                    shiftDuration: item.shiftDuration,
+                    leaves: item.leaves,
+                    payCycle: item.payCycle
                 }) as EmployeeRow
             })
 

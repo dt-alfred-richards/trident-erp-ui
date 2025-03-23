@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -16,50 +16,37 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { DimEmployee, EmployeeBankDetails, EmployeeRow, useHrContext } from "@/contexts/hr-context"
+import { DataByTableName } from "../utils/api"
+import updateChild from "lodash.update"
 
 interface AddEmployeeDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
+type Formdata = Omit<EmployeeRow, "bankDetails">
+
 export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps) {
   const [activeTab, setActiveTab] = useState("personal")
+  const { roles = [], refetchData } = useHrContext()
+  console.log({ roles })
   // Update the formData state to include aadhaarImage
-  const [formData, setFormData] = useState({
-    firstName: "",
-    middleName: "",
-    lastName: "",
-    gender: "",
-    contactNumber: "",
-    personalEmail: "",
-    dob: "",
-    dateOfJoining: "",
-    payCycle: "monthly",
-    panNumber: "",
-    aadhaarNumber: "",
-    sundayOn: "no",
-    bloodGroup: "",
-    salary: "",
-    bankName: "",
-    bankBranch: "",
-    accountNumber: "",
-    ifscCode: "",
-    address: "",
-    employeeType: "Full-time",
-    shiftDuration: "8",
-    role: "",
-    department: "",
-    leaves: "20",
-  })
+  const [formData, setFormData] = useState<Partial<Formdata>>({})
 
+  const [bankDetails, setBankDetails] = useState<Partial<EmployeeBankDetails>>({})
   // Add state for the Aadhaar image file
   const [aadhaarImage, setAadhaarImage] = useState<File | null>(null)
   const [aadhaarImagePreview, setAadhaarImagePreview] = useState<string | null>(null)
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+    setFormData(prevState => {
+      const newPrev = { ...prevState } as any
+      updateChild(newPrev, name, () => value);
+      return newPrev
+    })
+  }, [setFormData])
 
   const handleSelectChange = (name: string, value: string) => {
     setFormData((prev) => ({ ...prev, [name]: value }))
@@ -67,7 +54,7 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
 
   // Automatically set Sunday Off for full-time employees
   useEffect(() => {
-    if (formData.employeeType === "Full-time") {
+    if (formData.employeeType === "full-time") {
       setFormData((prev) => ({ ...prev, [name]: "no" }))
     }
   }, [formData.employeeType])
@@ -87,6 +74,8 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
     }
   }
 
+  console.log({ formData })
+
   // Update the handleSubmit function to include the Aadhaar image
   const handleSubmit = () => {
     // Validation logic for required fields
@@ -95,10 +84,40 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
       return
     }
 
+    const { address, contactNumber, department, email, dateOfJoining, firstName, lastName, role = "", salary, sundayHoliday, employeeType: employmentType, gender, dateOfJoining: joiningDate, shiftDuration } = formData
+    const employeePayload = {
+      address, contactNumber, department, email, employmentType, firstName, gender, joiningDate, lastName, role: role.toLowerCase(), salary, sundayHoliday, averageWorkingHours: shiftDuration
+    }
+    const { accountNumber = "", bankBranch, bankName, ifscCode } = bankDetails
+    const bankDetailsPayload = {
+      accountNumber: parseInt(accountNumber as any), bankBranch, bankName, ifscCode, pfNumber: "", esiNumber: ""
+    } as Partial<EmployeeBankDetails>
+
+    const employeeInstance = new DataByTableName("dim_employee_v2");
+    const bankInstance = new DataByTableName("employee_bank_details");
+
+    employeeInstance.post(employeePayload).then(res => {
+      return bankInstance.post(bankDetailsPayload)
+    }).then(() => {
+      onOpenChange(false)
+      setFormData({})
+      setBankDetails({})
+      refetchData()
+    }).catch(error => {
+      console.log({ error })
+    })
+
     console.log("Form submitted:", formData)
     console.log("Aadhaar image:", aadhaarImage)
-    onOpenChange(false)
+    // onOpenChange(false)
   }
+
+  const handleBank = useCallback((event: any) => {
+    const { name, value } = event.target;
+    setBankDetails(prev => ({
+      ...prev, [name]: value
+    }))
+  }, [])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -171,6 +190,7 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
                 <Input
                   id="contactNumber"
                   name="contactNumber"
+                  type="number"
                   value={formData.contactNumber}
                   onChange={handleChange}
                   required
@@ -180,9 +200,9 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
                 <Label htmlFor="personalEmail">Personal Email</Label>
                 <Input
                   id="personalEmail"
-                  name="personalEmail"
+                  name="email"
                   type="email"
-                  value={formData.personalEmail}
+                  value={formData.email}
                   onChange={handleChange}
                 />
               </div>
@@ -198,27 +218,13 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
                 <Input
                   id="aadhaarNumber"
                   name="aadhaarNumber"
+                  type="number"
                   value={formData.aadhaarNumber}
                   onChange={handleChange}
                   required
                 />
               </div>
             </div>
-
-            {/* Add the Aadhaar image upload field below the Aadhaar number field */}
-            {/* Find the div containing the Aadhaar number field in the personal tab */}
-            {/* After this div: */}
-            {/* <div className="space-y-2">
-              <Label htmlFor="aadhaarNumber">Aadhaar Number *</Label>
-              <Input
-                id="aadhaarNumber"
-                name="aadhaarNumber"
-                value={formData.aadhaarNumber}
-                onChange={handleChange}
-                required
-              />
-            </div> */}
-
             {/* Add this new div right after the Aadhaar number field: */}
             <div className="space-y-2">
               <Label htmlFor="aadhaarImage">Aadhaar Card Image *</Label>
@@ -274,6 +280,7 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
                     !aadhaarImage ||
                     !formData.address
                   ) {
+                    console.log({ formData, aadhaarImage })
                     alert("Please fill all required fields including Aadhaar card image")
                     return
                   }
@@ -297,8 +304,8 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
                     <SelectValue placeholder="Select employee type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Full-time">Full-time</SelectItem>
-                    <SelectItem value="Part-time">Part-time</SelectItem>
+                    <SelectItem value="full-time">Full-time</SelectItem>
+                    <SelectItem value="part-time">Part-time</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -337,11 +344,11 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Production Manager">Production Manager</SelectItem>
-                    <SelectItem value="Line Supervisor">Line Supervisor</SelectItem>
-                    <SelectItem value="Line Worker">Line Worker</SelectItem>
-                    <SelectItem value="Quality Control">Quality Control</SelectItem>
-                    <SelectItem value="HR Executive">HR Executive</SelectItem>
+                    {
+                      roles.map(item =>
+                        <SelectItem key={item + "test"} value={item}>{item}</SelectItem>
+                      )
+                    }
                   </SelectContent>
                 </Select>
               </div>
@@ -351,7 +358,7 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
               <div className="space-y-2">
                 <Label htmlFor="shiftDuration">Shift Duration (hours) *</Label>
                 <Select
-                  value={formData.shiftDuration}
+                  value={(formData.shiftDuration ?? 0) + ""}
                   onValueChange={(value) => handleSelectChange("shiftDuration", value)}
                 >
                   <SelectTrigger id="shiftDuration">
@@ -387,7 +394,7 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
               </div>
               <div className="space-y-2">
                 <Label htmlFor="sundayOn">Sunday On *</Label>
-                <Select value={formData.sundayOn} onValueChange={(value) => handleSelectChange("sundayOn", value)}>
+                <Select value={formData.sundayHoliday + ""} onValueChange={(value) => handleSelectChange("sundayHoliday", value)}>
                   <SelectTrigger id="sundayOn">
                     <SelectValue placeholder="Select option" />
                   </SelectTrigger>
@@ -411,7 +418,7 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="salary">
-                  {formData.employeeType === "Full-time" ? "Monthly Salary *" : "Salary (Year) *"}
+                  {formData.employeeType === "full-time" ? "Monthly Salary *" : "Salary (Year) *"}
                 </Label>
                 <Input
                   id="salary"
@@ -431,22 +438,22 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="bankName">Bank Name</Label>
-                <Input id="bankName" name="bankName" value={formData.bankName} onChange={handleChange} />
+                <Input id="bankName" name="bankName" value={bankDetails.bankName} onChange={handleBank} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="bankBranch">Bank Branch</Label>
-                <Input id="bankBranch" name="bankBranch" value={formData.bankBranch} onChange={handleChange} />
+                <Input id="bankBranch" name="bankBranch" value={bankDetails.bankBranch} onChange={handleBank} />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="accountNumber">Account Number</Label>
-                <Input id="accountNumber" name="accountNumber" value={formData.accountNumber} onChange={handleChange} />
+                <Input id="accountNumber" name="accountNumber" type="number" value={bankDetails.accountNumber} onChange={handleBank} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="ifscCode">IFSC Code</Label>
-                <Input id="ifscCode" name="ifscCode" value={formData.ifscCode} onChange={handleChange} />
+                <Input id="ifscCode" name="ifscCode" value={bankDetails.ifscCode} onChange={handleBank} />
               </div>
             </div>
 

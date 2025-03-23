@@ -28,7 +28,7 @@ interface EditEmployeeDialogProps {
 }
 
 export function EditEmployeeDialog({ open, onOpenChange, employee, onSave }: EditEmployeeDialogProps) {
-  const { roles } = useHrContext();
+  const { roles = [], refetchData } = useHrContext();
   const [formData, setFormData] = useState<EmployeeRow | null>(null)
   const [activeTab, setActiveTab] = useState("personal")
 
@@ -67,11 +67,13 @@ export function EditEmployeeDialog({ open, onOpenChange, employee, onSave }: Edi
 
       employeeInstance.patch({ key: "emp_id", value: formData.id }, employeePayload).then(res => {
         return bankInstance.patch({ key: "employee_id", value: formData.id }, bankDetailsPayload)
-      }).catch(error => {
-        console.log({ error })
-      }).finally(() => {
+      }).then(() => {
+        refetchData()
         onOpenChange(false)
       })
+        .catch(error => {
+          console.log({ error })
+        })
     }
   }
 
