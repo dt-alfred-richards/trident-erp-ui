@@ -75,6 +75,7 @@ export function InventoryTable({ onAllocate }: InventoryTableProps) {
         inProduction: item.production,
       })) as InventoryData[]
       setInventoryData(_inventoryData)
+      console.log({ _inventoryData, inventory, cummulativeInventory })
     })
   }, [refetchData])
 

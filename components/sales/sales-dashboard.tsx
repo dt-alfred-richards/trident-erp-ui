@@ -54,7 +54,8 @@ export type OrderDetails = {
   "addressId"?: string | null,
   "orderSubId": string,
   modifiedOn: Date,
-  brand: string
+  brand: string,
+  createdOn: number
 }
 
 const getNumber = (str: string) => {

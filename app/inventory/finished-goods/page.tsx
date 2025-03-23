@@ -42,7 +42,7 @@ export type Allocations = {
   allocated: OrderDetails["casesReserved"],
   requested: OrderDetails["cases"],
   status: OrderDetails["status"],
-  reason: string
+  reason: string,
 }
 
 interface AllocationDialogProps {
@@ -105,8 +105,8 @@ export default function FinishedGoodsPage() {
       }))
       const _allocations = orders.map((order, index) => ({
         id: Math.floor(Math.random() * 10000) + "",
-        timestamp: order.modifiedOn?.toLocaleString(),
-        user: "",
+        timestamp: new Date(order.createdOn)?.toLocaleString(),
+        user: order.clientId,
         orderId: order.orderId,
         customer: clientInfo[order.clientId]?.name ?? "",
         sku: productInfo[order.productId]?.sku ?? "",
@@ -138,6 +138,8 @@ export default function FinishedGoodsPage() {
       description: `Allocated ${totalUnits} units to order ${orderId}`,
     })
   }
+
+  console.log({ allocations })
 
   return (
     <DashboardShell className="p-6">
