@@ -45,7 +45,7 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
     accountNumber: "",
     ifscCode: "",
     address: "",
-    employeeType: "Full-time",
+    employeeType: "full-time",
     shiftDuration: "8",
     role: "",
     department: "",
@@ -66,7 +66,7 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
 
   // Automatically set Sunday Off for full-time employees
   useEffect(() => {
-    if (formData.employeeType === "Full-time") {
+    if (formData.employeeType === "full-time") {
       setFormData((prev) => ({ ...prev, [name]: "no" }))
     }
   }, [formData.employeeType])
@@ -296,8 +296,8 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
                     <SelectValue placeholder="Select employee type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Full-time">Full-time</SelectItem>
-                    <SelectItem value="Part-time">Part-time</SelectItem>
+                    <SelectItem value="full-time">Full-time</SelectItem>
+                    <SelectItem value="part-time">Part-time</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -404,7 +404,7 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="salary">
-                  {formData.employeeType === "Full-time" ? "Monthly Salary *" : "Salary (Year) *"}
+                  {formData.employeeType === "full-time" ? "Monthly Salary *" : "Salary (Year) *"}
                 </Label>
                 <Input
                   id="salary"

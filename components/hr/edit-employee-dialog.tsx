@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import {
   Dialog,
   DialogContent,
@@ -15,31 +15,21 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
+import { DimEmployee, EmployeeBankDetails, EmployeeRow, useHrContext } from "@/contexts/hr-context"
+import updateChild from "lodash.update"
+import { DataByTableName } from "../utils/api"
 
-interface Employee {
-  id: string
-  firstName: string
-  lastName: string
-  email: string
-  role: string
-  department: string
-  employeeType: string
-  salary: number
-  contactNumber: string
-  dateOfJoining: string
-  gender: string
-  [key: string]: any // For additional fields
-}
 
 interface EditEmployeeDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  employee: Employee | null
-  onSave: (employee: Employee) => void
+  employee: EmployeeRow | null
+  onSave: (employee: EmployeeRow) => void
 }
 
 export function EditEmployeeDialog({ open, onOpenChange, employee, onSave }: EditEmployeeDialogProps) {
-  const [formData, setFormData] = useState<Employee | null>(null)
+  const { roles } = useHrContext();
+  const [formData, setFormData] = useState<EmployeeRow | null>(null)
   const [activeTab, setActiveTab] = useState("personal")
 
   // Initialize form data when employee changes
@@ -49,16 +39,39 @@ export function EditEmployeeDialog({ open, onOpenChange, employee, onSave }: Edi
     }
   }, [employee])
 
-  const handleChange = (field: string, value: string | number) => {
+
+  const handleChange = useCallback((field: string, value: string | number) => {
     if (formData) {
-      setFormData({ ...formData, [field]: value })
+      console.log({ field, value })
+      setFormData(prevState => {
+        const newPrev = { ...prevState } as any
+        updateChild(newPrev, field, () => value);
+        return newPrev
+      })
     }
-  }
+  }, [formData])
 
   const handleSubmit = () => {
     if (formData) {
-      onSave(formData)
-      onOpenChange(false)
+      const { address, contactNumber, department, email, dateOfJoining, firstName, lastName, role, salary, sundayHoliday, employeeType: employmentType, gender, dateOfJoining: joiningDate } = formData
+      const employeePayload = {
+        address, contactNumber, department, email, employmentType, firstName, gender, joiningDate, lastName, role: role.toLowerCase(), salary, sundayHoliday
+      } as Partial<DimEmployee>
+      const { accountNumber, bankBranch, bankName, ifscCode } = formData.bankDetails
+      const bankDetailsPayload = {
+        accountNumber, bankBranch, bankName, ifscCode
+      } as Partial<EmployeeBankDetails>
+
+      const employeeInstance = new DataByTableName("dim_employee_v2");
+      const bankInstance = new DataByTableName("employee_bank_details");
+
+      employeeInstance.patch({ key: "emp_id", value: formData.id }, employeePayload).then(res => {
+        return bankInstance.patch({ key: "employee_id", value: formData.id }, bankDetailsPayload)
+      }).catch(error => {
+        console.log({ error })
+      }).finally(() => {
+        onOpenChange(false)
+      })
     }
   }
 
@@ -119,7 +132,7 @@ export function EditEmployeeDialog({ open, onOpenChange, employee, onSave }: Edi
                 <Input
                   id="personalEmail"
                   type="email"
-                  value={formData.personalEmail || ""}
+                  value={formData.email || ""}
                   onChange={(e) => handleChange("personalEmail", e.target.value)}
                 />
               </div>
@@ -209,13 +222,11 @@ export function EditEmployeeDialog({ open, onOpenChange, employee, onSave }: Edi
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Production Manager">Production Manager</SelectItem>
-                    <SelectItem value="Line Supervisor">Line Supervisor</SelectItem>
-                    <SelectItem value="Line Worker">Line Worker</SelectItem>
-                    <SelectItem value="Quality Control">Quality Control</SelectItem>
-                    <SelectItem value="HR Executive">HR Executive</SelectItem>
-                    <SelectItem value="Finance Manager">Finance Manager</SelectItem>
-                    <SelectItem value="Accountant">Accountant</SelectItem>
+                    {
+                      roles.map(item =>
+                        <SelectItem key={item + "asdasd"} value={item}>{item}</SelectItem>
+                      )
+                    }
                   </SelectContent>
                 </Select>
               </div>
@@ -229,15 +240,15 @@ export function EditEmployeeDialog({ open, onOpenChange, employee, onSave }: Edi
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Full-time">Full-time</SelectItem>
-                    <SelectItem value="Part-time">Part-time</SelectItem>
+                    <SelectItem value="full-time">Full-time</SelectItem>
+                    <SelectItem value="part-time">Part-time</SelectItem>
                     <SelectItem value="Contract">Contract</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="sundayOn">Sunday On *</Label>
-                <Select value={formData.sundayOn || "No"} onValueChange={(value) => handleChange("sundayOn", value)}>
+                <Select value={formData.sundayHoliday ? "Yes" : "No"} onValueChange={(value) => handleChange("sundayOn", value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select option" />
                   </SelectTrigger>
@@ -254,7 +265,7 @@ export function EditEmployeeDialog({ open, onOpenChange, employee, onSave }: Edi
           <TabsContent value="financial" className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="salary">{formData.employeeType === "Part-time" ? "Salary (Year) *" : "Salary *"}</Label>
+                <Label htmlFor="salary">{formData.employeeType === "part-time" ? "Salary (Year) *" : "Salary *"}</Label>
                 <Input
                   id="salary"
                   type="number"
@@ -267,8 +278,8 @@ export function EditEmployeeDialog({ open, onOpenChange, employee, onSave }: Edi
                 <Label htmlFor="panNumber">PAN Number</Label>
                 <Input
                   id="panNumber"
-                  value={formData.panNumber || ""}
-                  onChange={(e) => handleChange("panNumber", e.target.value)}
+                  value={formData.bankDetails.panNumber || ""}
+                  onChange={(e) => handleChange("bankDetails.panNumber", e.target.value)}
                 />
               </div>
             </div>
@@ -278,16 +289,16 @@ export function EditEmployeeDialog({ open, onOpenChange, employee, onSave }: Edi
                 <Label htmlFor="pfNumber">PF Number</Label>
                 <Input
                   id="pfNumber"
-                  value={formData.pfNumber || ""}
-                  onChange={(e) => handleChange("pfNumber", e.target.value)}
+                  value={formData.bankDetails.pfNumber || ""}
+                  onChange={(e) => handleChange("bankDetails.pfNumber", e.target.value)}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="esiNumber">ESI Number</Label>
                 <Input
                   id="esiNumber"
-                  value={formData.esiNumber || ""}
-                  onChange={(e) => handleChange("esiNumber", e.target.value)}
+                  value={formData.bankDetails.esiNumber || ""}
+                  onChange={(e) => handleChange("bankDetails.esiNumber", e.target.value)}
                 />
               </div>
             </div>
@@ -300,16 +311,16 @@ export function EditEmployeeDialog({ open, onOpenChange, employee, onSave }: Edi
                 <Label htmlFor="bankName">Bank Name</Label>
                 <Input
                   id="bankName"
-                  value={formData.bankName || ""}
-                  onChange={(e) => handleChange("bankName", e.target.value)}
+                  value={formData.bankDetails.bankName || ""}
+                  onChange={(e) => handleChange("bankDetails.bankName", e.target.value)}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="bankBranch">Bank Branch</Label>
                 <Input
                   id="bankBranch"
-                  value={formData.bankBranch || ""}
-                  onChange={(e) => handleChange("bankBranch", e.target.value)}
+                  value={formData.bankDetails.bankBranch || ""}
+                  onChange={(e) => handleChange("bankDetails.bankBranch", e.target.value)}
                 />
               </div>
             </div>
@@ -319,16 +330,17 @@ export function EditEmployeeDialog({ open, onOpenChange, employee, onSave }: Edi
                 <Label htmlFor="accountNumber">Account Number</Label>
                 <Input
                   id="accountNumber"
-                  value={formData.accountNumber || ""}
-                  onChange={(e) => handleChange("accountNumber", e.target.value)}
+                  type="number"
+                  value={formData.bankDetails.accountNumber || ""}
+                  onChange={(e) => handleChange("bankDetails.accountNumber", e.target.value)}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="ifscCode">IFSC Code</Label>
                 <Input
                   id="ifscCode"
-                  value={formData.ifscCode || ""}
-                  onChange={(e) => handleChange("ifscCode", e.target.value)}
+                  value={formData.bankDetails.ifscCode || ""}
+                  onChange={(e) => handleChange("bankDetails.ifscCode", e.target.value)}
                 />
               </div>
             </div>

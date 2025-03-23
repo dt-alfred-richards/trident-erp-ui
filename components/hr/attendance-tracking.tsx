@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { CalendarIcon, Filter, Download, Search, Plus, Eye, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
@@ -20,66 +20,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { AttendanceData, useHrContext } from "@/contexts/hr-context"
 import { DataByTableName } from "../utils/api"
 
-// Sample attendance data
-const attendanceData = [
-  {
-    id: 1,
-    employeeId: "EMP001",
-    employeeName: "Rajesh Kumar",
-    date: "2023-10-25",
-    checkIn: "08:55",
-    checkOut: "17:05",
-    totalHours: "8:10",
-    status: "present",
-  },
-  {
-    id: 2,
-    employeeId: "EMP002",
-    employeeName: "Priya Sharma",
-    date: "2023-10-25",
-    checkIn: "08:50",
-    checkOut: "17:30",
-    totalHours: "8:40",
-    status: "present",
-  },
-  {
-    id: 3,
-    employeeId: "EMP003",
-    employeeName: "Amit Patel",
-    date: "2023-10-25",
-    checkIn: "08:45",
-    checkOut: "17:15",
-    totalHours: "8:30",
-    status: "present",
-  },
-  {
-    id: 4,
-    employeeId: "EMP004",
-    employeeName: "Sneha Gupta",
-    date: "2023-10-25",
-    checkIn: "14:00",
-    checkOut: "22:05",
-    totalHours: "8:05",
-    status: "present",
-  },
-  {
-    id: 5,
-    employeeId: "EMP005",
-    employeeName: "Vikram Singh",
-    date: "2023-10-25",
-    status: "absent",
-  },
-  {
-    id: 6,
-    employeeId: "EMP006",
-    employeeName: "Neha Verma",
-    date: "2023-10-25",
-    checkIn: "09:10",
-    checkOut: "18:05",
-    totalHours: "8:55",
-    status: "present",
-  },
-]
 
 // Sample leave balance data
 const leaveBalanceData = [
@@ -189,7 +129,7 @@ export function AttendanceTracking() {
   }, [attendanceDetails])
 
   // Filter attendance data based on search query and selected status
-  const filteredAttendance = attendanceRecords.filter((record) => {
+  const filteredAttendance = useMemo(() => attendanceRecords.filter((record) => {
     const matchesSearch =
       record.employeeId.toLowerCase().includes(searchQuery.toLowerCase()) ||
       record.employeeName.toLowerCase().includes(searchQuery.toLowerCase())
@@ -197,7 +137,7 @@ export function AttendanceTracking() {
     const matchesStatus = selectedStatus === "all" || record.status === selectedStatus
 
     return matchesSearch && matchesStatus
-  })
+  }), [attendanceRecords, searchQuery])
 
   // Filter leave balance data based on search query
   const filteredLeaveBalance = leaveBalanceData.filter((record) => {

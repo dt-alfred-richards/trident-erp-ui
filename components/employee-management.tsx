@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Search, Edit, Eye } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
 import { EditEmployeeDialog } from "./edit-employee-dialog"
+import { textCapitalize, useHrContext } from "@/contexts/hr-context"
 
 // Sample employee data
 const employees = [
@@ -20,7 +21,7 @@ const employees = [
     email: "rajesh.kumar@dhaara.com",
     role: "Production Manager",
     department: "Production",
-    employeeType: "Full-time",
+    employeeType: "full-time",
     salary: 65000,
     contactNumber: "+91 98765 43210",
     dateOfJoining: "2022-05-15",
@@ -33,7 +34,7 @@ const employees = [
     email: "priya.sharma@dhaara.com",
     role: "Line Supervisor",
     department: "Production",
-    employeeType: "Full-time",
+    employeeType: "full-time",
     salary: 45000,
     contactNumber: "+91 98765 43211",
     dateOfJoining: "2022-06-10",
@@ -46,7 +47,7 @@ const employees = [
     email: "amit.patel@dhaara.com",
     role: "Line Worker",
     department: "Production",
-    employeeType: "Full-time",
+    employeeType: "full-time",
     salary: 30000,
     contactNumber: "+91 98765 43212",
     dateOfJoining: "2022-07-05",
@@ -59,7 +60,7 @@ const employees = [
     email: "sneha.gupta@dhaara.com",
     role: "Line Worker",
     department: "Production",
-    employeeType: "Part-time",
+    employeeType: "part-time",
     salary: 200, // hourly rate
     contactNumber: "+91 98765 43213",
     dateOfJoining: "2022-08-20",
@@ -72,7 +73,7 @@ const employees = [
     email: "vikram.singh@dhaara.com",
     role: "Quality Control",
     department: "Production",
-    employeeType: "Full-time",
+    employeeType: "full-time",
     salary: 40000,
     contactNumber: "+91 98765 43214",
     dateOfJoining: "2022-09-15",
@@ -85,7 +86,7 @@ const employees = [
     email: "neha.verma@dhaara.com",
     role: "HR Executive",
     department: "HR",
-    employeeType: "Full-time",
+    employeeType: "full-time",
     salary: 50000,
     contactNumber: "+91 98765 43215",
     dateOfJoining: "2022-04-10",
@@ -94,6 +95,7 @@ const employees = [
 ]
 
 export function EmployeeManagement() {
+  const { roles } = useHrContext();
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedEmployeeType, setSelectedEmployeeType] = useState("all")
   const [selectedDepartment, setSelectedDepartment] = useState("all")
@@ -157,8 +159,8 @@ export function EmployeeManagement() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="Full-time">Full-time</SelectItem>
-              <SelectItem value="Part-time">Part-time</SelectItem>
+              <SelectItem value="full-time">Full-time</SelectItem>
+              <SelectItem value="part-time">Part-time</SelectItem>
             </SelectContent>
           </Select>
 
@@ -168,9 +170,11 @@ export function EmployeeManagement() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Departments</SelectItem>
-              <SelectItem value="Production">Production</SelectItem>
-              <SelectItem value="HR">HR</SelectItem>
-              <SelectItem value="Finance">Finance</SelectItem>
+              {
+                Array.from(roles).map((role, index) => (
+                  <SelectItem key={role + index} value={role}>{role}</SelectItem>
+                ))
+              }
             </SelectContent>
           </Select>
 
@@ -214,12 +218,12 @@ export function EmployeeManagement() {
                   <TableCell>{employee.role}</TableCell>
                   <TableCell>{employee.department}</TableCell>
                   <TableCell>
-                    <Badge variant={employee.employeeType === "Full-time" ? "default" : "secondary"}>
+                    <Badge variant={employee.employeeType === "full-time" ? "default" : "secondary"}>
                       {employee.employeeType}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {employee.employeeType === "Full-time"
+                    {employee.employeeType === "full-time"
                       ? `₹${employee.salary.toLocaleString()}/month`
                       : `₹${employee.salary.toLocaleString()}/hour`}
                   </TableCell>
@@ -288,8 +292,8 @@ export function EmployeeManagement() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h4 className="text-sm font-medium mb-1">Employee Type</h4>
-                  <Badge variant={employee.employeeType === "Full-time" ? "default" : "secondary"}>
-                    {employee.employeeType}
+                  <Badge variant={employee.employeeType === "full-time" ? "default" : "secondary"}>
+                    {employee.employeeType === "full-time" ? "Full time" : "Part time"}
                   </Badge>
                 </div>
                 <div>
@@ -302,7 +306,7 @@ export function EmployeeManagement() {
                 <div>
                   <h4 className="text-sm font-medium mb-1">Salary</h4>
                   <p>
-                    {employee.employeeType === "Full-time"
+                    {employee.employeeType === "full-time"
                       ? `₹${employee.salary.toLocaleString()}/month`
                       : `₹${employee.salary.toLocaleString()}/hour`}
                   </p>

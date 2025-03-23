@@ -229,8 +229,8 @@ export function EditEmployeeDialog({ open, onOpenChange, employee, onSave }: Edi
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Full-time">Full-time</SelectItem>
-                    <SelectItem value="Part-time">Part-time</SelectItem>
+                    <SelectItem value="full-time">Full-time</SelectItem>
+                    <SelectItem value="part-time">Part-time</SelectItem>
                     <SelectItem value="Contract">Contract</SelectItem>
                   </SelectContent>
                 </Select>
@@ -254,7 +254,7 @@ export function EditEmployeeDialog({ open, onOpenChange, employee, onSave }: Edi
           <TabsContent value="financial" className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="salary">{formData.employeeType === "Part-time" ? "Salary (Year) *" : "Salary *"}</Label>
+                <Label htmlFor="salary">{formData.employeeType === "part-time" ? "Salary (Year) *" : "Salary *"}</Label>
                 <Input
                   id="salary"
                   type="number"
