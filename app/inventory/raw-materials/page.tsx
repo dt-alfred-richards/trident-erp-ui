@@ -10,12 +10,13 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { DataByTableName } from "@/components/utils/api"
+import { textCapitalize } from "@/contexts/hr-context"
 
 // Define the raw material interface
 interface RawMaterial {
   category: string
   type: string
-  quantity: number
+  quantity: string,
   unit: string
 }
 
@@ -39,7 +40,7 @@ export default function RawMaterialsPage() {
       const response = await instance.get();
       const data: Response[] = response.data ?? []
 
-      const _rawMaterials: RawMaterial[] = data.map(item => ({ category: item.type, type: item.name, quantity: item.size, unit: item.unitMeasure }))
+      const _rawMaterials: RawMaterial[] = data.map(item => ({ category: textCapitalize(item.type), type: item.name, quantity: item.size, unit: item.unitMeasure }))
       setRawMaterials(_rawMaterials)
     } catch (error) {
       console.log({ error })
@@ -75,9 +76,9 @@ export default function RawMaterialsPage() {
   const totalMaterials = rawMaterials.length
   const lowStockCount = rawMaterials.filter(
     (material) =>
-      (material.quantity < 30 && material.unit === "Boxes") ||
-      (material.quantity < 10000 && material.unit === "Pieces") ||
-      (material.quantity < 20 && material.unit === "Rolls"),
+      (parseInt(material.quantity) < 30 && material.unit === "Boxes") ||
+      (parseInt(material.quantity) < 10000 && material.unit === "Pieces") ||
+      (parseInt(material.quantity) < 20 && material.unit === "Rolls"),
   ).length
   const pendingOrdersCount = 12 // Mock data for pending orders
 
