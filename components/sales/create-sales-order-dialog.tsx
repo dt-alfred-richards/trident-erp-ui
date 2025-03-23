@@ -68,6 +68,7 @@ type ClientType = {
 export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderDialogProps) {
   // Order header state
   const { clientInfo, productInfo, clientAddress = {}, clientProposedPrice = {}, setRefetchData } = useOrders()
+
   const [orderDate] = useState<Date>(new Date()) // Remove setOrderDate since it's now fixed
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<Date | undefined>(undefined)
   const [clientId, setClientId] = useState("")
@@ -80,6 +81,8 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
       id: product.productId, name: product.brand, price: clientProposedPrice[product.productId]?.proposedPrice, taxRate: 0
     }))
   }, [productInfo])
+
+
   const clients = useMemo(() => {
     return Object.values(clientInfo).map(client => {
       if (!clientAddress) return
@@ -146,7 +149,6 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
         setGstNumber(selectedClient.gstNumber)
         setPanNumber(selectedClient.panNumber)
         setAvailableReferences(selectedClient.references)
-        setReference("") // Reset reference when client changes
 
         // Set shipping addresses
         if (selectedClient.shippingAddresses) {
@@ -256,10 +258,10 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
       "amount": total,
       "clientId": clientId,
       "date": dateConverter(orderDate),
-      "expectedDeliveryDate": dateConverter(new Date()),
+      "expectedDeliveryDate": new Date().getTime(),
       "invoiceNumber": "",
       "numOrders": 0,
-      "poDate": dateConverter(new Date()),
+      "poDate": poDate?.getTime(),
       poId,
       "poNumber": "",
       "referenceName": reference,
@@ -277,14 +279,21 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
       expectedDeliveryDate,
       productId: order.productId,
       addressId: selectedAddress?.id,
-      orderId,
       status: "pending_approval",
       tradePrice: order.pricePerCase
     } as OrderDetails))
 
     factSalesInstance.post(salesPayload).then(res => {
-      return orderDetailsInstance.post(orderDetailsPayload)
-    }).then(resetForm)
+      const createdId = res?.data[0]?.orderId ?? "";
+      if (createdId) {
+        const orderPayload = orderDetailsPayload.map(item => ({ ...item, orderId: createdId }))
+        return orderDetailsInstance.post(orderPayload)
+      } else {
+        throw new Error("Order id is not created")
+      }
+    }).then(() => {
+      resetForm();
+    })
       .catch(error => {
         alert(error.message)
       })

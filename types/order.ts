@@ -144,7 +144,7 @@ export const OrderActionService = {
     return await factSalesInstance.patch({
       key: "orderId",
       value: orderId
-    }, { status: "approved" as OrderStatus })
+    }, { status: "approved" })
   },
 
   // Allocate inventory to products in an order

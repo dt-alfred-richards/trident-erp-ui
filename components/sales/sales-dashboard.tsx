@@ -17,11 +17,11 @@ export type FactSales = {
   date: string,
   dc: string,
   dcDate: string,
-  expectedDeliveryDate: string,
+  expectedDeliveryDate: number,
   invoiceNumber: string,
   numOrders: number,
   orderId?: string,
-  poDate: string,
+  poDate: string | number,
   poId: string,
   poNumber: string,
   referenceName: string,
@@ -73,8 +73,6 @@ export function SalesDashboard() {
   const salesInstance = new DataByTableName("fact_sales");
   const orderDetails = new DataByTableName("order_details") as any;
 
-  console.log({ clientProposedPrice })
-
   const getPriority = useCallback((quantity: number) => {
     if (quantity <= 1000) {
       return "high"
@@ -100,7 +98,7 @@ export function SalesDashboard() {
           units
         })
       })
-      const { contactNumber, email, gst, name = "", pan, reference, type, clientId } = clientInfo[item.custId] ?? {}
+      const { contactNumber, email, gst, name = "", pan, reference, type, clientId } = clientInfo[item.clientId] ?? {}
 
       const { addressLine_1 = "", addressLine_2 = "", cityDistrictState = "", pincode } = (clientAddress[clientId] ?? [])[0] ?? {}
 
@@ -112,7 +110,7 @@ export function SalesDashboard() {
         billingAddress: address,
         shippingAddress: address,
         customer: name,
-        deliveryDate: item.expectedDeliveryDate,
+        deliveryDate: new Date(item.expectedDeliveryDate).toDateString(),
         id: item.orderId,
         orderDate: item.date,
         priority: getPriority(orderProducts.reduce((acc, curr) => {
