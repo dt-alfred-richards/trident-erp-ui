@@ -67,7 +67,7 @@ type ClientType = {
 
 export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderDialogProps) {
   // Order header state
-  const { clientInfo, productInfo, clientAddress = {}, clientProposedPrice, setRefetchData } = useOrders()
+  const { clientInfo, productInfo, clientAddress = {}, clientProposedPrice = {}, setRefetchData } = useOrders()
   const [orderDate] = useState<Date>(new Date()) // Remove setOrderDate since it's now fixed
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<Date | undefined>(undefined)
   const [clientId, setClientId] = useState("")
@@ -77,7 +77,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
   const [remarks, setRemarks] = useState("")
   const products = useMemo(() => {
     return Object.values(productInfo).map(product => ({
-      id: product.productId, name: product.brand, price: clientProposedPrice[product.productId].proposedPrice, taxRate: 0
+      id: product.productId, name: product.brand, price: clientProposedPrice[product.productId]?.proposedPrice, taxRate: 0
     }))
   }, [productInfo])
   const clients = useMemo(() => {

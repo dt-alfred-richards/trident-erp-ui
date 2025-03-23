@@ -67,11 +67,13 @@ const getNumber = (str: string) => {
 };
 
 export function SalesDashboard() {
-  const { setOrders, clientProposedPrice, clientInfo, refetchData, updateNonSerilizedData, setRefetchData, productInfo, clientAddress } = useOrders()
+  const { setOrders, clientProposedPrice = {}, clientInfo, refetchData, updateNonSerilizedData, setRefetchData, productInfo, clientAddress } = useOrders()
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("order-book")
   const salesInstance = new DataByTableName("fact_sales");
   const orderDetails = new DataByTableName("order_details") as any;
+
+  console.log({ clientProposedPrice })
 
   const getPriority = useCallback((quantity: number) => {
     if (quantity <= 1000) {
