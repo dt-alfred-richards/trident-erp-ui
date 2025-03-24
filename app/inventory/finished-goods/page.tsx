@@ -13,15 +13,17 @@ import { Separator } from "@/components/ui/separator"
 import { OrderDetails } from "@/components/sales/sales-dashboard"
 import { DataByTableName } from "@/components/utils/api"
 import { useOrders } from "@/contexts/order-context"
-import { OrderProduct } from "@/types/order"
+import { FinishedGoodsContext } from "./context"
 
-interface Order {
+export interface Order {
   id: string
   customer: string
   dueDate: string
   priority: "urgent" | "high-value" | "standard"
   status: string
-  products: OrderProduct[]
+  products: OrderProduct[],
+  productId: string,
+  casesReserved: number
 }
 
 interface OrderProduct {
@@ -43,13 +45,6 @@ export type Allocations = {
   requested: OrderDetails["cases"],
   status: OrderDetails["status"],
   reason: string,
-}
-
-interface AllocationDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onAllocate: (orderId: string, products: { id: string; quantity: number }[]) => void
-  initialSku?: string | null
 }
 
 export default function FinishedGoodsPage() {
@@ -82,29 +77,37 @@ export default function FinishedGoodsPage() {
       const orderDetails = new DataByTableName("order_details") as any;
       const response = await orderDetails.get();
       const orders: OrderDetails[] = response.data ?? [];
-      console.log({ orders })
-      const mockOrders: Order[] = orders.map((order: OrderDetails) => ({
-        id: Math.floor(Math.random() * 100000) + "",
+
+      const mockOrders: Order[] = Object.values(Object.fromEntries(orders.map((order: OrderDetails) => [order.orderId, {
+        id: order.orderId,
         customer: order.clientId,
         dueDate: new Date(order.expectedDeliveryDate)?.toDateString(),
         priority: getPriority(order.expectedDeliveryDate),
         status: order.status,
-        products: orders.filter(item => order.orderId === item.orderId).map(({ productId, casesReserved, casesDelivered, cases }, index) => {
-          const { brand, sku = "", units = "" } = productInfo[productId] ?? {}
+        productId: order.productId,
+        casesReserved: order.casesReserved,
+        products: []
+      }])));
+      const updatedMockOrders = mockOrders.map((order: Order) => {
+        const products = orders.filter(item => order.id === item.orderId).map(({ productId, casesReserved, casesDelivered, cases }, index) => {
+          const { brand = "", sku = "", units = "" } = productInfo[productId] ?? {}
           return ({
             id: index + "",
             name: brand,
-            price: clientProposedPrice[order.clientId]?.proposedPrice ?? 0,
+            price: clientProposedPrice[order.customer]?.proposedPrice ?? 0,
             quantity: cases,
             allocated: casesReserved,
             delivered: casesDelivered,
             sku,
-            units
+            units,
           })
         })
-      }))
+        order.products = products;
+        return order;
+      })
+
       const _allocations = orders.map((order, index) => ({
-        id: Math.floor(Math.random() * 10000) + "",
+        id: index + "",
         timestamp: new Date(order.createdOn)?.toLocaleString(),
         user: order.clientId,
         orderId: order.orderId,
@@ -115,8 +118,9 @@ export default function FinishedGoodsPage() {
         status: order.status,
         reason: "",
       }))
+      const skus = Array.from(new Set(allocations.map(item => item.sku)));
       setAllocations(_allocations)
-      setOrders(mockOrders)
+      setOrders(updatedMockOrders)
       setOrderDetails(orders)
     } catch (error) {
       console.log({ error })
@@ -124,6 +128,7 @@ export default function FinishedGoodsPage() {
   }, [clientInfo, clientProposedPrice, productInfo])
 
   useEffect(() => {
+    if (Object.values(productInfo).length == 0) return;
     fetchData()
   }, [clientInfo, clientProposedPrice, productInfo])
 
@@ -139,75 +144,75 @@ export default function FinishedGoodsPage() {
     })
   }
 
-  console.log({ allocations })
-
   return (
-    <DashboardShell className="p-6">
-      <CardHeader className="px-0 pt-0 pb-4 flex flex-row items-center justify-between">
-        <CardTitle className="text-2xl font-bold">Finished Goods Inventory Management</CardTitle>
-        <Button
-          onClick={() => {
-            setSelectedSku(null) // Clear any selected SKU
-            setShowAllocationDialog(true)
-          }}
-          className="ml-auto"
-          variant="default"
-        >
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Allocate Stock
-        </Button>
-      </CardHeader>
+    <FinishedGoodsContext.Provider value={{ orders, allocations }}>
+      <DashboardShell className="p-6">
+        <CardHeader className="px-0 pt-0 pb-4 flex flex-row items-center justify-between">
+          <CardTitle className="text-2xl font-bold">Finished Goods Inventory Management</CardTitle>
+          <Button
+            onClick={() => {
+              setSelectedSku(null) // Clear any selected SKU
+              setShowAllocationDialog(true)
+            }}
+            className="ml-auto"
+            variant="default"
+          >
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Allocate Stock
+          </Button>
+        </CardHeader>
 
-      <div className="space-y-6">
-        {/* Inventory Overview */}
-        <Card>
-          <CardContent className="pt-6">
-            <InventoryTable
-              onAllocate={(sku) => {
-                setSelectedSku(sku)
-                setShowAllocationDialog(true)
-              }}
-            />
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          {/* Inventory Overview */}
+          <Card>
+            <CardContent className="pt-6">
+              <InventoryTable
+                onAllocate={(sku) => {
+                  setSelectedSku(sku)
+                  setShowAllocationDialog(true)
+                }}
+              />
+            </CardContent>
+          </Card>
 
-        {/* Allocation History Section - Now expanded by default */}
-        <div>
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-medium">Allocation History</h3>
-            <Button variant="ghost" size="sm" onClick={() => setShowHistory(!showHistory)}>
-              {showHistory ? (
-                <>
-                  <ChevronUp className="h-4 w-4 mr-2" />
-                  Hide History
-                </>
-              ) : (
-                <>
-                  <ChevronDown className="h-4 w-4 mr-2" />
-                  Show History
-                </>
-              )}
-            </Button>
+          {/* Allocation History Section - Now expanded by default */}
+          <div>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-medium">Allocation History</h3>
+              <Button variant="ghost" size="sm" onClick={() => setShowHistory(!showHistory)}>
+                {showHistory ? (
+                  <>
+                    <ChevronUp className="h-4 w-4 mr-2" />
+                    Hide History
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-4 w-4 mr-2" />
+                    Show History
+                  </>
+                )}
+              </Button>
+            </div>
+            <Separator className="my-4" />
+            {showHistory && (
+              <Card>
+                <CardContent className="pt-6">
+                  <AllocationHistory />
+                </CardContent>
+              </Card>
+            )}
           </div>
-          <Separator className="my-4" />
-          {showHistory && (
-            <Card>
-              <CardContent className="pt-6">
-                <AllocationHistory allocations={allocations} />
-              </CardContent>
-            </Card>
-          )}
         </div>
-      </div>
 
-      <AllocationDialog
-        open={showAllocationDialog}
-        onOpenChange={setShowAllocationDialog}
-        onAllocate={handleAllocate}
-        initialSku={selectedSku}
-        orders={orders}
-      />
-    </DashboardShell>
+        <AllocationDialog
+          open={showAllocationDialog}
+          onOpenChange={setShowAllocationDialog}
+          onAllocate={handleAllocate}
+          initialSku={selectedSku}
+          orders={orders}
+        />
+      </DashboardShell>
+    </FinishedGoodsContext.Provider>
   )
 }
 

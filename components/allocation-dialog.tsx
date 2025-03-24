@@ -472,7 +472,7 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
                 </div>
               </div>
 
-              <ScrollArea className="flex-1 p-6">
+              <ScrollArea className="flex-1 p-6" style={{ overflowY: 'scroll' }}>
                 <div className="space-y-6">
                   <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wider">
                     Products to Allocate

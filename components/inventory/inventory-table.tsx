@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useContext, useEffect, useRef, useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -9,6 +9,8 @@ import { useToast } from "@/hooks/use-toast"
 import { DataByTableName } from "../utils/api"
 import { useOrders } from "@/contexts/order-context"
 import { Order } from "@/types/order"
+import { createType } from "../utils/generic"
+import { FinishedGoodsContext } from "@/app/inventory/finished-goods/context"
 
 interface InventoryTableProps {
   onAllocate?: (sku: string) => void
@@ -35,9 +37,25 @@ type InventoryData = {
   available: number,
   reserved: number,
   inProduction: number,
+  id: number
+}
+
+type Response = {
+  id: number,
+  productId: string,
+  opening: number,
+  production: number,
+  outward: number,
+  closing: number,
+  createdOn: number,
+  createdBy: object,
+  modifiedOn: number,
+  modifiedBy: object,
+  reserved: number
 }
 
 export function InventoryTable({ onAllocate }: InventoryTableProps) {
+  const { orders } = useContext(FinishedGoodsContext)
   const [searchTerm, setSearchTerm] = useState("")
   const { productInfo, refetchData } = useOrders();
   const [sortColumn, setSortColumn] = useState<string | null>(null)
@@ -47,37 +65,39 @@ export function InventoryTable({ onAllocate }: InventoryTableProps) {
 
   const fetchRef = useRef(true);
 
+  const fetchData = useCallback(async () => {
+    const finishedGoodsInstance = new DataByTableName("fact_fp_inventory_v2");
+    const cummilativeInstance = new DataByTableName("cumulative_inventory");
+
+    Promise.allSettled([
+      finishedGoodsInstance.get(),
+      // cummilativeInstance.get()
+    ]).then((responses: any[]) => {
+      // const cummulative = Object.fromEntries((responses[1].value.data ?? []).map((item: { productId: string }) => [item.productId, item]));
+      const _inventoryData = responses[0].value.data.map((item: Response) => ({
+        available: item.opening,
+        inProduction: item.production,
+        reserved: orders.filter(i => i.productId === item.productId).reduce((acc, curr) => {
+          acc += curr?.casesReserved ?? 0;
+          return acc;
+        }, 0),
+        sku: productInfo[item.productId]?.sku ?? "",
+        product: productInfo[item.productId] ?? {},
+        id: item.id
+      }) as InventoryData)
+      setInventoryData(_inventoryData)
+    }).catch(error => {
+      console.log({ error })
+    })
+
+  }, [productInfo])
+
   const fetchInventory = useCallback(() => {
-    if (!fetchRef.current) return;
+    if (!fetchRef.current || !Object.values(productInfo).length) return;
     fetchRef.current = false;
 
-    const finalInstance = new DataByTableName("fact_fp_inventory");
-    const cummulativeInstance = new DataByTableName("cumulative_inventory");
-
-    Promise.allSettled([finalInstance.get(), cummulativeInstance.get()]).then((responses: any[]) => {
-      const finalInventory = responses[0].value.data ?? [] as FinalProduction[]
-      const cummulativeInventory = responses[1].value.data ?? [] as Cummulative[]
-      const inventory = Object.fromEntries((finalInventory as FinalProduction[]).map(item => [item.productId, item])) as Record<string, FinalProduction & Cummulative>
-
-      cummulativeInventory.forEach((item: Cummulative) => {
-        if (inventory[item.productId]) {
-          inventory[item.productId] = {
-            ...inventory[item.productId],
-            ...item
-          }
-        }
-      })
-
-      const _inventoryData: InventoryData[] = Object.values(inventory).map((item, index) => ({
-        sku: productInfo[item.productId]?.brand || "" + index,
-        available: item.opening,
-        reserved: 0,
-        inProduction: item.production,
-      })) as InventoryData[]
-      setInventoryData(_inventoryData)
-      console.log({ _inventoryData, inventory, cummulativeInventory })
-    })
-  }, [refetchData])
+    fetchData();
+  }, [productInfo])
 
   useEffect(fetchInventory, [refetchData])
 
@@ -145,6 +165,14 @@ export function InventoryTable({ onAllocate }: InventoryTableProps) {
         <Table>
           <TableHeader className="sticky top-0 bg-background z-10">
             <TableRow>
+              <TableHead className="cursor-pointer hidden" onClick={() => handleSort("id")}>
+                <div className="flex items-center">
+                  id
+                  {sortColumn === "id" && (
+                    <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === "desc" ? "transform rotate-180" : ""}`} />
+                  )}
+                </div>
+              </TableHead>
               <TableHead className="cursor-pointer" onClick={() => handleSort("sku")}>
                 <div className="flex items-center">
                   SKU
@@ -194,7 +222,8 @@ export function InventoryTable({ onAllocate }: InventoryTableProps) {
                 const total = item.available + item.reserved + item.inProduction
 
                 return (
-                  <TableRow key={item.sku}>
+                  <TableRow key={item.id}>
+                    <TableCell className="font-medium hidden">item.id}</TableCell>
                     <TableCell className="font-medium">{item.sku}</TableCell>
                     <TableCell className="text-right text-blue-600 font-medium">
                       {item.available.toLocaleString()}

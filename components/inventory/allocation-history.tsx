@@ -1,24 +1,22 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { FinishedGoodsContext } from "@/app/inventory/finished-goods/context"
+import { Allocations } from "@/app/inventory/finished-goods/page"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { CalendarIcon, Download, Search } from "lucide-react"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format } from "date-fns"
-import { useOrders } from "@/contexts/order-context"
-import { OrderDetails } from "../sales/sales-dashboard"
-import { DataByTableName } from "../utils/api"
-import { Allocations } from "@/app/inventory/finished-goods/page"
+import { CalendarIcon, Download, Search } from "lucide-react"
+import moment from "moment"
+import { useContext, useState } from "react"
 
-
-
-export function AllocationHistory({ allocations }: { allocations: Allocations[] }) {
+export function AllocationHistory() {
+  const { allocations } = useContext(FinishedGoodsContext);
   const [startDate, setStartDate] = useState<Date>()
   const [endDate, setEndDate] = useState<Date>()
   const [filterSku, setFilterSku] = useState<string>("all")
@@ -172,7 +170,7 @@ export function AllocationHistory({ allocations }: { allocations: Allocations[] 
           <TableBody>
             {filteredHistory.map((item) => (
               <TableRow key={item.id}>
-                <TableCell className="whitespace-nowrap">{new Date(item.timestamp).toLocaleString()}</TableCell>
+                <TableCell className="whitespace-nowrap">{moment(item.timestamp).format('DD-MM-YYYY')}</TableCell>
                 <TableCell>{item.user}</TableCell>
                 <TableCell className="font-medium">{item.orderId}</TableCell>
                 <TableCell>{item.customer}</TableCell>
@@ -181,7 +179,7 @@ export function AllocationHistory({ allocations }: { allocations: Allocations[] 
                   {item.allocated.toLocaleString()} / {item.requested.toLocaleString()}
                 </TableCell>
                 <TableCell>
-                  {item.status === "partial" ? (
+                  {item.status === "partial_fulfillment" ? (
                     <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
                       Partial
                     </Badge>

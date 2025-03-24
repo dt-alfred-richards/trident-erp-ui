@@ -30,7 +30,6 @@ type Formdata = Omit<EmployeeRow, "bankDetails">
 export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps) {
   const [activeTab, setActiveTab] = useState("personal")
   const { roles = [], refetchData } = useHrContext()
-  console.log({ roles })
   // Update the formData state to include aadhaarImage
   const [formData, setFormData] = useState<Partial<Formdata>>({})
 
@@ -73,8 +72,6 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
       reader.readAsDataURL(file)
     }
   }
-
-  console.log({ formData })
 
   // Update the handleSubmit function to include the Aadhaar image
   const handleSubmit = () => {
@@ -280,7 +277,6 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
                     !aadhaarImage ||
                     !formData.address
                   ) {
-                    console.log({ formData, aadhaarImage })
                     alert("Please fill all required fields including Aadhaar card image")
                     return
                   }

@@ -42,17 +42,17 @@ export type Product = {
 }
 
 export type OrderDetails = {
-  "orderId": string,
-  "productId": string,
-  "cases": number,
-  "tradePrice": number,
-  "expectedDeliveryDate": Date,
-  "status": OrderStatus,
-  "clientId": string,
-  "casesDelivered": number,
-  "casesReserved": number,
-  "addressId"?: string | null,
-  "orderSubId": string,
+  orderId: string,
+  productId: string,
+  cases: number,
+  tradePrice: number,
+  expectedDeliveryDate: Date,
+  status: OrderStatus,
+  clientId: string,
+  casesDelivered: number,
+  casesReserved: number,
+  addressId?: string | null,
+  orderSubId: string,
   modifiedOn: Date,
   brand: string,
   createdOn: number

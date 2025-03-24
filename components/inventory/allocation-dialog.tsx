@@ -33,7 +33,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { DataByTableName } from "../utils/api"
-import { OrderDetails } from "../sales/sales-dashboard"
 import { useOrders } from "@/contexts/order-context"
 
 interface Order {
@@ -140,23 +139,25 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
   }
 
   // Handle allocation submission
-  const handleSubmitAllocation = async () => {
-    try {
-      if (!selectedOrder) return
-      const { id: orderId } = selectedOrder
-      const instance = new DataByTableName("order_details");
-      const { data, error } = await instance.patch({
-        key: "orderId",
-        value: orderId
-      }, { "casesReserved": allocations })
-      if (error) {
-        throw new Error(error.message)
-      }
-      onOpenChange(false)
-    } catch (error) {
-      console.log({ error })
-    }
-  }
+  const handleSubmitAllocation = useCallback(async () => {
+    if (!selectedOrder) return;
+
+    const { products } = selectedOrder;
+    const instance = new DataByTableName("order_details");
+
+    const allocationEntries = Object.entries(allocations)
+      .filter(([key]) => !isNaN(Number(key))) // Filter out non-numeric keys
+      .map(([key, casesReserved]) =>
+        instance.patch(
+          { key: "productId", value: products[Number(key)].id },
+          { casesReserved }
+        )
+      );
+
+    await Promise.allSettled(allocationEntries);
+
+    onOpenChange(false);
+  }, [allocations, selectedOrder])
 
   // Get priority badge
   const getPriorityBadge = (priority: string) => {
@@ -399,13 +400,13 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
                 </div>
               </div>
 
-              <ScrollArea className="flex-1 p-6">
+              <ScrollArea className="flex-1 p-6" style={{ overflowY: 'scroll' }}>
                 <div className="space-y-6">
                   <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wider">
                     Products to Allocate
                   </h4>
 
-                  <div className="grid gap-4">
+                  <div className="grid gap-4 ">
                     {/* Filter products based on search type and term */}
                     {getFilteredProducts(selectedOrder.products).map((product) => {
                       const remaining = getRemainingQuantity(product)

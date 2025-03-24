@@ -87,9 +87,6 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
     return Object.values(clientInfo).map(client => {
       if (!clientAddress) return
       const address = clientAddress[client.clientId] ?? []
-      if (address.length > 0) {
-        console.log({ address })
-      }
       return ({
         id: client.clientId,
         name: client.name,

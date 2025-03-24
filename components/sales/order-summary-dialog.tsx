@@ -29,7 +29,6 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
   const taxes = subtotal * 0.18
   const discount = 0 // Could be dynamic in a real app
   const total = subtotal + taxes - discount
-  console.log({ order })
   const handlePrint = () => {
     window.print()
   }
