@@ -143,10 +143,10 @@ export function EmployeeManagement() {
     setEmployeeData(employeeData.map((emp) => (emp.id === updatedEmployee.id ? updatedEmployee : emp)))
   }
 
-    const roles = useMemo(() => {
-      return new Set(employeeData.map(item => item.role));
-    }, [employeeData])
-  
+  const roles = useMemo(() => {
+    return new Set(employeeData.map(item => item.role));
+  }, [employeeData])
+
 
   const employee = useMemo(() => selectedEmployee ? employeeData.find((e) => e.id === selectedEmployee) : null, [selectedEmployee])
 
@@ -195,8 +195,8 @@ export function EmployeeManagement() {
             <SelectContent>
               <SelectItem value="all">All Departments</SelectItem>
               {
-                Array.from(roles).map(role => (
-                  <SelectItem value={role}>{role}</SelectItem>
+                Array.from(roles).map((role, index) => (
+                  <SelectItem key={role + index} value={role}>{role}</SelectItem>
                 ))
               }
             </SelectContent>
@@ -303,7 +303,7 @@ export function EmployeeManagement() {
                 <div>
                   <h4 className="text-sm font-medium mb-1">Employee Type</h4>
                   <Badge variant={employee.employeeType === "full-time" ? "default" : "secondary"}>
-                  {employee.employeeType === "full-time" ? "Full time" : "Part time"}
+                    {employee.employeeType === "full-time" ? "Full time" : "Part time"}
                   </Badge>
                 </div>
                 <div>
