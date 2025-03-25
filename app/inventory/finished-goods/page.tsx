@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { DashboardShell } from "@/components/dashboard-shell"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -47,6 +47,22 @@ export type Allocations = {
   reason: string,
 }
 
+type FinalProduction = {
+  date: string,
+  productId: string,
+  opening: number,
+  production: number,
+  outward: number,
+  closing: number
+}
+
+type Cummulative = {
+  date: string,
+  productId: string,
+  stock: number
+}
+
+
 export default function FinishedGoodsPage() {
   const [showAllocationDialog, setShowAllocationDialog] = useState(false)
   const [showHistory, setShowHistory] = useState(true) // Set to true by default
@@ -54,83 +70,49 @@ export default function FinishedGoodsPage() {
   const [selectedSku, setSelectedSku] = useState<string | null>(null)
 
   const [orderDetails, setOrderDetails] = useState<OrderDetails[]>([])
-  const { productInfo, clientProposedPrice, clientInfo } = useOrders();
   const [orders, setOrders] = useState<Order[]>([])
-  const [allocations, setAllocations] = useState<Allocations[]>([])
-
-  const getPriority = useCallback((date: Date): "urgent" | "high-value" | "standard" => {
-    // const now = new Date();
-    // const diffInDays = Math.floor((date?.getTime() - now?.getTime()) / (1000 * 60 * 60 * 24));
-
-    // if (diffInDays < 10) {
-    //   return "urgent";
-    // } else if (diffInDays < 20) {
-    //   return "high-value";
-    // } else {
-    //   return "standard";
-    // }
-    return "high-value"
+  const [finishedGoods, setFinishedGoods] = useState<FinalProduction[]>([])
+  const [cummlative, setCummlative] = useState<Cummulative[]>([])
+  const fetchRef = useRef(true)
+  const [rerender, setrender] = useState(true)
+  const getPriority = useCallback((date: Date) => {
+    return "no-status"
   }, []);
 
-  const fetchData = useCallback(async () => {
-    try {
-      const orderDetails = new DataByTableName("order_details") as any;
-      const response = await orderDetails.get();
-      const orders: OrderDetails[] = response.data ?? [];
 
-      const mockOrders: Order[] = Object.values(Object.fromEntries(orders.map((order: OrderDetails) => [order.orderId, {
-        id: order.orderId,
-        customer: order.clientId,
-        dueDate: new Date(order.expectedDeliveryDate)?.toDateString(),
-        priority: getPriority(order.expectedDeliveryDate),
-        status: order.status,
-        productId: order.productId,
-        casesReserved: order.casesReserved,
-        products: []
-      }])));
-      const updatedMockOrders = mockOrders.map((order: Order) => {
-        const products = orders.filter(item => order.id === item.orderId).map(({ productId, casesReserved, casesDelivered, cases }, index) => {
-          const { brand = "", sku = "", units = "" } = productInfo[productId] ?? {}
-          return ({
-            id: index + "",
-            name: brand,
-            price: clientProposedPrice[order.customer]?.proposedPrice ?? 0,
-            quantity: cases,
-            allocated: casesReserved,
-            delivered: casesDelivered,
-            sku,
-            units,
-          })
-        })
-        order.products = products;
-        return order;
-      })
+  const setRerender = useCallback(() => {
+    setrender(true)
+    fetchRef.current = true;
+  }, [rerender])
 
-      const _allocations = orders.map((order, index) => ({
-        id: index + "",
-        timestamp: new Date(order.createdOn)?.toLocaleString(),
-        user: order.clientId,
-        orderId: order.orderId,
-        customer: clientInfo[order.clientId]?.name ?? "",
-        sku: productInfo[order.productId]?.sku ?? "",
-        allocated: order.casesReserved,
-        requested: order.cases,
-        status: order.status,
-        reason: "",
-      }))
-      const skus = Array.from(new Set(allocations.map(item => item.sku)));
-      setAllocations(_allocations)
-      setOrders(updatedMockOrders)
-      setOrderDetails(orders)
-    } catch (error) {
-      console.log({ error })
-    }
-  }, [clientInfo, clientProposedPrice, productInfo])
+  const fetchV2 = useCallback(() => {
+    if (!fetchRef.current) return;
+
+    fetchRef.current = false;
+    const orderDetails = new DataByTableName("order_details") as any;
+    const finishedGoodsInstance = new DataByTableName("fact_fp_inventory_v2");
+    const cummilativeInstance = new DataByTableName("cumulative_inventory");
+
+    Promise.allSettled([
+      orderDetails.get(),
+      finishedGoodsInstance.get(),
+      cummilativeInstance.get()
+    ]).then((responses: any[]) => {
+      const _orderDetails = responses[0]?.value.data;
+      const _factInventory = responses[1]?.value.data;
+      const _cummulative = responses[2]?.value.data;
+
+      setOrderDetails(_orderDetails)
+      setFinishedGoods(_factInventory)
+      setCummlative(_cummulative)
+    }).finally(() => {
+      setrender(false);
+    })
+  }, [rerender])
 
   useEffect(() => {
-    if (Object.values(productInfo).length == 0) return;
-    fetchData()
-  }, [clientInfo, clientProposedPrice, productInfo])
+    fetchV2()
+  }, [rerender])
 
   const handleAllocate = (orderId: string, products: { id: string; quantity: number }[]) => {
     // In a real application, this would call an API to allocate stock
@@ -145,7 +127,7 @@ export default function FinishedGoodsPage() {
   }
 
   return (
-    <FinishedGoodsContext.Provider value={{ orders, allocations }}>
+    <FinishedGoodsContext.Provider value={{ cummlative, finishedGoods, orderDetails, setRerender }}>
       <DashboardShell className="p-6">
         <CardHeader className="px-0 pt-0 pb-4 flex flex-row items-center justify-between">
           <CardTitle className="text-2xl font-bold">Finished Goods Inventory Management</CardTitle>
@@ -209,7 +191,6 @@ export default function FinishedGoodsPage() {
           onOpenChange={setShowAllocationDialog}
           onAllocate={handleAllocate}
           initialSku={selectedSku}
-          orders={orders}
         />
       </DashboardShell>
     </FinishedGoodsContext.Provider>

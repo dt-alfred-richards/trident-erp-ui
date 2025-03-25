@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useContext, useMemo } from "react"
 import {
   Dialog,
   DialogContent,
@@ -34,9 +34,12 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { DataByTableName } from "../utils/api"
 import { useOrders } from "@/contexts/order-context"
+import { FinishedGoodsContext } from "@/app/inventory/finished-goods/context"
+import { OrderDetails } from "../sales/sales-dashboard"
 
 interface Order {
-  id: string
+  id: string,
+  productId: string,
   customer: string
   dueDate: string
   priority: "urgent" | "high-value" | "standard"
@@ -49,7 +52,8 @@ interface OrderProduct {
   name: string
   sku: string
   quantity: number
-  allocated?: number
+  allocated?: number,
+  productId: string,
 }
 
 interface AllocationDialogProps {
@@ -57,11 +61,11 @@ interface AllocationDialogProps {
   onOpenChange: (open: boolean) => void
   onAllocate: (orderId: string, products: { id: string; quantity: number }[]) => void
   initialSku?: string | null,
-  orders: Order[]
 }
 
-export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = null, orders }: AllocationDialogProps) {
+export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = null }: AllocationDialogProps) {
   const { productInfo, clientProposedPrice } = useOrders();
+  const { orderDetails = [], setRerender } = useContext(FinishedGoodsContext);
   const [searchTerm, setSearchTerm] = useState("")
   const [searchType, setSearchType] = useState<"sku" | "order" | "customer">("order")
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
@@ -84,23 +88,64 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
     }
   }, [open, initialSku])
 
+  const getPriority = useCallback((date: Date): "urgent" | "high-value" | "standard" => {
+    // const now = new Date();
+    // const diffInDays = Math.floor((date?.getTime() - now?.getTime()) / (1000 * 60 * 60 * 24));
+
+    // if (diffInDays < 10) {
+    //   return "urgent";
+    // } else if (diffInDays < 20) {
+    //   return "high-value";
+    // } else {
+    //   return "standard";
+    // }
+    return "high-value"
+  }, []);
+
   // Filter orders based on search term and type
   useEffect(() => {
-    let filtered = [...orders]
-
+    const mockOrders: Order[] = Object.values(Object.fromEntries(orderDetails.map((order: OrderDetails) => [order.orderId, {
+      id: order.orderId,
+      customer: order.clientId,
+      dueDate: new Date(order.expectedDeliveryDate)?.toDateString(),
+      priority: getPriority(order.expectedDeliveryDate),
+      status: order.status,
+      productId: order.productId,
+      casesReserved: order.casesReserved,
+      products: []
+    }])));
+    const updatedMockOrders = mockOrders.map((order: Order) => {
+      const products = orderDetails.filter(item => order.id === item.orderId).map(({ productId, casesReserved, casesDelivered, cases }, index) => {
+        const { brand = "", sku = "", units = "" } = productInfo[productId] ?? {}
+        return ({
+          id: productId,
+          productId,
+          name: brand,
+          price: clientProposedPrice[order.customer]?.proposedPrice ?? 0,
+          quantity: cases,
+          allocated: casesReserved,
+          delivered: casesDelivered,
+          sku,
+          units,
+        })
+      })
+      order.products = Array.from(new Map(products.map(item => [item.productId, item])).values());
+      return order;
+    })
+    let filtered = [...updatedMockOrders]
     // Apply search filter
     if (searchTerm) {
       if (searchType === "sku") {
-        filtered = orders.filter((order) =>
+        filtered = updatedMockOrders.filter((order) =>
           order.products.some(
             (product) =>
               product.sku.toLowerCase().includes(searchTerm.toLowerCase()) && getRemainingQuantity(product) > 0,
           ),
         )
       } else if (searchType === "order") {
-        filtered = orders.filter((order) => order.id.toLowerCase().includes(searchTerm.toLowerCase()))
+        filtered = updatedMockOrders.filter((order) => order.id.toLowerCase().includes(searchTerm.toLowerCase()))
       } else if (searchType === "customer") {
-        filtered = orders.filter((order) => order.customer.toLowerCase().includes(searchTerm.toLowerCase()))
+        filtered = updatedMockOrders.filter((order) => order.id.toLowerCase().includes(searchTerm.toLowerCase()))
       }
     }
 
@@ -110,7 +155,7 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
     }
 
     setFilteredOrders(filtered)
-  }, [searchTerm, searchType, orders, priorityFilter])
+  }, [searchTerm, searchType, orderDetails, priorityFilter])
 
   // Handle order selection
   const handleOrderSelect = (order: Order) => {
@@ -119,7 +164,7 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
     // Initialize allocations with zeros
     const initialAllocations: Record<string, number> = {}
     order.products.forEach((product) => {
-      initialAllocations[product.id] = 0
+      initialAllocations[product.productId] = 0
     })
     setAllocations(initialAllocations)
   }
@@ -145,18 +190,19 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
     const { products } = selectedOrder;
     const instance = new DataByTableName("order_details");
 
-    const allocationEntries = Object.entries(allocations)
-      .filter(([key]) => !isNaN(Number(key))) // Filter out non-numeric keys
-      .map(([key, casesReserved]) =>
-        instance.patch(
-          { key: "productId", value: products[Number(key)].id },
-          { casesReserved }
-        )
-      );
-
-    await Promise.allSettled(allocationEntries);
-
-    onOpenChange(false);
+    const values = Object.entries(allocations).filter(item => item[1])
+      .map(([key, value]) => (
+        instance.patch({
+          key: "productId",
+          value: key
+        }, { casesReserved: (products.find(item => item.productId === key)?.allocated || 0) + value })
+      ))
+    await Promise.allSettled(values).then(() => {
+      onOpenChange(false);
+      setRerender()
+    }).catch(error => {
+      console.log({ error })
+    })
   }, [allocations, selectedOrder])
 
   // Get priority badge

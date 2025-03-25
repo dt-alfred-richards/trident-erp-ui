@@ -10,21 +10,41 @@ import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useOrders } from "@/contexts/order-context"
 import { format } from "date-fns"
 import { CalendarIcon, Download, Search } from "lucide-react"
 import moment from "moment"
-import { useContext, useState } from "react"
+import { useCallback, useContext, useEffect, useMemo, useState } from "react"
 
 export function AllocationHistory() {
-  const { allocations } = useContext(FinishedGoodsContext);
+  const { orderDetails } = useContext(FinishedGoodsContext);
+  const { clientInfo, productInfo } = useOrders();
   const [startDate, setStartDate] = useState<Date>()
   const [endDate, setEndDate] = useState<Date>()
   const [filterSku, setFilterSku] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState<string>("")
   const [filterStatus, setFilterStatus] = useState<string>("all")
+  const [allocations, setAllocations] = useState<Allocations[]>([])
+
+  useEffect(() => {
+    if (orderDetails.length == 0) return
+    const _allocations = orderDetails.map((order, index) => ({
+      id: index + "",
+      timestamp: new Date(order.createdOn).toLocaleDateString(),
+      user: order.clientId,
+      orderId: order.orderId,
+      customer: clientInfo[order.clientId]?.name ?? "",
+      sku: productInfo[order.productId]?.sku ?? "",
+      allocated: order.casesReserved,
+      requested: order.cases,
+      status: order.status,
+      reason: "",
+    }))
+    setAllocations(_allocations)
+  }, [orderDetails, clientInfo, productInfo])
 
   // Filter history based on date range, SKU, status, and search query
-  const filteredHistory = allocations.filter((item) => {
+  const filteredHistory = useMemo(() => allocations.filter((item) => {
     const itemDate = new Date(item.timestamp)
     const matchesDateRange = (!startDate || itemDate >= startDate) && (!endDate || itemDate <= endDate)
     const matchesSku = filterSku === "all" || item.sku === filterSku
@@ -37,13 +57,13 @@ export function AllocationHistory() {
       item.reason.toLowerCase().includes(searchQuery.toLowerCase())
 
     return matchesDateRange && matchesSku && matchesStatus && matchesSearch
-  })
+  }), [allocations])
 
   // Get unique SKUs for filter dropdown
   const uniqueSkus = Array.from(new Set(allocations.map((item) => item.sku))).filter(item => item)
 
   // Group allocations by order ID to show order-level status
-  const orderAllocations = filteredHistory.reduce(
+  const orderAllocations = useMemo(() => filteredHistory.reduce(
     (acc, item) => {
       if (!acc[item.orderId]) {
         acc[item.orderId] = {
@@ -64,7 +84,7 @@ export function AllocationHistory() {
       return acc
     },
     {} as Record<string, { orderId: string; customer: string; items: typeof allocations; timestamp: string }>,
-  )
+  ), [filteredHistory])
 
   return (
     <div className="space-y-6">
@@ -227,7 +247,7 @@ export function AllocationHistory() {
                   <TableRow key={order.orderId}>
                     <TableCell className="font-medium">{order.orderId}</TableCell>
                     <TableCell>{order.customer}</TableCell>
-                    <TableCell>{new Date(order.timestamp).toLocaleString()}</TableCell>
+                    <TableCell>{order.timestamp}</TableCell>
                     <TableCell>{order.items.length} product(s)</TableCell>
                     <TableCell>
                       {isFullyAllocated ? (

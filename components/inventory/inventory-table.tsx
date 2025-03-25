@@ -11,6 +11,7 @@ import { useOrders } from "@/contexts/order-context"
 import { Order } from "@/types/order"
 import { createType } from "../utils/generic"
 import { FinishedGoodsContext } from "@/app/inventory/finished-goods/context"
+import { OrderDetails } from "../sales/sales-dashboard"
 
 interface InventoryTableProps {
   onAllocate?: (sku: string) => void
@@ -37,7 +38,7 @@ type InventoryData = {
   available: number,
   reserved: number,
   inProduction: number,
-  id: number
+  id: string
 }
 
 type Response = {
@@ -55,7 +56,7 @@ type Response = {
 }
 
 export function InventoryTable({ onAllocate }: InventoryTableProps) {
-  const { orders } = useContext(FinishedGoodsContext)
+  const { orderDetails, cummlative, finishedGoods } = useContext(FinishedGoodsContext)
   const [searchTerm, setSearchTerm] = useState("")
   const { productInfo, refetchData } = useOrders();
   const [sortColumn, setSortColumn] = useState<string | null>(null)
@@ -63,43 +64,26 @@ export function InventoryTable({ onAllocate }: InventoryTableProps) {
   const { toast } = useToast()
   const [inventoryData, setInventoryData] = useState<InventoryData[]>([])
 
-  const fetchRef = useRef(true);
+  useEffect(() => {
+    const ordersMapper = Object.fromEntries(
+      orderDetails.map((item) => [item.productId, item])
+    );
+    const _inventoryData: InventoryData[] = Object.values(ordersMapper).map((item) => {
+      const reserved = orderDetails.filter(i => i.productId === item.productId).reduce((acc, curr) => {
+        acc += curr.casesReserved;
+        return acc;
+      }, 0);
 
-  const fetchData = useCallback(async () => {
-    const finishedGoodsInstance = new DataByTableName("fact_fp_inventory_v2");
-    const cummilativeInstance = new DataByTableName("cumulative_inventory");
-
-    Promise.allSettled([
-      finishedGoodsInstance.get(),
-      // cummilativeInstance.get()
-    ]).then((responses: any[]) => {
-      // const cummulative = Object.fromEntries((responses[1].value.data ?? []).map((item: { productId: string }) => [item.productId, item]));
-      const _inventoryData = responses[0].value.data.map((item: Response) => ({
-        available: item.opening,
-        inProduction: item.production,
-        reserved: orders.filter(i => i.productId === item.productId).reduce((acc, curr) => {
-          acc += curr?.casesReserved ?? 0;
-          return acc;
-        }, 0),
-        sku: productInfo[item.productId]?.sku ?? "",
-        product: productInfo[item.productId] ?? {},
-        id: item.id
-      }) as InventoryData)
-      setInventoryData(_inventoryData)
-    }).catch(error => {
-      console.log({ error })
+      return ({
+        available: cummlative.find(i => i.productId === item.productId)?.stock || 0,
+        id: item.orderId,
+        inProduction: finishedGoods.find(i => i.productId === item.productId)?.production || 0,
+        reserved: reserved,
+        sku: productInfo[item.productId]?.sku || ""
+      })
     })
-
-  }, [productInfo])
-
-  const fetchInventory = useCallback(() => {
-    if (!fetchRef.current || !Object.values(productInfo).length) return;
-    fetchRef.current = false;
-
-    fetchData();
-  }, [productInfo])
-
-  useEffect(fetchInventory, [refetchData])
+    setInventoryData(_inventoryData)
+  }, [orderDetails, finishedGoods, cummlative, productInfo])
 
   // Filter data based on search term
   const filteredData = inventoryData.filter((item) => item.sku.toLowerCase().includes(searchTerm.toLowerCase()))
