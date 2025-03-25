@@ -40,18 +40,19 @@ import { OrderDetails } from "../sales/sales-dashboard"
 interface Order {
   id: string,
   productId: string,
-  customer: string
-  dueDate: string
-  priority: "urgent" | "high-value" | "standard"
-  status: string
+  clientId: string,
+  customer: string,
+  dueDate: string,
+  priority: "urgent" | "high-value" | "standard",
+  status: string,
   products: OrderProduct[]
 }
 
 interface OrderProduct {
-  id: string
-  name: string
-  sku: string
-  quantity: number
+  id: string,
+  name: string,
+  sku: string,
+  quantity: number,
   allocated?: number,
   productId: string,
 }
@@ -64,7 +65,7 @@ interface AllocationDialogProps {
 }
 
 export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = null }: AllocationDialogProps) {
-  const { productInfo, clientProposedPrice } = useOrders();
+  const { productInfo, clientProposedPrice, clientInfo = {} } = useOrders();
   const { orderDetails = [], setRerender } = useContext(FinishedGoodsContext);
   const [searchTerm, setSearchTerm] = useState("")
   const [searchType, setSearchType] = useState<"sku" | "order" | "customer">("order")
@@ -106,7 +107,8 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
   useEffect(() => {
     const mockOrders: Order[] = Object.values(Object.fromEntries(orderDetails.map((order: OrderDetails) => [order.orderId, {
       id: order.orderId,
-      customer: order.clientId,
+      clientId: order.clientId,
+      customer: clientInfo[order.clientId]?.name || "",
       dueDate: new Date(order.expectedDeliveryDate)?.toDateString(),
       priority: getPriority(order.expectedDeliveryDate),
       status: order.status,
@@ -145,7 +147,7 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
       } else if (searchType === "order") {
         filtered = updatedMockOrders.filter((order) => order.id.toLowerCase().includes(searchTerm.toLowerCase()))
       } else if (searchType === "customer") {
-        filtered = updatedMockOrders.filter((order) => order.id.toLowerCase().includes(searchTerm.toLowerCase()))
+        filtered = updatedMockOrders.filter((order) => order.customer.toLowerCase().includes(searchTerm.toLowerCase()))
       }
     }
 
