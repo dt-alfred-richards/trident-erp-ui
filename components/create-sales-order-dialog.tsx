@@ -33,6 +33,7 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
+import { useOrders } from "@/contexts/order-context"
 
 // Mock data for clients
 const CLIENTS = [
@@ -142,6 +143,7 @@ interface CreateSalesOrderDialogProps {
 }
 
 export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderDialogProps) {
+  const { addOrder } = useOrders()
   // Order header state
   const [orderDate] = useState<Date>(new Date()) // Remove setOrderDate since it's now fixed
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<Date | undefined>(undefined)
@@ -161,6 +163,9 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
     Array<{ id: string; name: string; address: string; isDefault: boolean }>
   >([])
   const [selectedShippingAddressId, setSelectedShippingAddressId] = useState("")
+
+  // Tax location state
+  const [isInTelangana, setIsInTelangana] = useState(true) // Default to true (within Telangana)
 
   // Item entry state
   const [showItemForm, setShowItemForm] = useState(false)
@@ -183,6 +188,8 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
 
   // Confirmation dialog state
   const [showConfirmation, setShowConfirmation] = useState(false)
+
+  // Access the orders context
 
   // Generate a unique order ID
   const generateOrderId = () => {
@@ -233,6 +240,17 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
     }
   }, [clientId])
 
+  // Update when shipping address changes
+  useEffect(() => {
+    if (selectedShippingAddressId) {
+      const selectedAddress = shippingAddresses.find((addr) => addr.id === selectedShippingAddressId)
+      if (selectedAddress) {
+        // Check if address contains "Telangana" to determine tax type
+        setIsInTelangana(selectedAddress.address.includes("Telangana"))
+      }
+    }
+  }, [selectedShippingAddressId, shippingAddresses])
+
   // Calculate order summary whenever items change
   useEffect(() => {
     const newSubtotal = orderItems.reduce((sum, item) => sum + item.basePay, 0)
@@ -249,14 +267,16 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
     const discountedSubtotal = newSubtotal - discountAmount
 
     // Calculate tax only if taxes are enabled
-    const newTaxTotal = taxesEnabled
-      ? orderItems.reduce((sum, item) => {
-          const itemDiscountRatio = item.basePay / newSubtotal
-          const itemDiscountAmount = discountAmount * itemDiscountRatio
-          const discountedItemAmount = item.basePay - itemDiscountAmount
-          return sum + (discountedItemAmount * item.taxRate) / 100
-        }, 0)
-      : 0
+    let newTaxTotal = 0
+    if (taxesEnabled) {
+      // Tax calculation is the same regardless of tax type, just displayed differently
+      newTaxTotal = orderItems.reduce((sum, item) => {
+        const itemDiscountRatio = item.basePay / newSubtotal
+        const itemDiscountAmount = discountAmount * itemDiscountRatio
+        const discountedItemAmount = item.basePay - itemDiscountAmount
+        return sum + (discountedItemAmount * item.taxRate) / 100
+      }, 0)
+    }
 
     setSubtotal(newSubtotal)
     setTaxTotal(newTaxTotal)
@@ -333,17 +353,41 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
     // Get the selected shipping address details
     const selectedAddress = shippingAddresses.find((addr) => addr.id === selectedShippingAddressId)
 
-    // Here you would submit the order to your API
-    console.log("Submitting order:", {
-      orderDate,
-      expectedDeliveryDate,
-      clientId,
-      clientName,
-      reference,
-      poDate,
-      poId,
-      poNumber, // Include the new field
-      remarks,
+    // Generate a new order ID
+    const newOrderId = generateOrderId()
+
+    // Create the new order with pending_approval status
+    const newOrder = {
+      id: newOrderId,
+      orderDate: format(orderDate, "yyyy-MM-dd"),
+      customer: clientName,
+      reference: reference,
+      deliveryDate: expectedDeliveryDate ? format(expectedDeliveryDate, "yyyy-MM-dd") : "",
+      priority: "medium", // Default priority
+      status: "pending_approval", // Set initial status to pending_approval
+      createdBy: "Current User", // This would come from authentication in a real app
+      createdAt: new Date().toISOString(),
+      statusHistory: [
+        {
+          timestamp: new Date().toISOString(),
+          status: "pending_approval",
+          user: "Current User",
+          note: "Order created",
+        },
+      ],
+      products: orderItems.map((item) => ({
+        id: item.id,
+        name: item.productName,
+        sku: item.productId,
+        quantity: item.cases,
+        price: item.pricePerCase,
+        status: "pending",
+      })),
+      // Additional details
+      poNumber: poNumber,
+      poId: poId,
+      poDate: poDate ? format(poDate, "yyyy-MM-dd") : "",
+      remarks: remarks,
       shippingAddress: selectedAddress
         ? {
             id: selectedAddress.id,
@@ -351,23 +395,36 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
             address: selectedAddress.address,
           }
         : undefined,
-      items: orderItems,
       summary: {
         subtotal,
         discountType,
         discount,
         taxesEnabled,
+        taxType: isInTelangana ? "CGST+SGST" : "IGST",
         taxTotal,
         total,
       },
-    })
+    }
 
-    // Close dialogs
-    setShowConfirmation(false)
-    onOpenChange(false)
+    // Add the order to the context (this would be an API call in a real app)
+    // We need to import the useOrders hook at the top of the file
+    try {
+      // Add the order to the context
+      addOrder(newOrder)
 
-    // Reset form for next use
-    resetForm()
+      // Show success message
+      alert(`Order ${newOrderId} has been created and is pending approval.`)
+
+      // Close dialogs
+      setShowConfirmation(false)
+      onOpenChange(false)
+
+      // Reset form for next use
+      resetForm()
+    } catch (error) {
+      console.error("Error adding order:", error)
+      alert("There was an error creating the order. Please try again.")
+    }
   }
 
   // Reset the form to initial state
@@ -492,7 +549,18 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
-                      <Calendar mode="single" selected={poDate} onSelect={setPoDate} initialFocus />
+                      <Calendar
+                        mode="single"
+                        selected={poDate}
+                        onSelect={setPoDate}
+                        initialFocus
+                        disabled={(date) => date > orderDate}
+                        footer={
+                          <p className="text-xs text-center text-muted-foreground p-2">
+                            Purchase Order Date cannot be after Order Date
+                          </p>
+                        }
+                      />
                     </PopoverContent>
                   </Popover>
                 </div>
@@ -796,12 +864,27 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                     <Switch checked={taxesEnabled} onCheckedChange={setTaxesEnabled} />
                   </div>
 
-                  {/* Taxes - Conditional */}
+                  {/* Taxes - Conditional with breakdown */}
                   {taxesEnabled && (
-                    <div className="flex justify-between py-1">
-                      <span>Taxes:</span>
-                      <span>₹{taxTotal.toFixed(2)}</span>
-                    </div>
+                    <>
+                      {isInTelangana ? (
+                        <>
+                          <div className="flex justify-between py-1">
+                            <span>CGST (9%):</span>
+                            <span>₹{(taxTotal / 2).toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between py-1">
+                            <span>SGST (9%):</span>
+                            <span>₹{(taxTotal / 2).toFixed(2)}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex justify-between py-1">
+                          <span>IGST (18%):</span>
+                          <span>₹{taxTotal.toFixed(2)}</span>
+                        </div>
+                      )}
+                    </>
                   )}
 
                   <div className="flex justify-between py-2 font-bold border-t">

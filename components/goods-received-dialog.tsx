@@ -16,10 +16,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { AlertCircle, Check, ImageIcon, Upload, X } from "lucide-react"
+import { AlertCircle, Check, X } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface GoodsReceivedDialogProps {
   open: boolean
@@ -27,9 +28,7 @@ interface GoodsReceivedDialogProps {
   poNumber: string
 }
 
-// Make sure the export is properly defined
 export function GoodsReceivedDialog({ open, onOpenChange, poNumber }: GoodsReceivedDialogProps) {
-  // Component implementation remains the same
   const [formData, setFormData] = useState({
     receivedQuantity: "",
     qualityStatus: "accept",
@@ -45,7 +44,6 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber }: GoodsRecei
       },
     ],
   })
-  const [imageUploaded, setImageUploaded] = useState(false)
 
   // This would come from your API in a real application
   const pendingPOs = [
@@ -114,15 +112,6 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber }: GoodsRecei
     return materialsByCategory[category] || []
   }
 
-  // Add a handler for category change to reset material
-  const handleCategoryChange = (category: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      substitutionCategory: category,
-      substitutionMaterial: "", // Reset material when category changes
-    }))
-  }
-
   const handleSubstitutionChange = (checked: boolean) => {
     setFormData((prev) => ({
       ...prev,
@@ -167,7 +156,6 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber }: GoodsRecei
     }
 
     // Here you would submit the GRN to your API
-    // Inside handleSubmit, update the console.log to include substitutionMaterial:
     console.log("Creating GRN:", {
       poId: poNumber,
       ...formData,
@@ -206,329 +194,301 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber }: GoodsRecei
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[600px] h-[85vh] flex flex-col p-0 overflow-hidden">
+        <DialogHeader className="p-6 pb-2">
           <DialogTitle>Receive Goods for PO {poNumber}</DialogTitle>
           <DialogDescription>Record receipt of goods from {selectedPoDetails.supplier}</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="po-details">Purchase Order Details</Label>
-              <div id="po-details" className="p-3 bg-muted rounded-md">
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Material:</span>
-                  </div>
-                  <div className="font-medium">{selectedPoDetails.material}</div>
+        <ScrollArea className="flex-1 h-full px-6 py-2 overflow-auto">
+          <form id="grn-form" onSubmit={handleSubmit} className="space-y-4 pb-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="po-details">Purchase Order Details</Label>
+                <div id="po-details" className="p-3 bg-muted rounded-md">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Material:</span>
+                    </div>
+                    <div className="font-medium">{selectedPoDetails.material}</div>
 
-                  <div>
-                    <span className="text-muted-foreground">Ordered Quantity:</span>
-                  </div>
-                  <div className="font-medium">
-                    {selectedPoDetails.quantity} {selectedPoDetails.unit}
-                  </div>
+                    <div>
+                      <span className="text-muted-foreground">Ordered Quantity:</span>
+                    </div>
+                    <div className="font-medium">
+                      {selectedPoDetails.quantity} {selectedPoDetails.unit}
+                    </div>
 
-                  <div>
-                    <span className="text-muted-foreground">Supplier:</span>
+                    <div>
+                      <span className="text-muted-foreground">Supplier:</span>
+                    </div>
+                    <div className="font-medium">{selectedPoDetails.supplier}</div>
                   </div>
-                  <div className="font-medium">{selectedPoDetails.supplier}</div>
                 </div>
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="received-quantity">Received Quantity</Label>
+                <div className="flex gap-2 items-center">
+                  <Input
+                    id="received-quantity"
+                    type="number"
+                    value={formData.receivedQuantity}
+                    onChange={(e) => handleChange("receivedQuantity", e.target.value)}
+                    min="1"
+                    max={selectedPoDetails.quantity}
+                    required
+                  />
+                  <span className="text-sm text-muted-foreground w-16">{selectedPoDetails.unit}</span>
+                </div>
+
+                {formData.receivedQuantity &&
+                  Number.parseInt(formData.receivedQuantity) < selectedPoDetails.quantity && (
+                    <Alert variant="warning" className="mt-2">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Partial Delivery</AlertTitle>
+                      <AlertDescription>
+                        You're recording a partial delivery ({formData.receivedQuantity} of {selectedPoDetails.quantity}{" "}
+                        {selectedPoDetails.unit})
+                      </AlertDescription>
+                    </Alert>
+                  )}
+              </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="received-quantity">Received Quantity</Label>
-              <div className="flex gap-2 items-center">
-                <Input
-                  id="received-quantity"
-                  type="number"
-                  value={formData.receivedQuantity}
-                  onChange={(e) => handleChange("receivedQuantity", e.target.value)}
-                  min="1"
-                  max={selectedPoDetails.quantity}
-                  required
-                />
-                <span className="text-sm text-muted-foreground w-16">{selectedPoDetails.unit}</span>
-              </div>
-
-              {formData.receivedQuantity && Number.parseInt(formData.receivedQuantity) < selectedPoDetails.quantity && (
-                <Alert variant="warning" className="mt-2">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Partial Delivery</AlertTitle>
-                  <AlertDescription>
-                    You're recording a partial delivery ({formData.receivedQuantity} of {selectedPoDetails.quantity}{" "}
-                    {selectedPoDetails.unit})
-                  </AlertDescription>
-                </Alert>
-              )}
+              <Label>Quality Check</Label>
+              <RadioGroup
+                value={formData.qualityStatus}
+                onValueChange={(value) => handleChange("qualityStatus", value)}
+                className="flex flex-col space-y-1"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="accept" id="accept" />
+                  <Label htmlFor="accept" className="flex items-center">
+                    <Check className="h-4 w-4 mr-2 text-green-500" />
+                    Accept - Material meets quality standards
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="reject" id="reject" />
+                  <Label htmlFor="reject" className="flex items-center">
+                    <X className="h-4 w-4 mr-2 text-red-500" />
+                    Reject - Material does not meet quality standards
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="partial" id="partial" />
+                  <Label htmlFor="partial" className="flex items-center">
+                    <AlertCircle className="h-4 w-4 mr-2 text-amber-500" />
+                    Partial Accept - Some items accepted, some rejected
+                  </Label>
+                </div>
+              </RadioGroup>
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label>Quality Check</Label>
-            <RadioGroup
-              value={formData.qualityStatus}
-              onValueChange={(value) => handleChange("qualityStatus", value)}
-              className="flex flex-col space-y-1"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="accept" id="accept" />
-                <Label htmlFor="accept" className="flex items-center">
-                  <Check className="h-4 w-4 mr-2 text-green-500" />
-                  Accept - Material meets quality standards
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="reject" id="reject" />
-                <Label htmlFor="reject" className="flex items-center">
-                  <X className="h-4 w-4 mr-2 text-red-500" />
-                  Reject - Material does not meet quality standards
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="partial" id="partial" />
-                <Label htmlFor="partial" className="flex items-center">
-                  <AlertCircle className="h-4 w-4 mr-2 text-amber-500" />
-                  Partial Accept - Some items accepted, some rejected
-                </Label>
-              </div>
-            </RadioGroup>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="notes">Inspector Notes</Label>
-            <Textarea
-              id="notes"
-              value={formData.notes}
-              onChange={(e) => handleChange("notes", e.target.value)}
-              placeholder="Add notes about the received goods, quality issues, etc."
-              className="h-20"
-            />
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="use-substitution"
-                checked={formData.useSubstitution}
-                onCheckedChange={handleSubstitutionChange}
+            <div className="space-y-2">
+              <Label htmlFor="notes">Inspector Notes</Label>
+              <Textarea
+                id="notes"
+                value={formData.notes}
+                onChange={(e) => handleChange("notes", e.target.value)}
+                placeholder="Add notes about the received goods, quality issues, etc."
+                className="h-20"
               />
-              <Label htmlFor="use-substitution">Use Material Substitution</Label>
             </div>
 
-            {formData.useSubstitution && (
-              <div className="space-y-4 p-4 border rounded-md">
-                <div className="flex justify-between items-center mb-2">
-                  <h4 className="font-medium">Material Substitutions</h4>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setFormData((prev) => ({
-                        ...prev,
-                        substitutionItems: [
-                          ...prev.substitutionItems,
-                          {
-                            id: Date.now().toString(),
-                            category: "",
-                            material: "",
-                            quantity: "",
-                            unit: "kg",
-                          },
-                        ],
-                      }))
-                    }}
-                  >
-                    Add More
-                  </Button>
-                </div>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="use-substitution"
+                  checked={formData.useSubstitution}
+                  onCheckedChange={handleSubstitutionChange}
+                />
+                <Label htmlFor="use-substitution">Use Material Substitution</Label>
+              </div>
 
-                <div className="grid grid-cols-4 gap-4 mb-2">
-                  <div className="text-sm font-medium text-muted-foreground">Category</div>
-                  <div className="text-sm font-medium text-muted-foreground">Material</div>
-                  <div className="text-sm font-medium text-muted-foreground">Quantity</div>
-                  <div className="text-sm font-medium text-muted-foreground">Unit</div>
-                </div>
+              {formData.useSubstitution && (
+                <div className="space-y-4 p-4 border rounded-md">
+                  <div className="flex justify-between items-center mb-2">
+                    <h4 className="font-medium">Material Substitutions</h4>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          substitutionItems: [
+                            ...prev.substitutionItems,
+                            {
+                              id: Date.now().toString(),
+                              category: "",
+                              material: "",
+                              quantity: "",
+                              unit: "kg",
+                            },
+                          ],
+                        }))
+                      }}
+                    >
+                      Add More
+                    </Button>
+                  </div>
 
-                {formData.substitutionItems.map((item, index) => (
-                  <div key={item.id} className="grid grid-cols-4 gap-4 items-start">
-                    <div>
-                      <Select
-                        value={item.category}
-                        onValueChange={(value) => {
-                          const newItems = [...formData.substitutionItems]
-                          newItems[index] = {
-                            ...newItems[index],
-                            category: value,
-                            material: "", // Reset material when category changes
-                          }
-                          setFormData((prev) => ({
-                            ...prev,
-                            substitutionItems: newItems,
-                          }))
-                        }}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {rawMaterialCategories.map((category) => (
-                            <SelectItem key={category} value={category}>
-                              {category}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div className="grid grid-cols-4 gap-4 mb-2">
+                    <div className="text-sm font-medium text-muted-foreground">Category</div>
+                    <div className="text-sm font-medium text-muted-foreground">Material</div>
+                    <div className="text-sm font-medium text-muted-foreground">Quantity</div>
+                    <div className="text-sm font-medium text-muted-foreground">Unit</div>
+                  </div>
 
-                    <div>
-                      <Select
-                        value={item.material}
-                        onValueChange={(value) => {
-                          const newItems = [...formData.substitutionItems]
-                          newItems[index] = {
-                            ...newItems[index],
-                            material: value,
-                          }
-                          setFormData((prev) => ({
-                            ...prev,
-                            substitutionItems: newItems,
-                          }))
-                        }}
-                        disabled={!item.category}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select material" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {getMaterialsByCategory(item.category).map((material) => (
-                            <SelectItem key={material} value={material}>
-                              {material}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <Input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) => {
-                          const newItems = [...formData.substitutionItems]
-                          newItems[index] = {
-                            ...newItems[index],
-                            quantity: e.target.value,
-                          }
-                          setFormData((prev) => ({
-                            ...prev,
-                            substitutionItems: newItems,
-                          }))
-                        }}
-                        min="0.1"
-                        step="0.1"
-                        placeholder="Enter quantity"
-                        disabled={!item.material}
-                        className="w-full"
-                      />
-                      {item.quantity && Number(item.quantity) <= 0 && (
-                        <p className="text-xs text-red-500">Must be &gt; 0</p>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Select
-                        valuee={item.unit}
-                        onValueChange={(value) => {
-                          const newItems = [...formData.substitutionItems]
-                          newItems[index] = {
-                            ...newItems[index],
-                            unit: value,
-                          }
-                          setFormData((prev) => ({
-                            ...prev,
-                            substitutionItems: newItems,
-                          }))
-                        }}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Unit" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="kg">kg</SelectItem>
-                          <SelectItem value="g">g</SelectItem>
-                          <SelectItem value="l">l</SelectItem>
-                          <SelectItem value="ml">ml</SelectItem>
-                          <SelectItem value="pcs">pcs</SelectItem>
-                        </SelectContent>
-                      </Select>
-
-                      {formData.substitutionItems.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => {
+                  {formData.substitutionItems.map((item, index) => (
+                    <div key={item.id} className="grid grid-cols-4 gap-4 items-start">
+                      <div>
+                        <Select
+                          value={item.category}
+                          onValueChange={(value) => {
+                            const newItems = [...formData.substitutionItems]
+                            newItems[index] = {
+                              ...newItems[index],
+                              category: value,
+                              material: "", // Reset material when category changes
+                            }
                             setFormData((prev) => ({
                               ...prev,
-                              substitutionItems: prev.substitutionItems.filter((_, i) => i !== index),
+                              substitutionItems: newItems,
                             }))
                           }}
                         >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {rawMaterialCategories.map((category) => (
+                              <SelectItem key={category} value={category}>
+                                {category}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-          <div className="space-y-2">
-            <Label>Photo Evidence</Label>
-            <div className="border-2 border-dashed rounded-md p-4 flex flex-col items-center justify-center">
-              {imageUploaded ? (
-                <div className="text-center">
-                  <div className="mb-2 flex justify-center">
-                    <ImageIcon className="h-6 w-6 text-green-500" />
-                  </div>
-                  <p className="text-sm font-medium">image-evidence.jpg uploaded</p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="mt-2"
-                    onClick={() => setImageUploaded(false)}
-                    type="button"
-                  >
-                    Remove
-                  </Button>
-                </div>
-              ) : (
-                <div className="text-center">
-                  <div className="mb-2 flex justify-center">
-                    <Upload className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-2">Click to upload photos</p>
-                  <Button variant="outline" size="sm" onClick={() => setImageUploaded(true)} type="button">
-                    Upload Photos
-                  </Button>
+                      <div>
+                        <Select
+                          value={item.material}
+                          onValueChange={(value) => {
+                            const newItems = [...formData.substitutionItems]
+                            newItems[index] = {
+                              ...newItems[index],
+                              material: value,
+                            }
+                            setFormData((prev) => ({
+                              ...prev,
+                              substitutionItems: newItems,
+                            }))
+                          }}
+                          disabled={!item.category}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select material" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {getMaterialsByCategory(item.category).map((material) => (
+                              <SelectItem key={material} value={material}>
+                                {material}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Input
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) => {
+                            const newItems = [...formData.substitutionItems]
+                            newItems[index] = {
+                              ...newItems[index],
+                              quantity: e.target.value,
+                            }
+                            setFormData((prev) => ({
+                              ...prev,
+                              substitutionItems: newItems,
+                            }))
+                          }}
+                          min="0.1"
+                          step="0.1"
+                          placeholder="Enter quantity"
+                          disabled={!item.material}
+                          className="w-full"
+                        />
+                        {item.quantity && Number(item.quantity) <= 0 && (
+                          <p className="text-xs text-red-500">Must be &gt; 0</p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value={item.unit}
+                          onValueChange={(value) => {
+                            const newItems = [...formData.substitutionItems]
+                            newItems[index] = {
+                              ...newItems[index],
+                              unit: value,
+                            }
+                            setFormData((prev) => ({
+                              ...prev,
+                              substitutionItems: newItems,
+                            }))
+                          }}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Unit" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="kg">kg</SelectItem>
+                            <SelectItem value="g">g</SelectItem>
+                            <SelectItem value="l">l</SelectItem>
+                            <SelectItem value="ml">ml</SelectItem>
+                            <SelectItem value="pcs">pcs</SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        {formData.substitutionItems.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => {
+                              setFormData((prev) => ({
+                                ...prev,
+                                substitutionItems: prev.substitutionItems.filter((_, i) => i !== index),
+                              }))
+                            }}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
-          </div>
+          </form>
+        </ScrollArea>
 
-          <DialogFooter>
-            <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit">Create GRN</Button>
-          </DialogFooter>
-        </form>
+        <DialogFooter className="p-6 pt-2">
+          <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button type="submit" form="grn-form">
+            Create GRN
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

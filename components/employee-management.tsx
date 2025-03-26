@@ -1,18 +1,26 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { Search, Edit, Eye } from "lucide-react"
+import { useState, useEffect, useMemo } from "react"
+import { Search, Edit, Eye, FileText, ExternalLink } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
 import { EditEmployeeDialog } from "./edit-employee-dialog"
-import { textCapitalize, useHrContext } from "@/contexts/hr-context"
+import { Pagination } from "@/components/ui/pagination"
+import { useHrContext } from "@/contexts/hr-context"
 
-// Sample employee data
+// Sample employee data with added aadharImageUrl field
 const employees = [
   {
     id: "EMP001",
@@ -21,11 +29,12 @@ const employees = [
     email: "rajesh.kumar@dhaara.com",
     role: "Production Manager",
     department: "Production",
-    employeeType: "full-time",
+    employeeType: "Full-time",
     salary: 65000,
     contactNumber: "+91 98765 43210",
     dateOfJoining: "2022-05-15",
     gender: "Male",
+    aadharImageUrl: "/placeholder.svg?height=300&width=500", // Placeholder for demo
   },
   {
     id: "EMP002",
@@ -34,11 +43,12 @@ const employees = [
     email: "priya.sharma@dhaara.com",
     role: "Line Supervisor",
     department: "Production",
-    employeeType: "full-time",
+    employeeType: "Full-time",
     salary: 45000,
     contactNumber: "+91 98765 43211",
     dateOfJoining: "2022-06-10",
     gender: "Female",
+    aadharImageUrl: "/placeholder.svg?height=300&width=500", // Placeholder for demo
   },
   {
     id: "EMP003",
@@ -47,11 +57,12 @@ const employees = [
     email: "amit.patel@dhaara.com",
     role: "Line Worker",
     department: "Production",
-    employeeType: "full-time",
+    employeeType: "Full-time",
     salary: 30000,
     contactNumber: "+91 98765 43212",
     dateOfJoining: "2022-07-05",
     gender: "Male",
+    aadharImageUrl: "/placeholder.svg?height=300&width=500", // Placeholder for demo
   },
   {
     id: "EMP004",
@@ -60,11 +71,12 @@ const employees = [
     email: "sneha.gupta@dhaara.com",
     role: "Line Worker",
     department: "Production",
-    employeeType: "part-time",
+    employeeType: "Part-time",
     salary: 200, // hourly rate
     contactNumber: "+91 98765 43213",
     dateOfJoining: "2022-08-20",
     gender: "Female",
+    aadharImageUrl: "/placeholder.svg?height=300&width=500", // Placeholder for demo
   },
   {
     id: "EMP005",
@@ -73,11 +85,12 @@ const employees = [
     email: "vikram.singh@dhaara.com",
     role: "Quality Control",
     department: "Production",
-    employeeType: "full-time",
+    employeeType: "Full-time",
     salary: 40000,
     contactNumber: "+91 98765 43214",
     dateOfJoining: "2022-09-15",
     gender: "Male",
+    aadharImageUrl: "/placeholder.svg?height=300&width=500", // Placeholder for demo
   },
   {
     id: "EMP006",
@@ -86,11 +99,96 @@ const employees = [
     email: "neha.verma@dhaara.com",
     role: "HR Executive",
     department: "HR",
-    employeeType: "full-time",
+    employeeType: "Full-time",
     salary: 50000,
     contactNumber: "+91 98765 43215",
     dateOfJoining: "2022-04-10",
     gender: "Female",
+    aadharImageUrl: "/placeholder.svg?height=300&width=500", // Placeholder for demo
+  },
+  {
+    id: "EMP007",
+    firstName: "Rahul",
+    lastName: "Mehta",
+    email: "rahul.mehta@dhaara.com",
+    role: "Finance Manager",
+    department: "Finance",
+    employeeType: "Full-time",
+    salary: 60000,
+    contactNumber: "+91 98765 43216",
+    dateOfJoining: "2022-03-15",
+    gender: "Male",
+    aadharImageUrl: "/placeholder.svg?height=300&width=500", // Placeholder for demo
+  },
+  {
+    id: "EMP008",
+    firstName: "Sonia",
+    lastName: "Gupta",
+    email: "sonia.gupta@dhaara.com",
+    role: "Accountant",
+    department: "Finance",
+    employeeType: "Full-time",
+    salary: 45000,
+    contactNumber: "+91 98765 43217",
+    dateOfJoining: "2022-05-20",
+    gender: "Female",
+    aadharImageUrl: "/placeholder.svg?height=300&width=500", // Placeholder for demo
+  },
+  {
+    id: "EMP009",
+    firstName: "Rohit",
+    lastName: "Srivastava",
+    email: "rohit.srivastava@dhaara.com",
+    role: "Sales Manager",
+    department: "Sales",
+    employeeType: "Full-time",
+    salary: 55000,
+    contactNumber: "+91 98765 43218",
+    dateOfJoining: "2022-02-10",
+    gender: "Male",
+    aadharImageUrl: "/placeholder.svg?height=300&width=500", // Placeholder for demo
+  },
+  {
+    id: "EMP010",
+    firstName: "Ananya",
+    lastName: "Joshi",
+    email: "ananya.joshi@dhaara.com",
+    role: "Marketing Executive",
+    department: "Marketing",
+    employeeType: "Full-time",
+    salary: 42000,
+    contactNumber: "+91 98765 43219",
+    dateOfJoining: "2022-07-25",
+    gender: "Female",
+    aadharImageUrl: "/placeholder.svg?height=300&width=500", // Placeholder for demo
+  },
+  {
+    id: "EMP011",
+    firstName: "Suresh",
+    lastName: "Reddy",
+    email: "suresh.reddy@dhaara.com",
+    role: "IT Manager",
+    department: "IT",
+    employeeType: "Full-time",
+    salary: 70000,
+    contactNumber: "+91 98765 43220",
+    dateOfJoining: "2022-01-05",
+    gender: "Male",
+    aadharImageUrl: "/placeholder.svg?height=300&width=500", // Placeholder for demo
+  },
+  {
+    id: "EMP012",
+    firstName: "Divya",
+    lastName: "Rao",
+    email: "divya.rao@dhaara.com",
+    role: "System Administrator",
+    department: "IT",
+    employeeType: "Full-time",
+    salary: 50000,
+    contactNumber: "+91 98765 43221",
+    dateOfJoining: "2022-04-15",
+    gender: "Female",
+    aadharImageUrl: "/placeholder.svg?height=300&width=500", // Placeholder for demo
   },
 ]
 
@@ -104,23 +202,43 @@ export function EmployeeManagement() {
   const [showEmployeeDetails, setShowEmployeeDetails] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [employeeData, setEmployeeData] = useState(employees)
+  const [showAadharImage, setShowAadharImage] = useState(false)
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
 
   // Filter employees based on search query and selected filters
-  const filteredEmployees = employeeData.filter((employee) => {
-    const matchesSearch =
-      employee.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      employee.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      employee.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      employee.email.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredEmployees = useMemo(
+    () =>
+      employeeData.filter((employee) => {
+        const matchesSearch =
+          employee.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          employee.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          employee.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          employee.email.toLowerCase().includes(searchQuery.toLowerCase())
 
-    const matchesEmployeeType = selectedEmployeeType === "all" || employee.employeeType === selectedEmployeeType
+        const matchesEmployeeType = selectedEmployeeType === "all" || employee.employeeType === selectedEmployeeType
 
-    const matchesDepartment = selectedDepartment === "all" || employee.department === selectedDepartment
+        const matchesDepartment = selectedDepartment === "all" || employee.department === selectedDepartment
 
-    const matchesRole = selectedRole === "all" || employee.role === selectedRole
+        const matchesRole = selectedRole === "all" || employee.role === selectedRole
 
-    return matchesSearch && matchesEmployeeType && matchesDepartment && matchesRole
-  })
+        return matchesSearch && matchesEmployeeType && matchesDepartment && matchesRole
+      }),
+    [employeeData, searchQuery, selectedEmployeeType, selectedDepartment, selectedRole],
+  )
+
+  // Calculate paginated data
+  const paginatedEmployees = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage
+    return filteredEmployees.slice(startIndex, startIndex + itemsPerPage)
+  }, [filteredEmployees, currentPage, itemsPerPage])
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, selectedEmployeeType, selectedDepartment, selectedRole])
 
   const handleViewDetails = (id: string) => {
     setSelectedEmployee(id)
@@ -137,6 +255,19 @@ export function EmployeeManagement() {
   }
 
   const employee = selectedEmployee ? employeeData.find((e) => e.id === selectedEmployee) : null
+
+  // Check if any filters are active
+  const hasActiveFilters =
+    searchQuery !== "" || selectedEmployeeType !== "all" || selectedDepartment !== "all" || selectedRole !== "all"
+
+  // Function to clear all filters
+  const clearAllFilters = () => {
+    setSearchQuery("")
+    setSelectedEmployeeType("all")
+    setSelectedDepartment("all")
+    setSelectedRole("all")
+    setCurrentPage(1)
+  }
 
   return (
     <div className="space-y-4">
@@ -159,8 +290,8 @@ export function EmployeeManagement() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="full-time">Full-time</SelectItem>
-              <SelectItem value="part-time">Part-time</SelectItem>
+              <SelectItem value="Full-time">Full-time</SelectItem>
+              <SelectItem value="Part-time">Part-time</SelectItem>
             </SelectContent>
           </Select>
 
@@ -189,8 +320,24 @@ export function EmployeeManagement() {
               <SelectItem value="Line Worker">Line Worker</SelectItem>
               <SelectItem value="Quality Control">Quality Control</SelectItem>
               <SelectItem value="HR Executive">HR Executive</SelectItem>
+              <SelectItem value="Finance Manager">Finance Manager</SelectItem>
+              <SelectItem value="Accountant">Accountant</SelectItem>
+              <SelectItem value="Sales Manager">Sales Manager</SelectItem>
+              <SelectItem value="Marketing Executive">Marketing Executive</SelectItem>
+              <SelectItem value="IT Manager">IT Manager</SelectItem>
+              <SelectItem value="System Administrator">System Administrator</SelectItem>
             </SelectContent>
           </Select>
+
+          {hasActiveFilters && (
+            <Button
+              variant="outline"
+              className="h-9 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+              onClick={clearAllFilters}
+            >
+              Clear Filters
+            </Button>
+          )}
         </div>
       </div>
 
@@ -209,38 +356,58 @@ export function EmployeeManagement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredEmployees.map((employee) => (
-                <TableRow key={employee.id}>
-                  <TableCell>{employee.id}</TableCell>
-                  <TableCell className="font-medium">
-                    {employee.firstName} {employee.lastName}
-                  </TableCell>
-                  <TableCell>{employee.role}</TableCell>
-                  <TableCell>{employee.department}</TableCell>
-                  <TableCell>
-                    <Badge variant={employee.employeeType === "full-time" ? "default" : "secondary"}>
-                      {employee.employeeType}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {employee.employeeType === "full-time"
-                      ? `₹${employee.salary.toLocaleString()}/month`
-                      : `₹${employee.salary.toLocaleString()}/hour`}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end space-x-2">
-                      <Button variant="ghost" size="icon" onClick={() => handleViewDetails(employee.id)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleEditEmployee(employee.id)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </div>
+              {paginatedEmployees.length > 0 ? (
+                paginatedEmployees.map((employee) => (
+                  <TableRow key={employee.id}>
+                    <TableCell>{employee.id}</TableCell>
+                    <TableCell className="font-medium">
+                      {employee.firstName} {employee.lastName}
+                    </TableCell>
+                    <TableCell>{employee.role}</TableCell>
+                    <TableCell>{employee.department}</TableCell>
+                    <TableCell>
+                      <Badge variant={employee.employeeType === "Full-time" ? "default" : "secondary"}>
+                        {employee.employeeType}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {employee.employeeType === "Full-time"
+                        ? `₹${employee.salary.toLocaleString()}/month`
+                        : `₹${employee.salary.toLocaleString()}/hour`}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end space-x-2">
+                        <Button variant="ghost" size="icon" onClick={() => handleViewDetails(employee.id)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleEditEmployee(employee.id)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-24 text-center">
+                    No employees found matching the current filters.
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
+
+          {filteredEmployees.length > 0 && (
+            <div className="p-4">
+              <Pagination
+                totalItems={filteredEmployees.length}
+                itemsPerPage={itemsPerPage}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={setItemsPerPage}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -292,8 +459,8 @@ export function EmployeeManagement() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h4 className="text-sm font-medium mb-1">Employee Type</h4>
-                  <Badge variant={employee.employeeType === "full-time" ? "default" : "secondary"}>
-                    {employee.employeeType === "full-time" ? "Full time" : "Part time"}
+                  <Badge variant={employee.employeeType === "Full-time" ? "default" : "secondary"}>
+                    {employee.employeeType}
                   </Badge>
                 </div>
                 <div>
@@ -306,7 +473,7 @@ export function EmployeeManagement() {
                 <div>
                   <h4 className="text-sm font-medium mb-1">Salary</h4>
                   <p>
-                    {employee.employeeType === "full-time"
+                    {employee.employeeType === "Full-time"
                       ? `₹${employee.salary.toLocaleString()}/month`
                       : `₹${employee.salary.toLocaleString()}/hour`}
                   </p>
@@ -314,6 +481,24 @@ export function EmployeeManagement() {
                 <div>
                   <h4 className="text-sm font-medium mb-1">Gender</h4>
                   <p>{employee.gender}</p>
+                </div>
+              </div>
+
+              {/* New Aadhaar Image Field */}
+              <div className="border-t pt-4 mt-2">
+                <h4 className="text-sm font-medium mb-2">Identity Documents</h4>
+                <div className="flex items-center">
+                  <FileText className="h-4 w-4 mr-2 text-blue-500" />
+                  <span className="mr-2">Aadhaar Card:</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center text-blue-600"
+                    onClick={() => setShowAadharImage(true)}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                    View Document
+                  </Button>
                 </div>
               </div>
 
@@ -334,6 +519,34 @@ export function EmployeeManagement() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Aadhaar Image Viewer Dialog */}
+      {employee && (
+        <Dialog open={showAadharImage} onOpenChange={setShowAadharImage}>
+          <DialogContent className="sm:max-w-[700px]">
+            <DialogHeader>
+              <DialogTitle>
+                Aadhaar Card - {employee.firstName} {employee.lastName}
+              </DialogTitle>
+              <DialogDescription>Employee ID: {employee.id}</DialogDescription>
+            </DialogHeader>
+
+            <div className="flex justify-center py-4">
+              <img
+                src={employee.aadharImageUrl || "/placeholder.svg"}
+                alt={`Aadhaar card of ${employee.firstName} ${employee.lastName}`}
+                className="max-w-full border rounded-md shadow-sm"
+              />
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowAadharImage(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Edit Employee Dialog */}
       <EditEmployeeDialog

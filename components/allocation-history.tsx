@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { CalendarIcon, Download, Search } from "lucide-react"
+import { CalendarIcon, Download, Search, X } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format } from "date-fns"
@@ -16,6 +16,17 @@ export function AllocationHistory() {
   const [endDate, setEndDate] = useState<Date>()
   const [filterSku, setFilterSku] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState<string>("")
+
+  // Function to clear all filters
+  const clearFilters = () => {
+    setStartDate(undefined)
+    setEndDate(undefined)
+    setFilterSku("all")
+    setSearchQuery("")
+  }
+
+  // Check if any filters are active
+  const hasActiveFilters = startDate || endDate || filterSku !== "all" || searchQuery
 
   // This would come from your API in a real application
   const allocationHistory = [
@@ -213,10 +224,27 @@ export function AllocationHistory() {
             />
           </div>
         </div>
+
+        {hasActiveFilters && (
+          <div className="space-y-2 self-end">
+            <Label className="opacity-0">Clear</Label>
+            <Button variant="outline" onClick={clearFilters} className="flex items-center">
+              <X className="mr-2 h-4 w-4" />
+              Clear Filters
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">Allocation History</h3>
+        <h3 className="text-lg font-medium">
+          Allocation History
+          {hasActiveFilters && (
+            <span className="ml-2 text-sm text-muted-foreground">
+              ({filteredHistory.length} of {allocationHistory.length} records)
+            </span>
+          )}
+        </h3>
         <Button variant="outline" size="sm">
           <Download className="mr-2 h-4 w-4" />
           Export CSV

@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
-  MoreHorizontal,
   Eye,
   Search,
   CalendarIcon,
@@ -13,8 +12,10 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowUpRight,
+  Check,
+  Edit,
+  Ban,
 } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { StatusBadge } from "@/components/common/status-badge"
 import { PriorityIndicator } from "@/components/common/priority-indicator"
 import { Input } from "@/components/ui/input"
@@ -25,13 +26,15 @@ import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
 import { OrderSummaryDialog } from "@/components/sales/order-summary-dialog"
 import { TrackOrderDialog } from "@/components/sales/track-order-dialog"
+import { EditOrderDialog } from "@/components/sales/edit-order-dialog"
 import type { OrderStatus } from "@/types/order"
 import { useOrders } from "@/contexts/order-context"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { ConfirmationDialog } from "@/components/common/confirmation-dialog"
 
 export function SalesTable() {
   // Use order context
-  const { orders, approveOrder, getOrderById } = useOrders()
+  const { orders, approveOrder, rejectOrder, getOrderById, cancelOrder } = useOrders()
 
   // Filter states
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined)
@@ -45,7 +48,12 @@ export function SalesTable() {
 
   const [isOrderSummaryOpen, setIsOrderSummaryOpen] = useState(false)
   const [isTrackOrderOpen, setIsTrackOrderOpen] = useState(false)
+  const [isEditOrderOpen, setIsEditOrderOpen] = useState(false)
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
+
+  const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false)
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false)
+  const [orderToAction, setOrderToAction] = useState<string | null>(null)
 
   // Add pagination state variables
   const [currentPage, setCurrentPage] = useState(1)
@@ -64,7 +72,7 @@ export function SalesTable() {
       const matchesId = order.id.toLowerCase().includes(query)
       const matchesCustomer = order.customer.toLowerCase().includes(query)
       const matchesReference = order.reference.toLowerCase().includes(query)
-      const matchesSku = order.products.some((p) => p?.sku?.toLowerCase()?.includes(query))
+      const matchesSku = order.products.some((p) => p.sku.toLowerCase().includes(query))
 
       if (!(matchesId || matchesCustomer || matchesReference || matchesSku)) {
         return false
@@ -157,6 +165,34 @@ export function SalesTable() {
     approveOrder(orderId)
   }
 
+  const handleRejectOrder = (orderId: string) => {
+    rejectOrder(orderId)
+  }
+
+  const handleCancelOrder = (orderId: string) => {
+    setOrderToAction(orderId)
+    setIsCancelDialogOpen(true)
+  }
+
+  const confirmApproval = () => {
+    if (orderToAction) {
+      approveOrder(orderToAction)
+      setOrderToAction(null)
+    }
+  }
+
+  const confirmCancellation = () => {
+    if (orderToAction) {
+      cancelOrder(orderToAction)
+      setOrderToAction(null)
+    }
+  }
+
+  const handleEditOrder = (orderId: string) => {
+    setSelectedOrderId(orderId)
+    setIsEditOrderOpen(true)
+  }
+
   // Get the primary SKU for display in the table
   const getPrimarySku = (order: any) => {
     if (order.products.length === 0) return "N/A"
@@ -197,6 +233,7 @@ export function SalesTable() {
               <SelectItem value="dispatched">Dispatched</SelectItem>
               <SelectItem value="delivered">Delivered</SelectItem>
               <SelectItem value="partial_fulfillment">Partial Fulfillment</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
             </SelectContent>
           </Select>
           <Button
@@ -249,10 +286,9 @@ export function SalesTable() {
             <label className="text-sm font-medium">Priority</label>
             <Select value={priorityFilter} onValueChange={(value) => setPriorityFilter(value || undefined)}>
               <SelectTrigger className="bg-background">
-                <SelectValue placeholder="Select priority" />
+                <SelectValue placeholder="Filter by priority" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All priorities</SelectItem>
                 <SelectItem value="high">High</SelectItem>
                 <SelectItem value="medium">Medium</SelectItem>
                 <SelectItem value="low">Low</SelectItem>
@@ -368,48 +404,82 @@ export function SalesTable() {
                     <div className="flex items-center justify-end space-x-2">
                       {order.status === "pending_approval" ? (
                         <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleApproveOrder(order.id)}
-                            className="h-8 border-green-200 bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800 dark:border-green-800 dark:bg-green-950/30 dark:text-green-400 dark:hover:bg-green-900/50"
-                          >
-                            Approve
-                          </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full p-0">
-                                <span className="sr-only">Open menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-[160px]">
-                              <DropdownMenuItem onClick={() => handleViewOrder(order.id)}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                <span>View Details</span>
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() => handleApproveOrder(order.id)}
+                                  className="h-8 w-8 border-green-200 bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800 dark:border-green-800 dark:bg-green-950/30 dark:text-green-400 dark:hover:bg-green-900/50"
+                                >
+                                  <Check className="h-4 w-4" />
+                                  <span className="sr-only">Approve order</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Approve order</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() => handleRejectOrder(order.id)}
+                                  className="h-8 w-8 border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-900/50"
+                                >
+                                  <X className="h-4 w-4" />
+                                  <span className="sr-only">Reject order</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Reject order</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() => handleEditOrder(order.id)}
+                                  className="h-8 w-8 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-900/50"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                  <span className="sr-only">Edit order</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Edit order</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() => handleViewOrder(order.id)}
+                                  className="h-8 w-8 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 dark:border-primary/30 dark:bg-primary/10"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                  <span className="sr-only">View order</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>View order details</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </>
-                      ) : order.status === "delivered" ? (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => handleViewOrder(order.id)}
-                                className="h-8 w-8 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 dark:border-primary/30 dark:bg-primary/10"
-                              >
-                                <Eye className="h-4 w-4" />
-                                <span className="sr-only">View order</span>
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>View order details</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
                       ) : (
                         <div className="flex space-x-2">
                           <TooltipProvider>
@@ -430,6 +500,7 @@ export function SalesTable() {
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
+
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -449,6 +520,27 @@ export function SalesTable() {
                             </Tooltip>
                           </TooltipProvider>
                         </div>
+                      )}
+                      {/* Add Cancel button for all statuses except cancelled */}
+                      {order.status !== "cancelled" && order.status !== "pending_approval" && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => handleCancelOrder(order.id)}
+                                className="h-8 w-8 border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-900/50"
+                              >
+                                <Ban className="h-4 w-4" />
+                                <span className="sr-only">Cancel order</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Cancel order</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
                     </div>
                   </TableCell>
@@ -548,8 +640,29 @@ export function SalesTable() {
         <>
           <OrderSummaryDialog open={isOrderSummaryOpen} onOpenChange={setIsOrderSummaryOpen} order={selectedOrder} />
           <TrackOrderDialog open={isTrackOrderOpen} onOpenChange={setIsTrackOrderOpen} order={selectedOrder} />
+          <EditOrderDialog open={isEditOrderOpen} onOpenChange={setIsEditOrderOpen} order={selectedOrder} />
         </>
       )}
+
+      {/* Confirmation Dialogs */}
+      <ConfirmationDialog
+        open={isApproveDialogOpen}
+        onOpenChange={setIsApproveDialogOpen}
+        title="Approve Order"
+        description="Are you sure you want to approve this order? This action cannot be undone."
+        confirmLabel="Approve"
+        onConfirm={confirmApproval}
+      />
+
+      <ConfirmationDialog
+        open={isCancelDialogOpen}
+        onOpenChange={setIsCancelDialogOpen}
+        title="Cancel Order"
+        description="Are you sure you want to cancel this order? This action cannot be undone."
+        confirmLabel="Cancel Order"
+        variant="destructive"
+        onConfirm={confirmCancellation}
+      />
     </div>
   )
 }

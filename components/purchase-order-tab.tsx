@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils"
 import type { DateRange } from "react-day-picker"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useToast } from "@/components/ui/use-toast"
 
 interface PurchaseOrderTabProps {
   onNewOrder?: () => void
@@ -47,8 +48,10 @@ export function PurchaseOrderTab({ onNewOrder }: PurchaseOrderTabProps) {
   const [grnViewDialogOpen, setGrnViewDialogOpen] = useState(false)
   const [selectedGrnPo, setSelectedGrnPo] = useState<string>("")
 
+  const { toast } = useToast()
+
   // Mock data for purchase orders with simplified statuses
-  const purchaseOrders = [
+  const [purchaseOrders, setPurchaseOrders] = useState([
     {
       id: "PO-001",
       supplier: "PlastiCorp Inc.",
@@ -105,7 +108,7 @@ export function PurchaseOrderTab({ onNewOrder }: PurchaseOrderTabProps) {
       status: "cancelled",
       totalValue: 1200,
     },
-  ]
+  ])
 
   const getStatusBadge = (status: string, received?: number, quantity?: number) => {
     switch (status) {
@@ -182,17 +185,36 @@ export function PurchaseOrderTab({ onNewOrder }: PurchaseOrderTabProps) {
 
   // Add a function to confirm cancellation
   const confirmCancelOrder = () => {
-    // Here you would typically call an API to cancel the order
-    console.log(`Cancelling order ${poToCancel}`)
+    // Update the purchase orders state with the cancelled order
+    setPurchaseOrders((prevOrders) =>
+      prevOrders.map((order) => (order.id === poToCancel ? { ...order, status: "cancelled" } : order)),
+    )
 
-    // For demo purposes, we'll just close the dialog
+    // Show success notification
+    toast({
+      title: "Purchase Order Cancelled",
+      description: `Purchase order ${poToCancel} has been cancelled successfully.`,
+      variant: "default",
+    })
+
+    // Close the dialog
     setCancelDialogOpen(false)
     setPoToCancel("")
   }
 
+  // Function to clear all filters
+  const clearAllFilters = () => {
+    setStatusFilter([])
+    setDateRange({ from: undefined, to: undefined })
+    setSearchQuery("")
+  }
+
+  // Check if any filters are applied
+  const hasFilters = statusFilter.length > 0 || dateRange?.from || searchQuery
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
         <h2 className="text-2xl font-bold tracking-tight">Purchase Orders</h2>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -256,11 +278,46 @@ export function PurchaseOrderTab({ onNewOrder }: PurchaseOrderTabProps) {
                 Cancelled
               </DropdownMenuCheckboxItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setStatusFilter([])}>Clear Filters</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStatusFilter([])}>Clear Status Filters</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
+
+      {/* Moved filter indicators to top of table */}
+      {hasFilters && (
+        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-4 bg-muted/30 p-2 rounded-md">
+          <span className="font-medium">Filtered by:</span>
+          {searchQuery && (
+            <Badge variant="secondary">
+              Search: {searchQuery}
+              <button className="ml-1 text-xs" onClick={() => setSearchQuery("")}>
+                ×
+              </button>
+            </Badge>
+          )}
+          {statusFilter.map((status) => (
+            <Badge key={status} variant="secondary" className="capitalize">
+              Status: {status}
+              <button className="ml-1 text-xs" onClick={() => toggleStatusFilter(status)}>
+                ×
+              </button>
+            </Badge>
+          ))}
+          {dateRange?.from && (
+            <Badge variant="secondary">
+              Date: {format(dateRange.from, "PP")}
+              {dateRange.to ? ` - ${format(dateRange.to, "PP")}` : ""}
+              <button className="ml-1 text-xs" onClick={() => setDateRange({ from: undefined, to: undefined })}>
+                ×
+              </button>
+            </Badge>
+          )}
+          <Button variant="outline" size="sm" className="h-7 px-2 text-xs ml-auto" onClick={clearAllFilters}>
+            Clear all filters
+          </Button>
+        </div>
+      )}
 
       <Card>
         <CardContent className="p-0">
@@ -269,8 +326,9 @@ export function PurchaseOrderTab({ onNewOrder }: PurchaseOrderTabProps) {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[100px]">PO #</TableHead>
-                  <TableHead>Supplier / Material</TableHead>
-                  <TableHead className="hidden md:table-cell">Order Date</TableHead>
+                  <TableHead>Supplier</TableHead>
+                  <TableHead>Material</TableHead>
+                  <TableHead>Order Date</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -286,15 +344,11 @@ export function PurchaseOrderTab({ onNewOrder }: PurchaseOrderTabProps) {
                   filteredOrders.map((po) => (
                     <TableRow key={po.id}>
                       <TableCell className="font-medium">{po.id}</TableCell>
+                      <TableCell>{po.supplier}</TableCell>
                       <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{po.supplier}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {po.material} ({po.quantity} {po.unit})
-                          </span>
-                        </div>
+                        {po.material} ({po.quantity} {po.unit})
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">{po.orderDate}</TableCell>
+                      <TableCell>{po.orderDate}</TableCell>
                       <TableCell>{getStatusBadge(po.status, po.received, po.quantity)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
@@ -373,40 +427,6 @@ export function PurchaseOrderTab({ onNewOrder }: PurchaseOrderTabProps) {
           </div>
         </CardContent>
       </Card>
-
-      {(statusFilter.length > 0 || dateRange?.from) && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Filtered by:</span>
-          {statusFilter.map((status) => (
-            <Badge key={status} variant="secondary" className="capitalize">
-              {status}
-              <button className="ml-1 text-xs" onClick={() => toggleStatusFilter(status)}>
-                ×
-              </button>
-            </Badge>
-          ))}
-          {dateRange?.from && (
-            <Badge variant="secondary">
-              Date: {format(dateRange.from, "PP")}
-              {dateRange.to ? ` - ${format(dateRange.to, "PP")}` : ""}
-              <button className="ml-1 text-xs" onClick={() => setDateRange({ from: undefined, to: undefined })}>
-                ×
-              </button>
-            </Badge>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 px-2 text-xs"
-            onClick={() => {
-              setStatusFilter([])
-              setDateRange({ from: undefined, to: undefined })
-            }}
-          >
-            Clear all
-          </Button>
-        </div>
-      )}
 
       {receiveDialogOpen && (
         <GoodsReceivedDialog open={receiveDialogOpen} onOpenChange={setReceiveDialogOpen} poNumber={selectedPO} />

@@ -1,7 +1,8 @@
 "use client"
 
 import { createContext, Dispatch, SetStateAction, useContext, useMemo, useState, type ReactNode } from "react"
-import { type Order, type OrderStatus, ClientAddress, clientAddress, ClientInfo, ClientProposedPrice, OrderActionService } from "@/types/order"
+import { type Order, type OrderStatus, ClientAddress, ClientInfo, ClientProposedPrice, OrderActionService } from "@/types/order"
+import type { ProductStatus } from "@/types/product"
 import { Product } from "@/components/sales/sales-dashboard"
 
 interface OrderContextType {
@@ -9,12 +10,16 @@ interface OrderContextType {
   currentUser: string
   filteredOrders: (status: OrderStatus | "all") => Order[]
   approveOrder: (order: Order) => void
+  rejectOrder: (orderId: string) => void
   allocateInventory: (orderId: string, productId: string, quantity: number) => void
   dispatchProducts: (orderId: string, productId: string, quantity: number) => void
   deliverProducts: (orderId: string, productId: string, quantity: number) => void
-  getOrderById: (orderId: string) => Order | undefined,
+  getOrderById: (orderId: string) => Order | undefined
+  updateOrder: (orderId: string, updatedOrder: Partial<Order>) => void
+  addOrder: (order: Order) => void
+  cancelOrder: (orderId: string) => void,
   setOrders: Dispatch<SetStateAction<Order[]>>
-  createClientProposedPrice: (data: ClientProposedPrice[], clientInfo: ClientInfo[], productInfo: Product[], clientAddress: clientAddress[]) => void
+  createClientProposedPrice: (data: ClientProposedPrice[], clientInfo: ClientInfo[], productInfo: Product[], clientAddress: ClientAddress[]) => void
   clientProposedPrice: Record<string, ClientProposedPrice>,
   productInfo: Record<string, Product>,
   clientInfo: Record<string, ClientInfo>,
@@ -32,7 +37,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const [refetchData, setRefetchData] = useState(false);
   const [clientInfo, setClientInfo] = useState<Record<string, ClientInfo>>({});
   const [productInfo, setProductInfo] = useState<Record<string, Product>>({});
-  const [clientAddress, setClientAddress] = useState<Record<string, clientAddress[]>>({});
+  const [clientAddress, setClientAddress] = useState<Record<string, ClientAddress[]>>({});
   const [clientProposedPrice, setClientProposedPrice] = useState<Record<string, ClientProposedPrice>>({})
   const [currentUser, setCurrentUser] = useState<string>("Current User") // In a real app, this would come from authentication
   const [rootLoaded, setRootLoaded] = useState(false)
@@ -63,6 +68,86 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       console.log(`Order ${orderId} approved successfully`)
     } catch (error) {
       console.error(`Error approving order ${orderId}:`, error)
+      // In a real app, you would show an error notification
+    }
+  }
+
+  // Reject an order
+  const rejectOrder = (orderId: string) => {
+    try {
+      setOrders((prevOrders) =>
+        prevOrders.map((order) => (order.id === orderId ? OrderActionService.rejectOrder(order, currentUser) : order)),
+      )
+      console.log(`Order ${orderId} rejected successfully`)
+    } catch (error) {
+      console.error(`Error rejecting order ${orderId}:`, error)
+      // In a real app, you would show an error notification
+    }
+  }
+
+  // Add the cancelOrder implementation in the OrderProvider
+  // Add this function after the rejectOrder function
+  const cancelOrder = (orderId: string) => {
+    try {
+      setOrders((prevOrders) =>
+        prevOrders.map((order) => {
+          if (order.id === orderId) {
+            // Update all products to cancelled status
+            const updatedProducts = order.products.map((product) => ({
+              ...product,
+              status: "cancelled" as ProductStatus,
+            }))
+
+            return {
+              ...order,
+              status: "cancelled" as OrderStatus,
+              products: updatedProducts,
+              statusHistory: [
+                ...order.statusHistory,
+                {
+                  timestamp: new Date().toISOString(),
+                  status: "cancelled",
+                  user: currentUser,
+                  note: "Order cancelled",
+                },
+              ],
+            }
+          }
+          return order
+        }),
+      )
+      console.log(`Order ${orderId} cancelled successfully`)
+    } catch (error) {
+      console.error(`Error cancelling order ${orderId}:`, error)
+      // In a real app, you would show an error notification
+    }
+  }
+
+  // Update an order
+  const updateOrder = (orderId: string, updatedOrder: Partial<Order>) => {
+    try {
+      setOrders((prevOrders) =>
+        prevOrders.map((order) =>
+          order.id === orderId
+            ? {
+              ...order,
+              ...updatedOrder,
+              statusHistory: [
+                ...order.statusHistory,
+                {
+                  timestamp: new Date().toISOString(),
+                  status: updatedOrder.status || order.status,
+                  user: currentUser,
+                  note: "Order updated",
+                },
+              ],
+            }
+            : order,
+        ),
+      )
+      console.log(`Order ${orderId} updated successfully`)
+    } catch (error) {
+      console.error(`Error updating order ${orderId}:`, error)
       // In a real app, you would show an error notification
     }
   }
@@ -134,16 +219,31 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     }))
   }
 
+  // Add a new order
+  const addOrder = (order: Order) => {
+    try {
+      setOrders((prevOrders) => [order, ...prevOrders])
+      console.log(`Order ${order.id} added successfully`)
+    } catch (error) {
+      console.error(`Error adding order:`, error)
+      throw error
+    }
+  }
+
   // Context value
   const value = useMemo(() => ({
     orders,
     currentUser,
     filteredOrders,
     approveOrder,
+    rejectOrder,
     allocateInventory,
     dispatchProducts,
     deliverProducts,
     getOrderById,
+    updateOrder,
+    addOrder,
+    cancelOrder,
     setOrders,
     createClientProposedPrice,
     clientProposedPrice,
@@ -155,6 +255,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     clientAddress,
     productInfo
   }), [orders, clientProposedPrice, refetchData])
+
   return <OrderContext.Provider value={value}>{children}</OrderContext.Provider>
 }
 

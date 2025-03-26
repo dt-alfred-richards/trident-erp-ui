@@ -2,85 +2,113 @@
 
 import { create } from "zustand"
 
-interface InventoryItem {
+interface RawMaterial {
   id: string
   name: string
-  category: string
-  type: string
   quantity: number
   unit: string
-  cost: number
-  status: "in_stock" | "low_stock" | "out_of_stock"
+  reorderLevel: number
+  supplier: string
+  lastRestocked: string
+  cost?: number // Adding cost property which might be used in BOM components
 }
 
 interface InventoryStore {
-  inventoryItems: InventoryItem[]
-  getInventoryItemByName: (name: string) => InventoryItem | undefined
-  updateInventoryQuantity: (name: string, quantity: number) => void
+  rawMaterials: RawMaterial[]
+  inventoryItems: RawMaterial[] // Added this property for compatibility
+  addRawMaterial: (material: RawMaterial) => void
+  updateRawMaterial: (id: string, updates: Partial<RawMaterial>) => void
+  deleteRawMaterial: (id: string) => void
+  getInventoryItemByName: (name: string) => RawMaterial | undefined
 }
 
-// Sample data
-const initialInventoryItems: InventoryItem[] = [
+// Sample data with cost property added
+const initialRawMaterials: RawMaterial[] = [
   {
     id: "1",
     name: "Stainless Steel Sheet",
-    category: "Raw Material",
-    type: "Metal",
-    quantity: 105,
+    quantity: 500,
     unit: "sheet",
-    cost: 50,
-    status: "in_stock",
+    reorderLevel: 100,
+    supplier: "Steel Supplies Inc.",
+    lastRestocked: "2023-05-15",
+    cost: 1200,
   },
   {
     id: "2",
-    name: "Plastic Cap",
-    category: "Raw Material",
-    type: "Plastic",
-    quantity: 90,
-    unit: "unit",
-    cost: 5,
-    status: "low_stock",
+    name: "PET Resin",
+    quantity: 2000,
+    unit: "kg",
+    reorderLevel: 500,
+    supplier: "Plastic Materials Co.",
+    lastRestocked: "2023-06-01",
+    cost: 80,
   },
   {
     id: "3",
-    name: "Label",
-    category: "Raw Material",
-    type: "Paper",
-    quantity: 200,
+    name: "Plastic Cap",
+    quantity: 10000,
     unit: "unit",
-    cost: 2,
-    status: "in_stock",
+    reorderLevel: 2000,
+    supplier: "Bottle Parts Ltd.",
+    lastRestocked: "2023-05-20",
+    cost: 5,
   },
   {
     id: "4",
-    name: "PET Resin",
-    category: "Raw Material",
-    type: "Plastic",
-    quantity: 5000,
-    unit: "g",
-    cost: 0.2,
-    status: "in_stock",
+    name: "Label",
+    quantity: 15000,
+    unit: "unit",
+    reorderLevel: 3000,
+    supplier: "Print Solutions",
+    lastRestocked: "2023-06-10",
+    cost: 2,
+  },
+  {
+    id: "5",
+    name: "Aluminum Sheet",
+    quantity: 300,
+    unit: "sheet",
+    reorderLevel: 100,
+    supplier: "Metal Works Co.",
+    lastRestocked: "2023-05-25",
+    cost: 950,
   },
 ]
 
 export const useInventoryStore = create<InventoryStore>((set, get) => ({
-  inventoryItems: initialInventoryItems,
+  rawMaterials: initialRawMaterials,
+  inventoryItems: initialRawMaterials, // Initialize inventoryItems with the same data
+
+  addRawMaterial: (material) =>
+    set((state) => ({
+      rawMaterials: [...state.rawMaterials, material],
+      inventoryItems: [...state.rawMaterials, material], // Update both arrays
+    })),
+
+  updateRawMaterial: (id, updates) =>
+    set((state) => {
+      const updatedMaterials = state.rawMaterials.map((material) =>
+        material.id === id ? { ...material, ...updates } : material,
+      )
+      return {
+        rawMaterials: updatedMaterials,
+        inventoryItems: updatedMaterials, // Update both arrays
+      }
+    }),
+
+  deleteRawMaterial: (id) =>
+    set((state) => {
+      const filteredMaterials = state.rawMaterials.filter((material) => material.id !== id)
+      return {
+        rawMaterials: filteredMaterials,
+        inventoryItems: filteredMaterials, // Update both arrays
+      }
+    }),
 
   getInventoryItemByName: (name) => {
-    return get().inventoryItems.find((item) => item.name === name)
+    const state = get()
+    return state.rawMaterials.find((material) => material.name === name)
   },
-
-  updateInventoryQuantity: (name, quantity) =>
-    set((state) => ({
-      inventoryItems: state.inventoryItems.map((item) =>
-        item.name === name
-          ? {
-              ...item,
-              quantity,
-              status: quantity > 20 ? "in_stock" : quantity > 0 ? "low_stock" : "out_of_stock",
-            }
-          : item,
-      ),
-    })),
 }))
 

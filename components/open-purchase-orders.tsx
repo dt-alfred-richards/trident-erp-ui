@@ -78,7 +78,7 @@ export function OpenPurchaseOrders() {
             <TableHead>PO #</TableHead>
             <TableHead>Supplier</TableHead>
             <TableHead>Material</TableHead>
-            <TableHead>Expected Delivery</TableHead>
+            <TableHead>Order Date</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Action</TableHead>
           </TableRow>
@@ -91,7 +91,7 @@ export function OpenPurchaseOrders() {
               <TableCell>
                 {po.material} ({po.quantity} {po.unit})
               </TableCell>
-              <TableCell>{po.expectedDelivery}</TableCell>
+              <TableCell>{po.orderDate}</TableCell>
               <TableCell>{getStatusBadge(po.status, po.received, po.quantity)}</TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-2">

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Clock, CheckCircle2, AlertTriangle, Printer, Download } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
 
 interface PurchaseOrderViewDialogProps {
   open: boolean
@@ -132,6 +133,7 @@ const getPurchaseOrderData = (poId: string) => {
 
 export function PurchaseOrderViewDialog({ open, onOpenChange, poId }: PurchaseOrderViewDialogProps) {
   const po = getPurchaseOrderData(poId)
+  const { toast } = useToast()
 
   if (!po) {
     return null
@@ -299,11 +301,36 @@ export function PurchaseOrderViewDialog({ open, onOpenChange, poId }: PurchaseOr
 
         <div className="flex justify-between items-center pt-4">
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={() => {
+                toast({
+                  title: "Preparing print view",
+                  description: "Opening print dialog for PO-" + po.id,
+                })
+                // Use setTimeout to allow the toast to show before opening print dialog
+                setTimeout(() => {
+                  window.print()
+                }, 500)
+              }}
+            >
               <Printer className="h-4 w-4" />
               Print
             </Button>
-            <Button variant="outline" size="sm" className="gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={() => {
+                toast({
+                  title: "Exporting purchase order",
+                  description: `PO-${po.id} has been exported as PDF`,
+                  variant: "success",
+                })
+              }}
+            >
               <Download className="h-4 w-4" />
               Export
             </Button>

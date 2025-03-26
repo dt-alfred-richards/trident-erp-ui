@@ -49,6 +49,7 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
     shiftDuration: "8",
     role: "",
     department: "",
+    leaves: "20",
   })
 
   // Add state for the Aadhaar image file
@@ -365,6 +366,11 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
               </div>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="leaves">Annual Leaves *</Label>
+              <Input id="leaves" name="leaves" type="number" value={formData.leaves} onChange={handleChange} required />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="payCycle">Pay Cycle *</Label>
@@ -373,8 +379,9 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
                     <SelectValue placeholder="Select pay cycle" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="daily">Daily</SelectItem>
                     <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

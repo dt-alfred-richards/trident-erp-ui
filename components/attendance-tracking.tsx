@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
-import { CalendarIcon, Filter, Download, Search, Plus, Eye } from "lucide-react"
+import { type Dispatch, type SetStateAction, useCallback, useMemo, useState, useEffect } from "react"
+import { CalendarIcon, Filter, Download, Search, Plus, Eye, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -14,67 +14,11 @@ import { format } from "date-fns"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { AddAttendanceDialog } from "./add-attendance-dialog"
-
-// Sample attendance data
-const attendanceData = [
-  {
-    id: 1,
-    employeeId: "EMP001",
-    employeeName: "Rajesh Kumar",
-    date: "2023-10-25",
-    checkIn: "08:55",
-    checkOut: "17:05",
-    totalHours: "8:10",
-    status: "present",
-  },
-  {
-    id: 2,
-    employeeId: "EMP002",
-    employeeName: "Priya Sharma",
-    date: "2023-10-25",
-    checkIn: "08:50",
-    checkOut: "17:30",
-    totalHours: "8:40",
-    status: "present",
-  },
-  {
-    id: 3,
-    employeeId: "EMP003",
-    employeeName: "Amit Patel",
-    date: "2023-10-25",
-    checkIn: "08:45",
-    checkOut: "17:15",
-    totalHours: "8:30",
-    status: "present",
-  },
-  {
-    id: 4,
-    employeeId: "EMP004",
-    employeeName: "Sneha Gupta",
-    date: "2023-10-25",
-    checkIn: "14:00",
-    checkOut: "22:05",
-    totalHours: "8:05",
-    status: "present",
-  },
-  {
-    id: 5,
-    employeeId: "EMP005",
-    employeeName: "Vikram Singh",
-    date: "2023-10-25",
-    status: "absent",
-  },
-  {
-    id: 6,
-    employeeId: "EMP006",
-    employeeName: "Neha Verma",
-    date: "2023-10-25",
-    checkIn: "09:10",
-    checkOut: "18:05",
-    totalHours: "8:55",
-    status: "present",
-  },
-]
+import { EditAttendanceDialog } from "./edit-attendance-dialog"
+import { AttendanceCalendar } from "./attendance-calendar"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import type { AttendanceData } from "./hr-dashboard"
+import { Pagination } from "@/components/ui/pagination"
 
 // Sample leave balance data
 const leaveBalanceData = [
@@ -126,6 +70,54 @@ const leaveBalanceData = [
     usedLeave: 8,
     remainingLeave: 12,
   },
+  {
+    id: 7,
+    employeeId: "EMP007",
+    employeeName: "Rahul Mehta",
+    earnedLeave: 20,
+    usedLeave: 5,
+    remainingLeave: 15,
+  },
+  {
+    id: 8,
+    employeeId: "EMP008",
+    employeeName: "Sonia Gupta",
+    earnedLeave: 20,
+    usedLeave: 7,
+    remainingLeave: 13,
+  },
+  {
+    id: 9,
+    employeeId: "EMP009",
+    employeeName: "Rohit Srivastava",
+    earnedLeave: 20,
+    usedLeave: 9,
+    remainingLeave: 11,
+  },
+  {
+    id: 10,
+    employeeId: "EMP010",
+    employeeName: "Ananya Joshi",
+    earnedLeave: 20,
+    usedLeave: 2,
+    remainingLeave: 18,
+  },
+  {
+    id: 11,
+    employeeId: "EMP011",
+    employeeName: "Suresh Reddy",
+    earnedLeave: 20,
+    usedLeave: 15,
+    remainingLeave: 5,
+  },
+  {
+    id: 12,
+    employeeId: "EMP012",
+    employeeName: "Divya Rao",
+    earnedLeave: 20,
+    usedLeave: 3,
+    remainingLeave: 17,
+  },
 ]
 
 // Sample past leaves data
@@ -161,7 +153,10 @@ const pastLeavesData = {
   ],
 }
 
-export function AttendanceTracking() {
+export function AttendanceTracking({
+  attendanceData,
+  setAttendanceRecords,
+}: { attendanceData: AttendanceData[]; setAttendanceRecords: Dispatch<SetStateAction<AttendanceData[]>> }) {
   const [date, setDate] = useState<Date | undefined>(new Date())
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("all")
@@ -170,25 +165,62 @@ export function AttendanceTracking() {
   const [leaveSearchQuery, setLeaveSearchQuery] = useState("")
   const [showPastLeavesDialog, setShowPastLeavesDialog] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null)
+  const [selectedAttendance, setSelectedAttendance] = useState<any | null>(null)
+  const [showEditAttendanceDialog, setShowEditAttendanceDialog] = useState(false)
+  const [showCalendarDialog, setShowCalendarDialog] = useState(false)
+  const [calendarEmployee, setCalendarEmployee] = useState<{ id: string; name: string } | null>(null)
+
+  // Pagination state
+  const [attendanceCurrentPage, setAttendanceCurrentPage] = useState(1)
+  const [leaveCurrentPage, setLeaveCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
 
   // Filter attendance data based on search query and selected status
-  const filteredAttendance = attendanceData.filter((record) => {
-    const matchesSearch =
-      record.employeeId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      record.employeeName.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredAttendance = useMemo(
+    () =>
+      attendanceData.filter((record) => {
+        const matchesSearch =
+          record.employeeId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          record.employeeName.toLowerCase().includes(searchQuery.toLowerCase())
 
-    const matchesStatus = selectedStatus === "all" || record.status === selectedStatus
+        const matchesStatus = selectedStatus === "all" || record.status === selectedStatus
 
-    return matchesSearch && matchesStatus
-  })
+        return matchesSearch && matchesStatus
+      }),
+    [attendanceData, searchQuery, selectedStatus],
+  )
 
   // Filter leave balance data based on search query
-  const filteredLeaveBalance = leaveBalanceData.filter((record) => {
-    return (
-      record.employeeId.toLowerCase().includes(leaveSearchQuery.toLowerCase()) ||
-      record.employeeName.toLowerCase().includes(leaveSearchQuery.toLowerCase())
-    )
-  })
+  const filteredLeaveBalance = useMemo(
+    () =>
+      leaveBalanceData.filter((record) => {
+        return (
+          record.employeeId.toLowerCase().includes(leaveSearchQuery.toLowerCase()) ||
+          record.employeeName.toLowerCase().includes(leaveSearchQuery.toLowerCase())
+        )
+      }),
+    [leaveSearchQuery],
+  )
+
+  // Calculate paginated data for both tables
+  const paginatedAttendance = useMemo(() => {
+    const startIndex = (attendanceCurrentPage - 1) * itemsPerPage
+    return filteredAttendance.slice(startIndex, startIndex + itemsPerPage)
+  }, [filteredAttendance, attendanceCurrentPage, itemsPerPage])
+
+  const paginatedLeaveBalance = useMemo(() => {
+    const startIndex = (leaveCurrentPage - 1) * itemsPerPage
+    return filteredLeaveBalance.slice(startIndex, startIndex + itemsPerPage)
+  }, [filteredLeaveBalance, leaveCurrentPage, itemsPerPage])
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setAttendanceCurrentPage(1)
+  }, [searchQuery, selectedStatus])
+
+  useEffect(() => {
+    setLeaveCurrentPage(1)
+  }, [leaveSearchQuery])
 
   // Handle view past leaves
   const handleViewPastLeaves = (employeeId: string) => {
@@ -196,47 +228,53 @@ export function AttendanceTracking() {
     setShowPastLeavesDialog(true)
   }
 
+  // Handle edit attendance
+  const handleEditAttendance = (record: any) => {
+    setSelectedAttendance(record)
+    setShowEditAttendanceDialog(true)
+  }
+
+  // Handle view attendance calendar
+  const handleViewCalendar = (employeeId: string, employeeName: string) => {
+    setCalendarEmployee({ id: employeeId, name: employeeName })
+    setShowCalendarDialog(true)
+  }
+
+  // Handle update attendance
+  const handleUpdateAttendance = useCallback(
+    (updatedRecord: any) => {
+      setAttendanceRecords(attendanceData.map((record) => (record.id === updatedRecord.id ? updatedRecord : record)))
+      setShowEditAttendanceDialog(false)
+    },
+    [attendanceData, setAttendanceRecords],
+  )
+
+  // Calculate total hours
+  const calculateTotalHours = (checkIn: string, checkOut: string) => {
+    if (!checkIn || !checkOut) return "-"
+
+    const [inHours, inMinutes] = checkIn.split(":").map(Number)
+    const [outHours, outMinutes] = checkOut.split(":").map(Number)
+
+    let totalMinutes = outHours * 60 + outMinutes - (inHours * 60 + inMinutes)
+    if (totalMinutes < 0) totalMinutes += 24 * 60 // Handle next day checkout
+
+    const hours = Math.floor(totalMinutes / 60)
+    const minutes = totalMinutes % 60
+
+    return `${hours}:${minutes.toString().padStart(2, "0")}`
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-        <h3 className="text-lg font-medium">Attendance Tracking</h3>
-        <div className="flex flex-wrap gap-2">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="h-9">
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? format(date, "PPP") : "Select date"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
-            </PopoverContent>
-          </Popover>
-
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search employees..."
-              className="pl-8 h-9 md:w-[200px]"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+      <div className="mb-8">
+        <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-4">
+          <div>
+            <h3 className="text-2xl font-semibold tracking-tight">Attendance Tracking</h3>
+            <p className="text-sm text-muted-foreground mt-1">Manage and monitor employee attendance records</p>
           </div>
-
-          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-            <SelectTrigger className="h-9 w-[130px]">
-              <Filter className="mr-2 h-4 w-4" />
-              <span>Status</span>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="present">Present</SelectItem>
-              <SelectItem value="absent">Absent</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <div className="flex space-x-2">
-            <Button onClick={() => setShowAddAttendanceDialog(true)}>
+          <div className="flex items-center gap-2">
+            <Button onClick={() => setShowAddAttendanceDialog(true)} variant="default">
               <Plus className="mr-2 h-4 w-4" />
               Add Attendance
             </Button>
@@ -244,6 +282,44 @@ export function AttendanceTracking() {
               <Download className="mr-2 h-4 w-4" />
               Bulk Import
             </Button>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-lg border shadow-sm p-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {date ? format(date, "PPP") : "Select date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <CalendarComponent mode="single" selected={date} onSelect={setDate} initialFocus />
+              </PopoverContent>
+            </Popover>
+
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search employees..."
+                className="pl-8 h-9"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+              <SelectTrigger className="h-9 w-[130px]">
+                <Filter className="mr-2 h-4 w-4" />
+                <span>Status</span>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="present">Present</SelectItem>
+                <SelectItem value="absent">Absent</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
@@ -268,31 +344,68 @@ export function AttendanceTracking() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAttendance.map((record) => (
-                  <TableRow key={record.id}>
-                    <TableCell>{record.employeeId}</TableCell>
-                    <TableCell className="font-medium">{record.employeeName}</TableCell>
-                    <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
-                    <TableCell>{record.checkIn || "-"}</TableCell>
-                    <TableCell>{record.checkOut || "-"}</TableCell>
-                    <TableCell>{record.totalHours || "-"}</TableCell>
-                    <TableCell>
-                      {record.status === "present" ? (
-                        <Badge className="bg-green-500">Present</Badge>
-                      ) : (
-                        <Badge variant="destructive">Absent</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        Edit
-                      </Button>
+                {paginatedAttendance.length > 0 ? (
+                  paginatedAttendance.map((record) => (
+                    <TableRow key={record.id}>
+                      <TableCell>{record.employeeId}</TableCell>
+                      <TableCell className="font-medium">{record.employeeName}</TableCell>
+                      <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
+                      <TableCell>{record.checkIn || "-"}</TableCell>
+                      <TableCell>{record.checkOut || "-"}</TableCell>
+                      <TableCell>{record.totalHours || "-"}</TableCell>
+                      <TableCell>
+                        {record.status === "present" ? (
+                          <Badge className="bg-green-500">Present</Badge>
+                        ) : (
+                          <Badge variant="destructive">Absent</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end space-x-2">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleViewCalendar(record.employeeId, record.employeeName)}
+                                >
+                                  <Calendar className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>View Monthly Attendance</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+
+                          <Button variant="ghost" size="sm" onClick={() => handleEditAttendance(record)}>
+                            Edit
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={8} className="h-24 text-center">
+                      No attendance records found.
                     </TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
             </Table>
           </div>
+
+          {filteredAttendance.length > 0 && (
+            <Pagination
+              totalItems={filteredAttendance.length}
+              itemsPerPage={itemsPerPage}
+              currentPage={attendanceCurrentPage}
+              onPageChange={setAttendanceCurrentPage}
+              onItemsPerPageChange={setItemsPerPage}
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -324,44 +437,78 @@ export function AttendanceTracking() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredLeaveBalance.map((record) => (
-                  <TableRow key={record.id}>
-                    <TableCell>{record.employeeId}</TableCell>
-                    <TableCell className="font-medium">{record.employeeName}</TableCell>
-                    <TableCell>{record.earnedLeave}</TableCell>
-                    <TableCell>{record.usedLeave}</TableCell>
-                    <TableCell>
-                      <Badge className={record.remainingLeave > 5 ? "bg-green-500" : "bg-amber-500"}>
-                        {record.remainingLeave}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleViewPastLeaves(record.employeeId)}
-                        title="View Past Leaves"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                {paginatedLeaveBalance.length > 0 ? (
+                  paginatedLeaveBalance.map((record) => (
+                    <TableRow key={record.id}>
+                      <TableCell>{record.employeeId}</TableCell>
+                      <TableCell className="font-medium">{record.employeeName}</TableCell>
+                      <TableCell>{record.earnedLeave}</TableCell>
+                      <TableCell>{record.usedLeave}</TableCell>
+                      <TableCell>
+                        <Badge className={record.remainingLeave > 5 ? "bg-green-500" : "bg-amber-500"}>
+                          {record.remainingLeave}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleViewPastLeaves(record.employeeId)}
+                          title="View Past Leaves"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                      No leave balance records found.
                     </TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
             </Table>
           </div>
+
+          {filteredLeaveBalance.length > 0 && (
+            <Pagination
+              totalItems={filteredLeaveBalance.length}
+              itemsPerPage={itemsPerPage}
+              currentPage={leaveCurrentPage}
+              onPageChange={setLeaveCurrentPage}
+              onItemsPerPageChange={setItemsPerPage}
+            />
+          )}
         </CardContent>
       </Card>
 
-      <div className="flex justify-end">
-        <Button variant="outline">
-          <Download className="mr-2 h-4 w-4" />
-          Export Attendance
-        </Button>
-      </div>
-
       {/* Use the reusable AddAttendanceDialog component */}
       <AddAttendanceDialog open={showAddAttendanceDialog} onOpenChange={setShowAddAttendanceDialog} />
+
+      {/* Edit Attendance Dialog */}
+      {selectedAttendance && (
+        <EditAttendanceDialog
+          open={showEditAttendanceDialog}
+          onOpenChange={setShowEditAttendanceDialog}
+          attendance={selectedAttendance}
+          onUpdate={handleUpdateAttendance}
+        />
+      )}
+
+      {/* Attendance Calendar Dialog */}
+      <Dialog open={showCalendarDialog} onOpenChange={setShowCalendarDialog}>
+        <DialogContent className="sm:max-w-[900px]">
+          <DialogHeader>
+            <DialogTitle>Monthly Attendance - {calendarEmployee?.name}</DialogTitle>
+          </DialogHeader>
+
+          {calendarEmployee && (
+            <AttendanceCalendar employeeId={calendarEmployee.id} employeeName={calendarEmployee.name} />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Bulk Import Dialog */}
       <Dialog open={showBulkImportDialog} onOpenChange={setShowBulkImportDialog}>

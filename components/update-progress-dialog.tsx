@@ -139,7 +139,7 @@ export function UpdateProgressDialog({ open, onOpenChange, orders, onUpdateProgr
         const completed = Math.round(total * (selectedOrder.progress / 100))
 
         setTotalUnits(total)
-        setCompletedUnits(completed)
+        setCompletedUnits(0)
         setPreviousCompletedUnits(completed)
         setProgressPercentage(selectedOrder.progress)
         setError(null)
@@ -149,18 +149,18 @@ export function UpdateProgressDialog({ open, onOpenChange, orders, onUpdateProgr
 
   // Update progress percentage when completed units change
   const handleCompletedUnitsChange = (value: number) => {
-    // Validate that new value is not less than previous value
-    if (value < previousCompletedUnits) {
-      setError(`Cannot decrease progress. Previous completed units: ${previousCompletedUnits}`)
-      setCompletedUnits(previousCompletedUnits)
+    // Validate that new value is not negative
+    if (value < 0) {
+      setError(`Cannot enter negative units`)
+      setCompletedUnits(0)
       return
     }
 
-    // Validate that new value is not greater than total
-    if (value > totalUnits) {
-      setError(`Cannot exceed total units: ${totalUnits}`)
-      setCompletedUnits(totalUnits)
-      setProgressPercentage(100)
+    // Validate that new value does not exceed remaining units
+    const remainingUnits = totalUnits - previousCompletedUnits
+    if (value > remainingUnits) {
+      setError(`Cannot exceed remaining units: ${remainingUnits}`)
+      setCompletedUnits(remainingUnits)
       return
     }
 
@@ -168,7 +168,8 @@ export function UpdateProgressDialog({ open, onOpenChange, orders, onUpdateProgr
     setCompletedUnits(value)
 
     if (totalUnits > 0) {
-      const newProgress = Math.min(Math.round((value / totalUnits) * 100), 100)
+      const newTotalCompleted = previousCompletedUnits + value
+      const newProgress = Math.min(Math.round((newTotalCompleted / totalUnits) * 100), 100)
       setProgressPercentage(newProgress)
     }
   }
@@ -213,23 +214,19 @@ export function UpdateProgressDialog({ open, onOpenChange, orders, onUpdateProgr
             <>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="completed-units">Completed Units</Label>
+                  <Label htmlFor="completed-units">Units Completed in This Update</Label>
                   <Input
                     id="completed-units"
                     type="number"
-                    min={previousCompletedUnits}
-                    max={totalUnits}
+                    min={0}
+                    max={totalUnits - previousCompletedUnits}
                     value={completedUnits}
-                    onChange={(e) =>
-                      handleCompletedUnitsChange(Number.parseInt(e.target.value) || previousCompletedUnits)
-                    }
+                    onChange={(e) => handleCompletedUnitsChange(Number.parseInt(e.target.value) || 0)}
                   />
-                  {previousCompletedUnits > 0 && (
-                    <p className="text-xs text-muted-foreground flex items-center">
-                      <ArrowUp className="h-3 w-3 mr-1" />
-                      Previous: {previousCompletedUnits} units
-                    </p>
-                  )}
+                  <p className="text-xs text-muted-foreground flex items-center">
+                    <ArrowUp className="h-3 w-3 mr-1" />
+                    Previous total: {previousCompletedUnits} units
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="total-units">Total Units</Label>
@@ -246,10 +243,13 @@ export function UpdateProgressDialog({ open, onOpenChange, orders, onUpdateProgr
 
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <Label>Progress</Label>
+                  <Label>Progress After Update</Label>
                   <span className="text-sm font-medium">{progressPercentage}%</span>
                 </div>
                 <Progress value={progressPercentage} className="h-2" />
+                <p className="text-xs text-muted-foreground">
+                  New total: {previousCompletedUnits + completedUnits} of {totalUnits} units
+                </p>
               </div>
 
               <div className="space-y-1 text-sm">

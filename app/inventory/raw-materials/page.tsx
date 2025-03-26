@@ -12,18 +12,19 @@ import { cn } from "@/lib/utils"
 import { DataByTableName } from "@/components/utils/api"
 import { textCapitalize } from "@/contexts/hr-context"
 
+type MaterialCategory = 'label' | 'consumables' | 'cap' | 'pre-form' | 'shrink'
 // Define the raw material interface
 interface RawMaterial {
-  category: string
+  category: MaterialCategory
   type: string
-  quantity: string,
+  quantity: number,
   unit: string
 }
 
 type Response = {
   materialId: string
   name: string
-  size: string
+  size: number
   type: string
   unitMeasure: string
   value: number
@@ -36,11 +37,11 @@ export default function RawMaterialsPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const instance = new DataByTableName("dim_raw_materials");
+      const instance = new DataByTableName("dim_raw_materials_v1");
       const response = await instance.get();
       const data: Response[] = response.data ?? []
 
-      const _rawMaterials: RawMaterial[] = data.map(item => ({ category: textCapitalize(item.type), type: item.name, quantity: item.size, unit: item.unitMeasure }))
+      const _rawMaterials: RawMaterial[] = data.map(item => ({ category: item.type as MaterialCategory, type: item.name, quantity: item.size, unit: item.unitMeasure }))
       setRawMaterials(_rawMaterials)
     } catch (error) {
       console.log({ error })
@@ -74,29 +75,57 @@ export default function RawMaterialsPage() {
 
   // Calculate summary metrics
   const totalMaterials = rawMaterials.length
-  const lowStockCount = rawMaterials.filter(
-    (material) =>
-      (parseInt(material.quantity) < 30 && material.unit === "Boxes") ||
-      (parseInt(material.quantity) < 10000 && material.unit === "Pieces") ||
-      (parseInt(material.quantity) < 20 && material.unit === "Rolls"),
-  ).length
+  const lowStockCount = rawMaterials.filter((material) => {
+    switch (material.category as MaterialCategory) {
+      case "label":
+        return material.quantity < 100
+      case "pre-form":
+        return material.quantity < 100
+      case "shrink":
+        return material.quantity < 50
+      case "cap":
+        return material.quantity < 10000
+      case "consumables":
+        return material.quantity < 20
+      default:
+        return false
+    }
+  }).length
   const pendingOrdersCount = 12 // Mock data for pending orders
 
   // Get category icon
-  const getCategoryIcon = (category: string) => {
+  const getCategoryIcon = (category: MaterialCategory) => {
     switch (category) {
-      case "Labels":
+      case "label":
         return <Layers className="h-4 w-4" />
-      case "Pre-Form":
+      case "pre-form":
         return <Box className="h-4 w-4" />
-      case "Shrink":
+      case "shrink":
         return <Package className="h-4 w-4" />
-      case "Caps":
+      case "cap":
         return <Package className="h-4 w-4" />
-      case "Consumables":
+      case "consumables":
         return <Package className="h-4 w-4" />
       default:
         return <Package className="h-4 w-4" />
+    }
+  }
+
+  // Get category unit
+  const getCategoryUnit = (category: string) => {
+    switch (category) {
+      case "label":
+        return "KGs"
+      case "Pre-Form":
+        return "KGs"
+      case "Shrink":
+        return "KGs"
+      case "Caps":
+        return "Pieces"
+      case "Consumables":
+        return "Litres"
+      default:
+        return ""
     }
   }
 
@@ -214,18 +243,31 @@ export default function RawMaterialsPage() {
                   <TableHeader className="bg-muted/10">
                     <TableRow>
                       <TableHead className="w-[40%]">Material Type</TableHead>
-                      <TableHead className="text-right">Quantity</TableHead>
-                      <TableHead className="text-right">Unit</TableHead>
+                      <TableHead className="text-right">
+                        Quantity ({activeCategory ? getCategoryUnit(activeCategory) : ""})
+                      </TableHead>
                       <TableHead className="text-right">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredMaterials.map((material, index) => {
-                      // Determine status based on quantity
-                      const isLowStock =
-                        (material.quantity < 30 && material.unit === "Boxes") ||
-                        (material.quantity < 10000 && material.unit === "Pieces") ||
-                        (material.quantity < 20 && material.unit === "Rolls")
+                      // Determine status based on quantity and category
+                      const isLowStock = (() => {
+                        switch (material.category) {
+                          case "label":
+                            return material.quantity < 100
+                          case "pre-form":
+                            return material.quantity < 100
+                          case "shrink":
+                            return material.quantity < 50
+                          case "cap":
+                            return material.quantity < 10000
+                          case "consumables":
+                            return material.quantity < 20
+                          default:
+                            return false
+                        }
+                      })()
 
                       return (
                         <TableRow
@@ -234,7 +276,6 @@ export default function RawMaterialsPage() {
                         >
                           <TableCell className="font-medium">{material.type}</TableCell>
                           <TableCell className="text-right font-medium">{material.quantity.toLocaleString()}</TableCell>
-                          <TableCell className="text-right text-muted-foreground">{material.unit}</TableCell>
                           <TableCell className="text-right">
                             <Badge
                               variant={isLowStock ? "destructive" : "outline"}

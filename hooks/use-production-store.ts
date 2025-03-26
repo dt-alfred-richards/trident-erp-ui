@@ -1,5 +1,4 @@
 import { create } from "zustand"
-import { v4 as uuidv4 } from "uuid"
 import type { ProductionOrder } from "@/types/production"
 
 interface ProgressHistoryEntry {
@@ -194,41 +193,15 @@ export const useProductionStore = create<ProductionStore>((set, get) => ({
   createProductionOrder: (order) => {
     const newOrder: ProductionOrder = {
       ...order,
-      id: uuidv4(),
-      startDate: new Date().toISOString(),
-      progress: 0,
+      id: Math.random().toString(36).substring(2, 9),
+      createdAt: new Date().toISOString(),
+      status: "pending",
+      completedQuantity: 0,
+      bomId: order.bomId, // Add bomId to the new order
     }
-
-    set((state) => {
-      // Create initial progress history entry
-      const initialHistoryEntry: ProgressHistoryEntry = {
-        timestamp: new Date().toISOString(),
-        units: 0,
-        totalUnits: order.quantity,
-        progressPercentage: 0,
-      }
-
-      return {
-        productionOrders: [...state.productionOrders, newOrder],
-        // Update the production data to reflect the new order
-        productionData: state.productionData.map((item) => {
-          if (item.sku === order.sku) {
-            return {
-              ...item,
-              inProduction: item.inProduction + order.quantity,
-              deficit: Math.max(0, item.deficit - order.quantity),
-              status: item.deficit - order.quantity <= 0 ? "sufficient" : "deficit",
-            }
-          }
-          return item
-        }),
-        // Add initial progress history entry
-        progressHistory: {
-          ...state.progressHistory,
-          [newOrder.id]: [initialHistoryEntry],
-        },
-      }
-    })
+    set((state) => ({
+      productionOrders: [...state.productionOrders, newOrder],
+    }))
   },
 
   updateOrderProgress: (orderId, progress) => {
@@ -238,7 +211,7 @@ export const useProductionStore = create<ProductionStore>((set, get) => ({
       if (!order) return state
 
       // Only update if progress is increasing
-      if (progress < order.progress) {
+      if (progress < (order.progress ?? 0)) {
         return state
       }
 
