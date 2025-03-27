@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DataByTableName } from "../utils/api"
 import { useOrders } from "@/contexts/order-context"
 import { Order, OrderProduct, OrderStatus } from "@/types/order"
+import { createType } from "../utils/generic"
 
 export type FactSales = {
   amount: number,
@@ -42,20 +43,20 @@ export type Product = {
 }
 
 export type OrderDetails = {
-  orderId: string,
-  productId: string,
+  id?: number,
+  clientId: string,
   cases: number,
   tradePrice: number,
-  expectedDeliveryDate: Date,
-  status: OrderStatus,
-  clientId: string,
+  expectedDeliveryDate: number,
+  status: string,
   casesDelivered: number,
   casesReserved: number,
-  addressId?: string | null,
-  orderSubId: string,
-  modifiedOn: Date,
-  brand: string,
-  createdOn: number
+  createdBy?: string,
+  addressId: string,
+  createdOn?: number,
+  modifiedOn?: number,
+  productId: string,
+  orderId?: string
 }
 
 const getNumber = (str: string) => {

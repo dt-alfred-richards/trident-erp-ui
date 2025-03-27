@@ -4,6 +4,7 @@ import { createContext, Dispatch, SetStateAction, useCallback, useContext, useEf
 import { type Order, type OrderStatus, ClientAddress, ClientInfo, ClientProposedPrice, OrderActionService } from "@/types/order"
 import { FactSales, OrderDetails, Product } from "@/components/sales/sales-dashboard"
 import { DataByTableName } from "@/components/utils/api"
+import { createType } from "@/components/utils/generic"
 
 interface OrderContextType {
   orders: Order[]
@@ -22,8 +23,19 @@ interface OrderContextType {
   nonSerializedData: Record<string, any>,
   updateNonSerilizedData: (data: any) => void,
   setRefetchData: Dispatch<SetStateAction<boolean>>,
-  clientAddress: Record<string, ClientAddress[]>
+  clientAddress: Record<string, ClientAddress[]>,
+  eventLogger: Record<string, EventLogger>
 }
+
+type EventLogger = {
+  id: number,
+  eventId: string,
+  tableName: string,
+  fieldValue: string,
+  category: string,
+  tableId: number
+}
+
 type Priority = 'high' | 'medium' | 'low'
 const OrderContext = createContext<OrderContextType | undefined>(undefined)
 
@@ -34,6 +46,9 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const [productInfo, setProductInfo] = useState<Record<string, Product>>({});
   const [clientAddress, setClientAddress] = useState<Record<string, ClientAddress[]>>({});
   const [clientProposedPrice, setClientProposedPrice] = useState<Record<string, ClientProposedPrice>>({})
+  const [eventLogger, setEventLogger] = useState<Record<string, EventLogger>>({})
+  const [orderDetails, setOrderDetails] = useState<OrderDetails[]>([])
+  const [sales, setSales] = useState<FactSales[]>([])
   const [currentUser, setCurrentUser] = useState<string>("Current User") // In a real app, this would come from authentication
 
   const [nonSerializedData, setNonSerializedData] = useState<Record<string, any>>({})
@@ -111,8 +126,8 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const getMapper = (data: any[], key: string) => {
-    return Object.fromEntries(data.map(item => [key, item]))
+  const getMapper = (data: any[], key: string = '') => {
+    return Object.fromEntries(data.map(item => [item[key], item]))
   }
 
   const getPriority = useCallback((quantity: number): Priority => {
@@ -128,7 +143,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const convertSalesToOrders = useCallback((data: FactSales[], orderDetails: OrderDetails[]) => {
     return data.map(item => {
       const orderProducts = orderDetails.filter(order => order.orderId === item.orderId).map(({ productId, casesReserved, casesDelivered, cases }) => {
-        const { brand, size = "0", sku = "", units = "" } = productInfo[productId] ?? {}
+        const { brand, sku = "", units = "" } = productInfo[productId] ?? {}
         return ({
           id: productId,
           name: brand,
@@ -169,7 +184,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
         trackingId: ""
       })
     }).sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime())
-  }, [clientInfo, clientProposedPrice])
+  }, [clientInfo, clientProposedPrice, productInfo])
 
   useEffect(() => {
     const proposedPrice = new DataByTableName("client_proposed_price");
@@ -178,6 +193,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     const clientAddress = new DataByTableName("client_address");
     const orderDetails = new DataByTableName("order_details");
     const salesInstance = new DataByTableName("fact_sales");
+    const eventLogger = new DataByTableName("events_logger");
 
     Promise.allSettled([
       proposedPrice.get(),
@@ -185,7 +201,8 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       dimProduct.get(),
       clientAddress.get(),
       orderDetails.get(),
-      salesInstance.get()
+      salesInstance.get(),
+      eventLogger.get()
     ]).then((responses: any[]) => {
       const _proposedPrice = responses[0].value.data.data
       const _dimClient = responses[1].value.data.data
@@ -193,11 +210,13 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       const _clientAddress = responses[3].value.data.data
       const _orderDetails = responses[4].value.data.data
       const _sales = responses[5].value.data.data
+      const _eventLogger = responses[6].value.data.data
 
       setClientProposedPrice(getMapper(_proposedPrice, "productId"))
       setClientInfo(getMapper(_dimClient, "clientId"))
       setProductInfo(getMapper(_dimProduct, "productId"))
       setClientProposedPrice(getMapper(_proposedPrice, "productId"))
+      setEventLogger(getMapper(_eventLogger, "id"))
       setClientAddress(
         _clientAddress.reduce((acc: any, curr: any) => {
           if (!acc[curr.clientId]) {
@@ -206,11 +225,14 @@ export function OrderProvider({ children }: { children: ReactNode }) {
           acc[curr.clientId].push(curr)
           return acc;
         }, {} as Record<string, ClientAddress[]>))
-      setOrders(convertSalesToOrders(_sales ?? [], _orderDetails))
+      setOrderDetails(_orderDetails)
+      setSales(_sales);
     })
   }, [refetchData])
 
-  console.log({ orders })
+  useEffect(() => {
+    setOrders(convertSalesToOrders(sales, orderDetails))
+  }, [productInfo, sales, orderDetails])
 
   const updateNonSerilizedData = (data: any) => {
     setNonSerializedData(prev => ({
@@ -237,7 +259,8 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     updateNonSerilizedData,
     setRefetchData,
     clientAddress,
-    productInfo
+    productInfo,
+    eventLogger
   }), [orders, clientProposedPrice, refetchData])
   return <OrderContext.Provider value={value}>{children}</OrderContext.Provider>
 }

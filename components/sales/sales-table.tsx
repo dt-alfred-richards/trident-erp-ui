@@ -171,6 +171,8 @@ export function SalesTable() {
   // Get the selected order
   const selectedOrder = selectedOrderId ? getOrderById(selectedOrderId) : null
 
+  console.log({paginatedOrders})
+
   return (
     <div className="space-y-4">
       {/* Search bar */}

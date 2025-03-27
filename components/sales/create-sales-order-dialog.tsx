@@ -1,10 +1,9 @@
 "use client"
 
 import { useState, useEffect, useMemo, useCallback } from "react"
-import { add, format } from "date-fns"
-import { CalendarIcon, Plus, Trash2 } from "lucide-react"
+import { format } from "date-fns"
+import { CalendarIcon, Plus, Trash2, Check, ChevronsUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { v4 as uuidv4 } from 'uuid';
 import {
   Dialog,
   DialogContent,
@@ -31,9 +30,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { FactSales, OrderDetails } from "./sales-dashboard"
-import { DataByTableName } from "../utils/api"
+import { Switch } from "@/components/ui/switch"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { cn } from "@/lib/utils"
 import { useOrders } from "@/contexts/order-context"
+import { DataByTableName } from "../utils/api"
+import { FactSales, OrderDetails } from "./sales-dashboard"
 
 interface OrderItem {
   id: string
@@ -66,15 +68,14 @@ type ClientType = {
 }
 
 export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderDialogProps) {
-  // Order header state
-  const { clientInfo, productInfo, clientAddress = {}, clientProposedPrice = {}, setRefetchData } = useOrders()
-
+  const { clientInfo, productInfo, clientAddress = {}, clientProposedPrice = {}, setRefetchData } = useOrders()  // Order header state
   const [orderDate] = useState<Date>(new Date()) // Remove setOrderDate since it's now fixed
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<Date | undefined>(undefined)
   const [clientId, setClientId] = useState("")
   const [reference, setReference] = useState("")
   const [poDate, setPoDate] = useState<Date | undefined>(undefined)
   const [poId, setPoId] = useState("")
+  const [poNumber, setPoNumber] = useState("") // New state for Purchase Order Number
   const [remarks, setRemarks] = useState("")
   const products = useMemo(() => {
     return Object.values(productInfo).map(product => ({
@@ -113,22 +114,32 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
   >([])
   const [selectedShippingAddressId, setSelectedShippingAddressId] = useState("")
 
+  // Tax location state
+  const [isInTelangana, setIsInTelangana] = useState(true) // Default to true (within Telangana)
+
   // Item entry state
   const [showItemForm, setShowItemForm] = useState(false)
   const [selectedProductId, setSelectedProductId] = useState("")
   const [cases, setCases] = useState("")
 
+  // Combobox state
+  const [openCombobox, setOpenCombobox] = useState(false)
+
   // Order items state
   const [orderItems, setOrderItems] = useState<OrderItem[]>([])
 
-  // Order summary state
+  // Order summary state  
   const [subtotal, setSubtotal] = useState(0)
   const [taxTotal, setTaxTotal] = useState(0)
   const [discount, setDiscount] = useState(0)
+  const [discountType, setDiscountType] = useState<"percentage" | "amount">("amount")
+  const [taxesEnabled, setTaxesEnabled] = useState(true) // New state for optional taxes
   const [total, setTotal] = useState(0)
 
   // Confirmation dialog state
   const [showConfirmation, setShowConfirmation] = useState(false)
+
+  // Access the orders context
 
   // Generate a unique order ID
   const generateOrderId = () => {
@@ -146,6 +157,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
         setGstNumber(selectedClient.gstNumber)
         setPanNumber(selectedClient.panNumber)
         setAvailableReferences(selectedClient.references)
+        setReference("") // Reset reference when client changes
 
         // Set shipping addresses
         if (selectedClient.shippingAddresses) {
@@ -178,15 +190,47 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
     }
   }, [clientId])
 
+  // Update when shipping address changes
+  useEffect(() => {
+    if (selectedShippingAddressId) {
+      const selectedAddress = shippingAddresses.find((addr) => addr.id === selectedShippingAddressId)
+      if (selectedAddress) {
+        // Check if address contains "Telangana" to determine tax type
+        setIsInTelangana(selectedAddress.address.includes("Telangana"))
+      }
+    }
+  }, [selectedShippingAddressId, shippingAddresses])
+
   // Calculate order summary whenever items change
   useEffect(() => {
     const newSubtotal = orderItems.reduce((sum, item) => sum + item.basePay, 0)
-    const newTaxTotal = orderItems.reduce((sum, item) => sum + item.taxAmount, 0)
 
+    // Calculate discount amount
+    let discountAmount = 0
+    if (discountType === "percentage") {
+      discountAmount = (newSubtotal * discount) / 100
+    } else {
+      discountAmount = discount
+    }
+
+    // Apply discount to subtotal before calculating tax
+    const discountedSubtotal = newSubtotal - discountAmount
+
+    // Calculate tax only if taxes are enabled
+    let newTaxTotal = 0
+    if (taxesEnabled) {
+      // Tax calculation is the same regardless of tax type, just displayed differently
+      newTaxTotal = orderItems.reduce((sum, item) => {
+        const itemDiscountRatio = item.basePay / newSubtotal
+        const itemDiscountAmount = discountAmount * itemDiscountRatio
+        const discountedItemAmount = item.basePay - itemDiscountAmount
+        return sum + (discountedItemAmount * item.taxRate) / 100
+      }, 0) || 0
+    }
     setSubtotal(newSubtotal)
     setTaxTotal(newTaxTotal)
-    setTotal(newSubtotal + newTaxTotal - discount)
-  }, [orderItems, discount])
+    setTotal(discountedSubtotal + newTaxTotal)
+  }, [orderItems, discount, discountType, taxesEnabled])
 
   // Handle adding a new item to the order
   const handleAddItem = () => {
@@ -198,15 +242,16 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
     if (!product) return
 
     const quantity = Number(cases)
-    const basePay = product.price * quantity
-    const taxAmount = (basePay * product.taxRate) / 100
+    const basePay = product.price * quantity || 0
+    // Tax amount will be calculated in the useEffect based on discounts and tax toggle
+    const taxAmount = 0 // Initialize to 0, will be calculated in useEffect
 
     const newItem: OrderItem = {
       id: `item-${Date.now()}`,
       productId: product.id,
       productName: product.name,
       cases: quantity,
-      pricePerCase: product.price,
+      pricePerCase: product.price || 0,
       taxRate: product.taxRate,
       basePay,
       taxAmount,
@@ -235,6 +280,20 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
 
   // Handle form submission
   const handleSubmit = () => {
+    // Validate form
+    if (
+      !orderDate ||
+      !clientId ||
+      !reference ||
+      !expectedDeliveryDate ||
+      orderItems.length === 0 ||
+      (shippingAddresses.length > 0 && !selectedShippingAddressId)
+    ) {
+      alert("Please fill in all required fields and add at least one item.")
+      return
+    }
+
+    // Show confirmation dialog
     setShowConfirmation(true)
   }
 
@@ -243,27 +302,22 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
     return date.toISOString().split("T")[0]
   }
 
-  const orderId = useMemo(() => {
-    return uuidv4()
-  }, [orderItems, clientId])
-
-  // Handle final submission after confirmation
   const handleConfirmedSubmit = useCallback(() => {
     // Get the selected shipping address details
     const selectedAddress = shippingAddresses.find((addr) => addr.id === selectedShippingAddressId)
     const salesPayload: Partial<FactSales> = {
-      "amount": total,
-      "clientId": clientId,
-      "date": dateConverter(orderDate),
-      "expectedDeliveryDate": new Date().getTime(),
-      "invoiceNumber": "",
-      "numOrders": 0,
-      "poDate": poDate?.getTime(),
+      amount: total,
+      clientId: clientId,
+      date: dateConverter(orderDate),
+      expectedDeliveryDate: new Date().getTime(),
+      invoiceNumber: '',
+      numOrders: 0,
+      poDate: poDate?.getTime(),
       poId,
-      "poNumber": "",
-      "referenceName": reference,
-      "remarks": "",
-      "status": "pending_approval"
+      poNumber: '',
+      referenceName: reference,
+      remarks: '',
+      status: "pending_approval"
     }
     const factSalesInstance = new DataByTableName("fact_sales");
     const orderDetailsInstance = new DataByTableName("order_details");
@@ -273,15 +327,15 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
       casesDelivered: 0,
       casesReserved: 0,
       clientId,
-      expectedDeliveryDate,
+      expectedDeliveryDate: new Date(expectedDeliveryDate || "").getTime(),
       productId: order.productId,
-      addressId: selectedAddress?.id,
+      addressId: selectedAddress?.id || "",
       status: "pending_approval",
-      tradePrice: order.pricePerCase
+      tradePrice: order.pricePerCase,
     } as OrderDetails))
 
     factSalesInstance.post(salesPayload).then(res => {
-      const createdId = res?.data[0]?.orderId ?? "";
+      const createdId = res?.data.data[0]?.orderId ?? "";
       if (createdId) {
         const orderPayload = orderDetailsPayload.map(item => ({ ...item, orderId: createdId }))
         return orderDetailsInstance.post(orderPayload)
@@ -294,7 +348,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
       .catch(error => {
         alert(error.message)
       })
-  }, [orderItems, clientId, reference, selectedProductId, orderId])
+  }, [orderItems, clientId, reference, selectedProductId])
 
   // Reset the form to initial state
   const resetForm = () => {
@@ -304,16 +358,19 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
     setExpectedDeliveryDate(undefined)
     setPoDate(undefined)
     setPoId("")
+    setPoNumber("") // Reset the new field
     setRemarks("")
     setOrderItems([])
     setDiscount(0)
+    setDiscountType("amount")
+    setTaxesEnabled(true)
     setShowItemForm(false)
     setSelectedProductId("")
     setCases("")
     setShippingAddresses([])
     setSelectedShippingAddressId("")
-    onOpenChange(false)
     setRefetchData(p => !p)
+    onOpenChange(false)
   }
 
   return (
@@ -371,16 +428,14 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                   <Label htmlFor="client">
                     Client Name <span className="text-red-500">*</span>
                   </Label>
-                  <Select value={clientId} onValueChange={value => {
-                    setClientId(value)
-                  }}>
+                  <Select value={clientId} onValueChange={setClientId}>
                     <SelectTrigger id="client">
                       <SelectValue placeholder="Select client" />
                     </SelectTrigger>
                     <SelectContent>
                       {clients.map((client) => (
-                        <SelectItem key={`key_ ${client?.id ?? ""}`} value={client?.id ?? ""}>
-                          {client?.name ?? ""}
+                        <SelectItem key={client?.id} value={client?.id || ""}>
+                          {client?.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -419,7 +474,18 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
-                      <Calendar mode="single" selected={poDate} onSelect={setPoDate} initialFocus />
+                      <Calendar
+                        mode="single"
+                        selected={poDate}
+                        onSelect={setPoDate}
+                        initialFocus
+                        disabled={(date) => date > orderDate}
+                        footer={
+                          <p className="text-xs text-center text-muted-foreground p-2">
+                            Purchase Order Date cannot be after Order Date
+                          </p>
+                        }
+                      />
                     </PopoverContent>
                   </Popover>
                 </div>
@@ -450,6 +516,18 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                   <Label htmlFor="po-id">Purchase Order ID</Label>
                   <Input id="po-id" value={poId} onChange={(e) => setPoId(e.target.value)} placeholder="Enter PO ID" />
                 </div>
+
+                {/* Purchase Order Number - New Field */}
+                <div className="space-y-2">
+                  <Label htmlFor="po-number">Purchase Order Number</Label>
+                  <Input
+                    id="po-number"
+                    value={poNumber}
+                    onChange={(e) => setPoNumber(e.target.value)}
+                    placeholder="Enter PO Number"
+                  />
+                </div>
+
                 {/* Shipping Address Selection */}
                 <div className="space-y-2">
                   <Label htmlFor="shipping-address">
@@ -517,21 +595,52 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                 <Card>
                   <CardContent className="p-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {/* Product Selection */}
+                      {/* Product Selection - Replaced with Combobox */}
                       <div className="space-y-2">
                         <Label htmlFor="product">Product</Label>
-                        <Select value={selectedProductId} onValueChange={setSelectedProductId}>
-                          <SelectTrigger id="product">
-                            <SelectValue placeholder="Select product" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {products.map((product) => (
-                              <SelectItem key={product.id} value={product.id}>
-                                {product.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={openCombobox}
+                              className="w-full justify-between"
+                            >
+                              {selectedProductId
+                                ? products.find((product) => product.id === selectedProductId)?.name
+                                : "Select product..."}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-full p-0">
+                            <Command>
+                              <CommandInput placeholder="Search products..." />
+                              <CommandList>
+                                <CommandEmpty>No product found.</CommandEmpty>
+                                <CommandGroup>
+                                  {products.map((product) => (
+                                    <CommandItem
+                                      key={product.id}
+                                      value={product.id}
+                                      onSelect={(currentValue) => {
+                                        setSelectedProductId(currentValue === selectedProductId ? "" : currentValue)
+                                        setOpenCombobox(false)
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          selectedProductId === product.id ? "opacity-100" : "opacity-0",
+                                        )}
+                                      />
+                                      {product.name}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
                       </div>
 
                       {/* Cases */}
@@ -554,7 +663,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                           id="price"
                           value={
                             selectedProductId
-                              ? `₹${products.find((p) => p.id === selectedProductId)?.price.toFixed(2) || "0.00"}`
+                              ? `₹${products.find((p) => p.id === selectedProductId)?.price?.toFixed(2) || "0.00"}`
                               : ""
                           }
                           readOnly
@@ -607,10 +716,10 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                         <TableRow key={item.id}>
                           <TableCell>{item.productName}</TableCell>
                           <TableCell className="text-right">{item.cases}</TableCell>
-                          <TableCell className="text-right">₹{item.pricePerCase.toFixed(2)}</TableCell>
-                          <TableCell className="text-right">₹{item.basePay.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">₹{item.pricePerCase?.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">₹{item.basePay?.toFixed(2)}</TableCell>
                           <TableCell className="text-right">{item.taxRate}%</TableCell>
-                          <TableCell className="text-right">₹{item.taxAmount.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">₹{item.taxAmount?.toFixed(2)}</TableCell>
                           <TableCell>
                             <Button
                               type="button"
@@ -645,16 +754,13 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                 <div className="space-y-2">
                   <div className="flex justify-between py-1">
                     <span>Subtotal:</span>
-                    <span>₹{subtotal.toFixed(2)}</span>
+                    <span>₹{subtotal?.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between py-1">
-                    <span>Taxes:</span>
-                    <span>₹{taxTotal.toFixed(2)}</span>
-                  </div>
+
+                  {/* Discount Section - Updated */}
                   <div className="flex justify-between py-1 items-center">
                     <span>Discount:</span>
                     <div className="flex items-center gap-2">
-                      <span>₹</span>
                       <Input
                         type="number"
                         value={discount}
@@ -662,11 +768,53 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                         className="w-24 h-8 text-right"
                         min="0"
                       />
+                      <Select
+                        value={discountType}
+                        onValueChange={(value: "percentage" | "amount") => setDiscountType(value)}
+                      >
+                        <SelectTrigger className="w-24 h-8">
+                          <SelectValue placeholder="Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="percentage">%</SelectItem>
+                          <SelectItem value="amount">₹</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
+
+                  {/* Taxes Toggle - New */}
+                  <div className="flex justify-between py-1 items-center">
+                    <span>Apply Taxes:</span>
+                    <Switch checked={taxesEnabled} onCheckedChange={setTaxesEnabled} />
+                  </div>
+
+                  {/* Taxes - Conditional with breakdown */}
+                  {taxesEnabled && (
+                    <>
+                      {isInTelangana ? (
+                        <>
+                          <div className="flex justify-between py-1">
+                            <span>CGST (9%):</span>
+                            <span>₹{(taxTotal / 2)?.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between py-1">
+                            <span>SGST (9%):</span>
+                            <span>₹{(taxTotal / 2)?.toFixed(2)}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex justify-between py-1">
+                          <span>IGST (18%):</span>
+                          <span>₹{taxTotal?.toFixed(2)}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+
                   <div className="flex justify-between py-2 font-bold border-t">
                     <span>Total:</span>
-                    <span>₹{total.toFixed(2)}</span>
+                    <span>₹{total?.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -695,7 +843,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
             <Button
               type="button"
               onClick={handleSubmit}
-              disabled={!orderDate || !clientId || !reference || orderItems.length === 0}
+              disabled={!orderDate || !clientId || !reference || !expectedDeliveryDate || orderItems.length === 0}
             >
               Add Order
             </Button>
