@@ -1,8 +1,9 @@
 "use client"
 
-import { createContext, Dispatch, SetStateAction, useContext, useMemo, useState, type ReactNode } from "react"
-import { type Order, type OrderStatus, ClientAddress, clientAddress, ClientInfo, ClientProposedPrice, OrderActionService } from "@/types/order"
-import { Product } from "@/components/sales/sales-dashboard"
+import { createContext, Dispatch, SetStateAction, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
+import { type Order, type OrderStatus, ClientAddress, ClientInfo, ClientProposedPrice, OrderActionService } from "@/types/order"
+import { FactSales, OrderDetails, Product } from "@/components/sales/sales-dashboard"
+import { DataByTableName } from "@/components/utils/api"
 
 interface OrderContextType {
   orders: Order[]
@@ -14,7 +15,6 @@ interface OrderContextType {
   deliverProducts: (orderId: string, productId: string, quantity: number) => void
   getOrderById: (orderId: string) => Order | undefined,
   setOrders: Dispatch<SetStateAction<Order[]>>
-  createClientProposedPrice: (data: ClientProposedPrice[], clientInfo: ClientInfo[], productInfo: Product[], clientAddress: clientAddress[]) => void
   clientProposedPrice: Record<string, ClientProposedPrice>,
   productInfo: Record<string, Product>,
   clientInfo: Record<string, ClientInfo>,
@@ -24,7 +24,7 @@ interface OrderContextType {
   setRefetchData: Dispatch<SetStateAction<boolean>>,
   clientAddress: Record<string, ClientAddress[]>
 }
-
+type Priority = 'high' | 'medium' | 'low'
 const OrderContext = createContext<OrderContextType | undefined>(undefined)
 
 export function OrderProvider({ children }: { children: ReactNode }) {
@@ -32,10 +32,9 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const [refetchData, setRefetchData] = useState(false);
   const [clientInfo, setClientInfo] = useState<Record<string, ClientInfo>>({});
   const [productInfo, setProductInfo] = useState<Record<string, Product>>({});
-  const [clientAddress, setClientAddress] = useState<Record<string, clientAddress[]>>({});
+  const [clientAddress, setClientAddress] = useState<Record<string, ClientAddress[]>>({});
   const [clientProposedPrice, setClientProposedPrice] = useState<Record<string, ClientProposedPrice>>({})
   const [currentUser, setCurrentUser] = useState<string>("Current User") // In a real app, this would come from authentication
-  const [rootLoaded, setRootLoaded] = useState(false)
 
   const [nonSerializedData, setNonSerializedData] = useState<Record<string, any>>({})
   // Get filtered orders by status
@@ -58,7 +57,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
         throw new Error("Only pending orders can be approved")
       }
       OrderActionService.approveOrder(orderId, currentUser).finally(() => {
-        setRefetchData(true)
+        setRefetchData(p => !p)
       })
       console.log(`Order ${orderId} approved successfully`)
     } catch (error) {
@@ -112,20 +111,106 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const createClientProposedPrice = (priceData: ClientProposedPrice[], clientInfo: ClientInfo[], productInfo: Product[], clientAddress: ClientAddress[]) => {
-    setClientProposedPrice(Object.fromEntries(priceData.map(item => [item.productId, item])))
-    setClientInfo(Object.fromEntries(clientInfo.map(item => [item.clientId, item])))
-    setProductInfo(Object.fromEntries(productInfo.map(item => [item.productId, item])))
-    setClientAddress(
-      clientAddress.reduce((acc, curr) => {
-        if (!acc[curr.clientId]) {
-          acc[curr.clientId] = acc[curr.clientId] ?? []
-        }
-        acc[curr.clientId].push(curr)
-        return acc;
-      }, {} as Record<string, ClientAddress[]>))
-    setRefetchData(true);
+  const getMapper = (data: any[], key: string) => {
+    return Object.fromEntries(data.map(item => [key, item]))
   }
+
+  const getPriority = useCallback((quantity: number): Priority => {
+    if (quantity <= 1000) {
+      return "high"
+    } else if (quantity <= 10000) {
+      return "medium"
+    } else {
+      return "low"
+    }
+  }, [])
+
+  const convertSalesToOrders = useCallback((data: FactSales[], orderDetails: OrderDetails[]) => {
+    return data.map(item => {
+      const orderProducts = orderDetails.filter(order => order.orderId === item.orderId).map(({ productId, casesReserved, casesDelivered, cases }) => {
+        const { brand, size = "0", sku = "", units = "" } = productInfo[productId] ?? {}
+        return ({
+          id: productId,
+          name: brand,
+          price: clientProposedPrice[item.clientId]?.proposedPrice ?? 0,
+          quantity: cases,
+          allocated: casesReserved,
+          delivered: casesDelivered,
+          sku,
+          units
+        })
+      })
+      const { contactNumber, email, gst, name = "", pan, reference, type, clientId } = clientInfo[item.clientId] ?? {}
+
+      const { addressLine_1 = "", addressLine_2 = "", cityDistrictState = "", pincode } = (clientAddress[clientId] ?? [])[0] ?? {}
+
+      const address = [addressLine_1, addressLine_2, cityDistrictState, pincode].filter(item => item).join(",") ?? ""
+      return ({
+        createdBy: item?.createdBy ?? "",
+        customerNumber: contactNumber,
+        customerEmail: email,
+        billingAddress: address,
+        shippingAddress: address,
+        customer: name,
+        deliveryDate: new Date(item.expectedDeliveryDate).toDateString(),
+        id: item.orderId ?? '',
+        orderDate: item.date,
+        priority: getPriority(orderProducts.reduce((acc, curr) => {
+          acc += curr.quantity ?? 0;
+          return acc;
+        }, 0)),
+        products: orderProducts,
+        reference: item.referenceName,
+        status: item.status as any,
+        statusHistory: [],
+        approvedAt: "",
+        approvedBy: "",
+        carrier: "",
+        trackingId: ""
+      })
+    }).sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime())
+  }, [clientInfo, clientProposedPrice])
+
+  useEffect(() => {
+    const proposedPrice = new DataByTableName("client_proposed_price");
+    const dimClient = new DataByTableName("dim_client");
+    const dimProduct = new DataByTableName("dim_product");
+    const clientAddress = new DataByTableName("client_address");
+    const orderDetails = new DataByTableName("order_details");
+    const salesInstance = new DataByTableName("fact_sales");
+
+    Promise.allSettled([
+      proposedPrice.get(),
+      dimClient.get(),
+      dimProduct.get(),
+      clientAddress.get(),
+      orderDetails.get(),
+      salesInstance.get()
+    ]).then((responses: any[]) => {
+      const _proposedPrice = responses[0].value.data.data
+      const _dimClient = responses[1].value.data.data
+      const _dimProduct = responses[2].value.data.data
+      const _clientAddress = responses[3].value.data.data
+      const _orderDetails = responses[4].value.data.data
+      const _sales = responses[5].value.data.data
+
+      setClientProposedPrice(getMapper(_proposedPrice, "productId"))
+      setClientInfo(getMapper(_dimClient, "clientId"))
+      setProductInfo(getMapper(_dimProduct, "productId"))
+      setClientProposedPrice(getMapper(_proposedPrice, "productId"))
+      setClientAddress(
+        _clientAddress.reduce((acc: any, curr: any) => {
+          if (!acc[curr.clientId]) {
+            acc[curr.clientId] = acc[curr.clientId] ?? []
+          }
+          acc[curr.clientId].push(curr)
+          return acc;
+        }, {} as Record<string, ClientAddress[]>))
+      setOrders(convertSalesToOrders(_sales ?? [], _orderDetails))
+    })
+  }, [refetchData])
+
+  console.log({ orders })
 
   const updateNonSerilizedData = (data: any) => {
     setNonSerializedData(prev => ({
@@ -145,7 +230,6 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     deliverProducts,
     getOrderById,
     setOrders,
-    createClientProposedPrice,
     clientProposedPrice,
     clientInfo,
     refetchData,

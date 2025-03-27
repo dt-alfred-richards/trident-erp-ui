@@ -68,86 +68,8 @@ const getNumber = (str: string) => {
 };
 
 export function SalesDashboard() {
-  const { setOrders, clientProposedPrice = {}, clientInfo, refetchData, updateNonSerilizedData, setRefetchData, productInfo, clientAddress } = useOrders()
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("order-book")
-  const salesInstance = new DataByTableName("fact_sales");
-  const orderDetails = new DataByTableName("order_details") as any;
-
-  const getPriority = useCallback((quantity: number) => {
-    if (quantity <= 1000) {
-      return "high"
-    } else if (quantity <= 10000) {
-      return "medium"
-    } else {
-      return "low"
-    }
-  }, [])
-
-  const convertSalesToOrders = useCallback((data: FactSales[], orderDetails: OrderDetails[]) => {
-    return data.map(item => {
-      const orderProducts = orderDetails.filter(order => order.orderId === item.orderId).map(({ productId, casesReserved, casesDelivered, cases }) => {
-        const { brand, size = "0", sku = "", units = "" } = productInfo[productId] ?? {}
-        return ({
-          id: productId,
-          name: brand,
-          price: clientProposedPrice[item.clientId]?.proposedPrice ?? 0,
-          quantity: cases,
-          allocated: casesReserved,
-          delivered: casesDelivered,
-          sku,
-          units
-        })
-      })
-      const { contactNumber, email, gst, name = "", pan, reference, type, clientId } = clientInfo[item.clientId] ?? {}
-
-      const { addressLine_1 = "", addressLine_2 = "", cityDistrictState = "", pincode } = (clientAddress[clientId] ?? [])[0] ?? {}
-
-      const address = [addressLine_1, addressLine_2, cityDistrictState, pincode].filter(item => item).join(",") ?? ""
-      return ({
-        createdBy: item?.createdBy ?? "",
-        customerNumber: contactNumber,
-        customerEmail: email,
-        billingAddress: address,
-        shippingAddress: address,
-        customer: name,
-        deliveryDate: new Date(item.expectedDeliveryDate).toDateString(),
-        id: item.orderId,
-        orderDate: item.date,
-        priority: getPriority(orderProducts.reduce((acc, curr) => {
-          acc += curr.quantity ?? 0;
-          return acc;
-        }, 0)),
-        products: orderProducts,
-        reference: item.referenceName,
-        status: item.status,
-        statusHistory: [],
-        approvedAt: "",
-        approvedBy: "",
-        carrier: "",
-        trackingId: ""
-      })
-    }).sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime())
-  }, [clientInfo, clientProposedPrice])
-
-  const fetchSalesDetails = useCallback(() => {
-    Promise.allSettled([
-      orderDetails.get(),
-      salesInstance.get()
-    ]).then((responses: any[]) => {
-      const orderDetails = responses[0]?.value.data;
-      const sales = responses[1]?.value.data;
-      const data = convertSalesToOrders(sales ?? [], orderDetails)
-      setOrders(data as Order[]);
-    }).finally(() => {
-      setRefetchData(false);
-    })
-  }, [refetchData])
-
-  useEffect(() => {
-    if (!refetchData) return;
-    fetchSalesDetails();
-  }, [clientInfo, clientProposedPrice, refetchData])
 
   return (
     <div className="space-y-4">

@@ -1,12 +1,11 @@
-import type React from "react"
-import type { Metadata } from "next"
-import { Inter } from "next/font/google"
-import "./globals.css"
-import { ThemeProvider } from "@/components/theme/theme-provider"
 import { AppSidebar } from "@/components/layout/app-sidebar"
 import { BreadcrumbNav } from "@/components/layout/breadcrumb-nav"
+import { ThemeProvider } from "@/components/theme/theme-provider"
 import { OrderProvider } from "@/contexts/order-context"
-import ClientComponent from "./ClientComponent"
+import type { Metadata } from "next"
+import { Inter } from "next/font/google"
+import type React from "react"
+import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -27,7 +26,6 @@ export default function RootLayout({
           <OrderProvider>
             <div className="flex h-screen w-full overflow-hidden bg-muted/20">
               <AppSidebar />
-              <ClientComponent />
               <div className="flex-1 flex flex-col min-w-0 m-2 ml-0">
                 <div className="flex h-16 items-center border-b px-4 bg-background rounded-t-xl">
                   <div className="ml-4">

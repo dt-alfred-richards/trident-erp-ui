@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -51,7 +51,7 @@ export function SalesTable() {
   const [ordersPerPage] = useState(20) // Changed from 25 to 20
 
   // Apply filters to orders
-  const filtered = orders.filter((order) => {
+  const filtered = useMemo(() => orders.filter((order) => {
     // Status filter
     if (statusFilter !== "all" && order.status !== statusFilter) {
       return false
@@ -101,12 +101,12 @@ export function SalesTable() {
     }
 
     return true
-  })
+  }), [orders, searchQuery])
 
   // Calculate pagination
   const indexOfLastOrder = currentPage * ordersPerPage
   const indexOfFirstOrder = indexOfLastOrder - ordersPerPage
-  const paginatedOrders = filtered.slice(indexOfFirstOrder, indexOfLastOrder)
+  const paginatedOrders = useMemo(() => filtered.slice(indexOfFirstOrder, indexOfLastOrder), [filtered])
   const totalPages = Math.ceil(filtered.length / ordersPerPage)
 
   // Reset to first page when filters change
