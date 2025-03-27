@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -58,6 +58,11 @@ export function EditAttendanceDialog({ open, onOpenChange, attendance, onUpdate 
       // Calculate total hours when check-in or check-out changes
       if (updated.checkIn && updated.checkOut) {
         updated.totalHours = calculateTotalHours(updated.checkIn, updated.checkOut)
+        // Update status to "present" when both check-in and check-out are provided
+        updated.status = "present"
+      } else if (!updated.checkIn && !updated.checkOut) {
+        // If both check-in and check-out are empty, set status to "absent"
+        updated.status = "absent"
       }
 
       return updated
@@ -79,9 +84,9 @@ export function EditAttendanceDialog({ open, onOpenChange, attendance, onUpdate 
     return `${hours}:${minutes.toString().padStart(2, "0")}`
   }
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = () => {
     onUpdate(formData)
-  }, [formData])
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

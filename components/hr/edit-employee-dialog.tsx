@@ -23,8 +23,8 @@ import { DataByTableName } from "../utils/api"
 interface EditEmployeeDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  employee: EmployeeRow | null
-  onSave: (employee: EmployeeRow) => void
+  employee: Employee | null
+  onSave: (employee: Employee) => void
 }
 
 export function EditEmployeeDialog({ open, onOpenChange, employee, onSave }: EditEmployeeDialogProps) {

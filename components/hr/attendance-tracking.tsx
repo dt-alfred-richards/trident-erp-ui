@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { type Dispatch, type SetStateAction, useCallback, useMemo, useState, useEffect } from "react"
 import { CalendarIcon, Filter, Download, Search, Plus, Eye, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
@@ -13,101 +13,30 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/u
 import { format } from "date-fns"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { AddAttendanceDialog, generateLoginData } from "./add-attendance-dialog"
+import { AddAttendanceDialog } from "./add-attendance-dialog"
 import { EditAttendanceDialog } from "./edit-attendance-dialog"
 import { AttendanceCalendar } from "./attendance-calendar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { AttendanceData, useHrContext } from "@/contexts/hr-context"
-import { DataByTableName } from "../utils/api"
+import { Pagination } from "../ui/pagination"
+import moment from "moment"
 
-
-// Sample leave balance data
-const leaveBalanceData = [
-  {
-    id: 1,
-    employeeId: "EMP001",
-    employeeName: "Rajesh Kumar",
-    earnedLeave: 20,
-    usedLeave: 10,
-    remainingLeave: 10,
-  },
-  {
-    id: 2,
-    employeeId: "EMP002",
-    employeeName: "Priya Sharma",
-    earnedLeave: 20,
-    usedLeave: 6,
-    remainingLeave: 14,
-  },
-  {
-    id: 3,
-    employeeId: "EMP003",
-    employeeName: "Amit Patel",
-    earnedLeave: 20,
-    usedLeave: 12,
-    remainingLeave: 8,
-  },
-  {
-    id: 4,
-    employeeId: "EMP004",
-    employeeName: "Sneha Gupta",
-    earnedLeave: 20,
-    usedLeave: 4,
-    remainingLeave: 16,
-  },
-  {
-    id: 5,
-    employeeId: "EMP005",
-    employeeName: "Vikram Singh",
-    earnedLeave: 20,
-    usedLeave: 18,
-    remainingLeave: 2,
-  },
-  {
-    id: 6,
-    employeeId: "EMP006",
-    employeeName: "Neha Verma",
-    earnedLeave: 20,
-    usedLeave: 8,
-    remainingLeave: 12,
-  },
-]
-
-// Sample past leaves data
-const pastLeavesData = {
-  EMP001: [
-    { date: "2023-09-15", reason: "Personal" },
-    { date: "2023-08-22", reason: "Sick" },
-    { date: "2023-07-10", reason: "Family Function" },
-  ],
-  EMP002: [
-    { date: "2023-09-05", reason: "Medical Emergency" },
-    { date: "2023-08-18", reason: "Personal" },
-  ],
-  EMP003: [
-    { date: "2023-09-25", reason: "Sick" },
-    { date: "2023-09-10", reason: "Family Emergency" },
-    { date: "2023-08-05", reason: "Personal" },
-    { date: "2023-07-15", reason: "Vacation" },
-  ],
-  EMP004: [{ date: "2023-08-30", reason: "Personal" }],
-  EMP005: [
-    { date: "2023-09-28", reason: "Sick" },
-    { date: "2023-09-20", reason: "Sick" },
-    { date: "2023-09-05", reason: "Personal" },
-    { date: "2023-08-15", reason: "Family Function" },
-    { date: "2023-08-01", reason: "Vacation" },
-    { date: "2023-07-20", reason: "Personal" },
-  ],
-  EMP006: [
-    { date: "2023-09-12", reason: "Personal" },
-    { date: "2023-08-08", reason: "Sick" },
-    { date: "2023-07-05", reason: "Family Function" },
-  ],
+type Leavebalance = {
+  id: number,
+  employeeId: string,
+  employeeName: string,
+  earnedLeave: number,
+  usedLeave: number,
+  remainingLeave: number
 }
 
+type PastleavesData = Record<string, {
+  date: string, reason: string
+}[]>
+
+
 export function AttendanceTracking() {
-  const { attendanceDetails, refetchData } = useHrContext();
+  const { attendanceDetails, refetchData, employeeDetails, empLeaves } = useHrContext();
   const [date, setDate] = useState<Date | undefined>(new Date())
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("all")
@@ -121,6 +50,37 @@ export function AttendanceTracking() {
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceData[]>([])
   const [showCalendarDialog, setShowCalendarDialog] = useState(false)
   const [calendarEmployee, setCalendarEmployee] = useState<{ id: string; name: string } | null>(null)
+  const [leaveBalanceData, setLeaveBalanceData] = useState<Leavebalance[]>([])
+  const [pastLeavesData, setPastLeavesData] = useState<PastleavesData>({})
+
+  useEffect(() => {
+    if (employeeDetails.length === 0) return
+    const _leaveBalanceData = employeeDetails.map((item, index) => ({
+      id: index,
+      employeeId: item.id,
+      employeeName: [item.firstName, item.lastName].filter(item => item).join(""),
+      earnedLeave: item.earnedLeaves,
+      usedLeave: item.usedLeaves,
+      remainingLeave: Math.abs(item.earnedLeaves - item.usedLeaves) || 0,
+    }) as Leavebalance)
+    setPastLeavesData(
+      empLeaves.reduce((a, c) => {
+        if (!a[c.employeeId]) {
+          a[c.employeeId] = [];
+        }
+        a[c.employeeId].push({
+          date: moment(c.date).format('DD-MM-YYYY'),
+          reason: c.reason
+        })
+        return a;
+      }, {} as PastleavesData)
+    )
+    setLeaveBalanceData(_leaveBalanceData)
+  }, [employeeDetails])
+  // Pagination state
+  const [attendanceCurrentPage, setAttendanceCurrentPage] = useState(1)
+  const [leaveCurrentPage, setLeaveCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
 
   useEffect(() => {
     if (attendanceRecords.length == 0) {
@@ -129,23 +89,51 @@ export function AttendanceTracking() {
   }, [attendanceDetails])
 
   // Filter attendance data based on search query and selected status
-  const filteredAttendance = useMemo(() => attendanceRecords.filter((record) => {
-    const matchesSearch =
-      record.employeeId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      record.employeeName.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredAttendance = useMemo(
+    () =>
+      attendanceRecords.filter((record) => {
+        const matchesSearch =
+          record.employeeId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          record.employeeName.toLowerCase().includes(searchQuery.toLowerCase())
 
-    const matchesStatus = selectedStatus === "all" || record.status === selectedStatus
+        const matchesStatus = selectedStatus === "all" || record.status === selectedStatus
 
-    return matchesSearch && matchesStatus
-  }), [attendanceRecords, searchQuery])
+        return matchesSearch && matchesStatus
+      }),
+    [attendanceRecords, searchQuery, selectedStatus],
+  )
 
   // Filter leave balance data based on search query
-  const filteredLeaveBalance = leaveBalanceData.filter((record) => {
-    return (
-      record.employeeId.toLowerCase().includes(leaveSearchQuery.toLowerCase()) ||
-      record.employeeName.toLowerCase().includes(leaveSearchQuery.toLowerCase())
-    )
-  })
+  const filteredLeaveBalance = useMemo(
+    () =>
+      leaveBalanceData.filter((record) => {
+        return (
+          record.employeeId.toLowerCase().includes(leaveSearchQuery.toLowerCase()) ||
+          record.employeeName.toLowerCase().includes(leaveSearchQuery.toLowerCase())
+        )
+      }),
+    [leaveSearchQuery, leaveBalanceData],
+  )
+
+  // Calculate paginated data for both tables
+  const paginatedAttendance = useMemo(() => {
+    const startIndex = (attendanceCurrentPage - 1) * itemsPerPage
+    return filteredAttendance.slice(startIndex, startIndex + itemsPerPage)
+  }, [filteredAttendance, attendanceCurrentPage, itemsPerPage])
+
+  const paginatedLeaveBalance = useMemo(() => {
+    const startIndex = (leaveCurrentPage - 1) * itemsPerPage
+    return filteredLeaveBalance.slice(startIndex, startIndex + itemsPerPage)
+  }, [filteredLeaveBalance, leaveCurrentPage, itemsPerPage])
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setAttendanceCurrentPage(1)
+  }, [searchQuery, selectedStatus])
+
+  useEffect(() => {
+    setLeaveCurrentPage(1)
+  }, [leaveSearchQuery])
 
   // Handle view past leaves
   const handleViewPastLeaves = (employeeId: string) => {
@@ -166,24 +154,13 @@ export function AttendanceTracking() {
   }
 
   // Handle update attendance
-  const handleUpdateAttendance = useCallback((updatedRecord: any) => {
-    const payload = {
-      "date": updatedRecord.date,
-      "loginTime": generateLoginData(updatedRecord.date, updatedRecord.checkIn),
-      "logoutTime": generateLoginData(updatedRecord.date, updatedRecord.checkOut)
-    }
-
-    const instance = new DataByTableName("emp_attendence");
-
-    instance.patch({ key: "empId", value: updatedRecord.employeeId }, payload).then(_ => {
+  const handleUpdateAttendance = useCallback(
+    (updatedRecord: any) => {
+      setAttendanceRecords(attendanceRecords.map((record) => (record.id === updatedRecord.id ? updatedRecord : record)))
       setShowEditAttendanceDialog(false)
-      refetchData()
-    }).catch(error => {
-      console.log({ error })
-    })
-    // setAttendanceRecords(attendanceRecords.map((record) => (record.id === updatedRecord.id ? updatedRecord : record)))
-    // setShowEditAttendanceDialog(false)
-  }, [])
+    },
+    [attendanceRecords, setAttendanceRecords],
+  )
 
   // Calculate total hours
   const calculateTotalHours = (checkIn: string, checkOut: string) => {
@@ -203,45 +180,14 @@ export function AttendanceTracking() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-        <h3 className="text-lg font-medium">Attendance Tracking</h3>
-        <div className="flex flex-wrap gap-2">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="h-9">
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? format(date, "PPP") : "Select date"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <CalendarComponent mode="single" selected={date} onSelect={setDate} initialFocus />
-            </PopoverContent>
-          </Popover>
-
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search employees..."
-              className="pl-8 h-9 md:w-[200px]"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+      <div className="mb-8">
+        <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 mb-4">
+          <div>
+            <h3 className="text-2xl font-semibold tracking-tight">Attendance Tracking</h3>
+            <p className="text-sm text-muted-foreground mt-1">Manage and monitor employee attendance records</p>
           </div>
-
-          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-            <SelectTrigger className="h-9 w-[130px]">
-              <Filter className="mr-2 h-4 w-4" />
-              <span>Status</span>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="present">Present</SelectItem>
-              <SelectItem value="absent">Absent</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <div className="flex space-x-2">
-            <Button onClick={() => setShowAddAttendanceDialog(true)}>
+          <div className="flex items-center gap-2">
+            <Button onClick={() => setShowAddAttendanceDialog(true)} variant="default">
               <Plus className="mr-2 h-4 w-4" />
               Add Attendance
             </Button>
@@ -249,6 +195,44 @@ export function AttendanceTracking() {
               <Download className="mr-2 h-4 w-4" />
               Bulk Import
             </Button>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-lg border shadow-sm p-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {date ? format(date, "PPP") : "Select date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <CalendarComponent mode="single" selected={date} onSelect={setDate} initialFocus />
+              </PopoverContent>
+            </Popover>
+
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search employees..."
+                className="pl-8 h-9"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+              <SelectTrigger className="h-9 w-[130px]">
+                <Filter className="mr-2 h-4 w-4" />
+                <span>Status</span>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="present">Present</SelectItem>
+                <SelectItem value="absent">Absent</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
@@ -273,50 +257,68 @@ export function AttendanceTracking() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAttendance.map((record) => (
-                  <TableRow key={record.id}>
-                    <TableCell>{record.employeeId}</TableCell>
-                    <TableCell className="font-medium">{record.employeeName}</TableCell>
-                    <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
-                    <TableCell>{record.checkIn || "-"}</TableCell>
-                    <TableCell>{record.checkOut || "-"}</TableCell>
-                    <TableCell>{record.totalHours || "-"}</TableCell>
-                    <TableCell>
-                      {record.status === "present" ? (
-                        <Badge className="bg-green-500">Present</Badge>
-                      ) : (
-                        <Badge variant="destructive">Absent</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end space-x-2">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleViewCalendar(record.employeeId, record.employeeName)}
-                              >
-                                <Calendar className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>View Monthly Attendance</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                {paginatedAttendance.length > 0 ? (
+                  paginatedAttendance.map((record) => (
+                    <TableRow key={record.id}>
+                      <TableCell>{record.employeeId}</TableCell>
+                      <TableCell className="font-medium">{record.employeeName}</TableCell>
+                      <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
+                      <TableCell>{record.checkIn || "-"}</TableCell>
+                      <TableCell>{record.checkOut || "-"}</TableCell>
+                      <TableCell>{record.totalHours || "-"}</TableCell>
+                      <TableCell>
+                        {record.status === "present" ? (
+                          <Badge className="bg-green-500">Present</Badge>
+                        ) : (
+                          <Badge variant="destructive">Absent</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end space-x-2">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleViewCalendar(record.employeeId, record.employeeName)}
+                                >
+                                  <Calendar className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>View Monthly Attendance</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
 
-                        <Button variant="ghost" size="sm" onClick={() => handleEditAttendance(record)}>
-                          Edit
-                        </Button>
-                      </div>
+                          <Button variant="ghost" size="sm" onClick={() => handleEditAttendance(record)}>
+                            Edit
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={8} className="h-24 text-center">
+                      No attendance records found.
                     </TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
             </Table>
           </div>
+
+          {filteredAttendance.length > 0 && (
+            <Pagination
+              totalItems={filteredAttendance.length}
+              itemsPerPage={itemsPerPage}
+              currentPage={attendanceCurrentPage}
+              onPageChange={setAttendanceCurrentPage}
+              onItemsPerPageChange={setItemsPerPage}
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -348,41 +350,52 @@ export function AttendanceTracking() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredLeaveBalance.map((record) => (
-                  <TableRow key={record.id}>
-                    <TableCell>{record.employeeId}</TableCell>
-                    <TableCell className="font-medium">{record.employeeName}</TableCell>
-                    <TableCell>{record.earnedLeave}</TableCell>
-                    <TableCell>{record.usedLeave}</TableCell>
-                    <TableCell>
-                      <Badge className={record.remainingLeave > 5 ? "bg-green-500" : "bg-amber-500"}>
-                        {record.remainingLeave}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleViewPastLeaves(record.employeeId)}
-                        title="View Past Leaves"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                {paginatedLeaveBalance.length > 0 ? (
+                  paginatedLeaveBalance.map((record) => (
+                    <TableRow key={record.id}>
+                      <TableCell>{record.employeeId}</TableCell>
+                      <TableCell className="font-medium">{record.employeeName}</TableCell>
+                      <TableCell>{record.earnedLeave}</TableCell>
+                      <TableCell>{record.usedLeave}</TableCell>
+                      <TableCell>
+                        <Badge className={record.remainingLeave > 5 ? "bg-green-500" : "bg-amber-500"}>
+                          {record.remainingLeave}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleViewPastLeaves(record.employeeId)}
+                          title="View Past Leaves"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                      No leave balance records found.
                     </TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
             </Table>
           </div>
+
+          {filteredLeaveBalance.length > 0 && (
+            <Pagination
+              totalItems={filteredLeaveBalance.length}
+              itemsPerPage={itemsPerPage}
+              currentPage={leaveCurrentPage}
+              onPageChange={setLeaveCurrentPage}
+              onItemsPerPageChange={setItemsPerPage}
+            />
+          )}
         </CardContent>
       </Card>
-
-      <div className="flex justify-end">
-        <Button variant="outline">
-          <Download className="mr-2 h-4 w-4" />
-          Export Attendance
-        </Button>
-      </div>
 
       {/* Use the reusable AddAttendanceDialog component */}
       <AddAttendanceDialog open={showAddAttendanceDialog} onOpenChange={setShowAddAttendanceDialog} />
@@ -481,7 +494,7 @@ export function AttendanceTracking() {
                   {selectedEmployee &&
                     pastLeavesData[selectedEmployee]?.map((leave, index) => (
                       <TableRow key={index}>
-                        <TableCell>{new Date(leave.date).toLocaleDateString()}</TableCell>
+                        <TableCell>{leave.date}</TableCell>
                         <TableCell>{leave.reason}</TableCell>
                       </TableRow>
                     ))}

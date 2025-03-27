@@ -6,7 +6,24 @@ type HrContextType = {
     employeeDetails: EmployeeRow[],
     attendanceDetails: AttendanceData[],
     refetchData: () => void,
-    roles: string[]
+    roles: string[],
+    empLeaves: EmpLeaves[],
+    employeePayroll: EmployeePayroll[]
+}
+
+type EmployeePayroll = {
+    id: number,
+    employeeId: string,
+    name: string,
+    role: string,
+    attendance: number,
+    overtimeHours: number,
+    netPay: number,
+    status: string,
+    createdOn: number,
+    createdBy: object,
+    modifiedOn: object,
+    modifiedBy: object
 }
 
 export const textCapitalize = (str: string) => {
@@ -38,6 +55,9 @@ export type DimEmployee = {
     shiftDuration: number,
     leaves: number,
     payCycle: string,
+    earnedLeaves: number,
+    usedLeaves: number,
+    balanceLeaves: number
 }
 
 export type EmployeeRow = {
@@ -50,7 +70,7 @@ export type EmployeeRow = {
     role: string,
     department: string,
     employeeType: string,
-    salary?: number,
+    salary: number,
     contactNumber?: number,
     dateOfJoining: string,
     gender: string,
@@ -65,6 +85,10 @@ export type EmployeeRow = {
     shiftDuration: number,
     leaves: number,
     payCycle: string,
+    aadharImageUrl: string
+    earnedLeaves: number,
+    usedLeaves: number,
+    balanceLeaves: number
 }
 
 export type AttendanceData = {
@@ -98,6 +122,16 @@ export type EmployeeBankDetails = {
     panNumber: string
 }
 
+export type EmpLeaves = {
+    id: number,
+    employeeId: string,
+    date: number,
+    reason: string,
+    status: string,
+    createdOn: number,
+    modifiedBy: string
+}
+
 
 const HrContext = createContext<HrContextType | undefined>(undefined)
 
@@ -107,6 +141,8 @@ export function HrProvider({ children }: { children: ReactNode }) {
     const [attendanceDetails, setAttendanceDetails] = useState<AttendanceData[]>([])
     const [rerender, setRerender] = useState(false)
     const [roles, setRoles] = useState<string[]>([])
+    const [empLeaves, setEmpLeaves] = useState<EmpLeaves[]>([])
+    const [employeePayroll, setEmployeePayroll] = useState<EmployeePayroll[]>([])
 
     const refetchData = useCallback(() => {
         setRerender(i => !i)
@@ -121,13 +157,18 @@ export function HrProvider({ children }: { children: ReactNode }) {
             const dimEmployee = new DataByTableName("dim_employee_v2");
             const empAttendence = new DataByTableName("emp_attendence");
             const empBankDetails = new DataByTableName("employee_bank_details");
+            const employeeLeaves = new DataByTableName("employee_leaves");
+            const employeePayroll = new DataByTableName("employee_payroll");
 
-            const { data: de, error: dee } = await dimEmployee.get();
-            const { data: eb, error: ebe } = await empBankDetails.get();
-            const { data: ea, error: ee } = await empAttendence.get();
+            const { data: dimEmpData, error: dimErrors } = await dimEmployee.get();
+            const { data: empBankData, error: empBankErrors } = await empBankDetails.get();
+            const { data: empAttendanceData, error: empAttendanceError } = await empAttendence.get();
+            const { data: empLeaves, error: empLeaveErrors } = await employeeLeaves.get();
+            const { data: employeePayrollData, error: employeePayrollErrors } = await employeePayroll.get();
 
-            const bankMapper = Object.fromEntries(eb.map((item: EmployeeBankDetails) => [item.employeeId, item]))
-            const _employees = de.sort((a: any, b: any) => b.id - a.id).map((item: DimEmployee) => {
+
+            const bankMapper = Object.fromEntries(empBankData.map((item: EmployeeBankDetails) => [item.employeeId, item]))
+            const _employees = dimEmpData.sort((a: any, b: any) => b.id - a.id).map((item: DimEmployee) => {
                 return ({
                     contactNumber: item.contactNumber,
                     dateOfJoining: item.joiningDate,
@@ -147,13 +188,16 @@ export function HrProvider({ children }: { children: ReactNode }) {
                     dob: item.dob,
                     shiftDuration: item.shiftDuration,
                     leaves: item.leaves,
-                    payCycle: item.payCycle
+                    payCycle: item.payCycle,
+                    earnedLeaves: item.earnedLeaves,
+                    usedLeaves: item.usedLeaves,
+                    balanceLeaves: item.balanceLeaves
                 }) as EmployeeRow
             })
 
             const roles = new Set(_employees.map((item: DimEmployee) => item.role));
 
-            const _attendanceData = ea.sort((a: any, b: any) => b.date - a.date).map((item: AttendaceResponse) => {
+            const _attendanceData = empAttendanceData.sort((a: any, b: any) => b.date - a.date).map((item: AttendaceResponse) => {
                 return {
                     checkIn: getTime(item.loginTime),
                     checkOut: getTime(item.logoutTime),
@@ -170,13 +214,24 @@ export function HrProvider({ children }: { children: ReactNode }) {
 
             setEmployeeDetails(_employees)
             setAttendanceDetails(_attendanceData)
-            setRoles(roles);
-            if (dee) {
-                throw new Error(dee?.message);
+            setRoles(Array.from(roles) as string[]);
+            setEmpLeaves(empLeaves || [])
+            setEmployeePayroll(employeePayrollData)
+            if (dimErrors) {
+                throw new Error(dimErrors?.message);
+            }
+            if (employeePayrollErrors) {
+                throw new Error(employeePayrollErrors?.message);
+            }
+            if (empLeaveErrors) {
+                throw new Error(empLeaveErrors?.message);
+            }
+            if (empBankErrors) {
+                throw new Error(empBankErrors?.message);
             }
 
-            if (ee) {
-                throw new Error(ee?.message);
+            if (empAttendanceError) {
+                throw new Error(empAttendanceError?.message);
             }
         } catch (error) {
             console.log({ error })
@@ -191,8 +246,10 @@ export function HrProvider({ children }: { children: ReactNode }) {
         employeeDetails,
         attendanceDetails,
         roles: Array.from(roles),
-        refetchData
-    }), [employeeDetails, attendanceDetails])
+        refetchData,
+        empLeaves,
+        employeePayroll
+    }), [employeeDetails, attendanceDetails, employeePayroll, empLeaves])
     return <HrContext.Provider value={value}>{children}</HrContext.Provider>
 }
 
