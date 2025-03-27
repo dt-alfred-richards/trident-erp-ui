@@ -160,11 +160,11 @@ export function HrProvider({ children }: { children: ReactNode }) {
             const employeeLeaves = new DataByTableName("employee_leaves");
             const employeePayroll = new DataByTableName("employee_payroll");
 
-            const { data: dimEmpData, error: dimErrors } = await dimEmployee.get();
-            const { data: empBankData, error: empBankErrors } = await empBankDetails.get();
-            const { data: empAttendanceData, error: empAttendanceError } = await empAttendence.get();
-            const { data: empLeaves, error: empLeaveErrors } = await employeeLeaves.get();
-            const { data: employeePayrollData, error: employeePayrollErrors } = await employeePayroll.get();
+            const { data: { data: dimEmpData }, error: dimErrors } = await dimEmployee.get();
+            const { data: { data: empBankData }, error: empBankErrors } = await empBankDetails.get();
+            const { data: { data: empAttendanceData }, error: empAttendanceError } = await empAttendence.get();
+            const { data: { data: empLeaves }, error: empLeaveErrors } = await employeeLeaves.get();
+            const { data: { data: employeePayrollData }, error: employeePayrollErrors } = await employeePayroll.get();
 
 
             const bankMapper = Object.fromEntries(empBankData.map((item: EmployeeBankDetails) => [item.employeeId, item]))
