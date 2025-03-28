@@ -10,7 +10,7 @@ import { DataByTableName } from "../utils/api"
 import { useOrders } from "@/contexts/order-context"
 import { Order } from "@/types/order"
 import { createType } from "../utils/generic"
-import { FinishedGoodsContext } from "@/app/inventory/finished-goods/context"
+import { useFinished } from "@/app/inventory/finished-goods/context"
 import { OrderDetails } from "../sales/sales-dashboard"
 
 interface InventoryTableProps {
@@ -55,8 +55,10 @@ type Response = {
   reserved: number
 }
 
+
+
 export function InventoryTable({ onAllocate }: InventoryTableProps) {
-  const { orderDetails, cummlative, finishedGoods } = useContext(FinishedGoodsContext)
+  const { orderDetails, cummlative, finishedGoods } = useFinished();
   const [searchTerm, setSearchTerm] = useState("")
   const { productInfo, refetchData } = useOrders();
   const [sortColumn, setSortColumn] = useState<string | null>(null)

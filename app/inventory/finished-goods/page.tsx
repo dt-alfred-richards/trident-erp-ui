@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator"
 import { OrderDetails } from "@/components/sales/sales-dashboard"
 import { DataByTableName } from "@/components/utils/api"
 import { useOrders } from "@/contexts/order-context"
-import { FinishedGoodsContext } from "./context"
+import { FinishedGoodsContext, FinishProvider } from "./context"
 
 export interface Order {
   id: string
@@ -85,34 +85,6 @@ export default function FinishedGoodsPage() {
     fetchRef.current = true;
   }, [rerender])
 
-  const fetchV2 = useCallback(() => {
-    if (!fetchRef.current) return;
-
-    fetchRef.current = false;
-    const orderDetails = new DataByTableName("order_details") as any;
-    const finishedGoodsInstance = new DataByTableName("fact_fp_inventory_v2");
-    const cummilativeInstance = new DataByTableName("cumulative_inventory");
-
-    Promise.allSettled([
-      orderDetails.get(),
-      finishedGoodsInstance.get(),
-      cummilativeInstance.get()
-    ]).then((responses: any[]) => {
-      const _orderDetails = responses[0]?.value.data;
-      const _factInventory = responses[1]?.value.data;
-      const _cummulative = responses[2]?.value.data;
-
-      setOrderDetails(_orderDetails)
-      setFinishedGoods(_factInventory)
-      setCummlative(_cummulative)
-    }).finally(() => {
-      setrender(false);
-    })
-  }, [rerender])
-
-  useEffect(() => {
-    fetchV2()
-  }, [rerender])
 
   const handleAllocate = (orderId: string, products: { id: string; quantity: number }[]) => {
     // In a real application, this would call an API to allocate stock
@@ -127,7 +99,7 @@ export default function FinishedGoodsPage() {
   }
 
   return (
-    <FinishedGoodsContext.Provider value={{ cummlative, finishedGoods, orderDetails, setRerender }}>
+    <FinishProvider>
       <DashboardShell className="p-6">
         <CardHeader className="px-0 pt-0 pb-4 flex flex-row items-center justify-between">
           <CardTitle className="text-2xl font-bold">Finished Goods Inventory Management</CardTitle>
@@ -193,7 +165,7 @@ export default function FinishedGoodsPage() {
           initialSku={selectedSku}
         />
       </DashboardShell>
-    </FinishedGoodsContext.Provider>
+    </FinishProvider>
   )
 }
 

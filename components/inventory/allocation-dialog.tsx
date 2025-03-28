@@ -34,7 +34,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { DataByTableName } from "../utils/api"
 import { useOrders } from "@/contexts/order-context"
-import { FinishedGoodsContext } from "@/app/inventory/finished-goods/context"
+import { FinishedGoodsContext, useFinished } from "@/app/inventory/finished-goods/context"
 import { OrderDetails } from "../sales/sales-dashboard"
 
 interface Order {
@@ -66,7 +66,7 @@ interface AllocationDialogProps {
 
 export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = null }: AllocationDialogProps) {
   const { productInfo, clientProposedPrice, clientInfo = {} } = useOrders();
-  const { orderDetails = [], setRerender } = useContext(FinishedGoodsContext);
+  const { orderDetails = [], triggerRerender } = useFinished();
   const [searchTerm, setSearchTerm] = useState("")
   const [searchType, setSearchType] = useState<"sku" | "order" | "customer">("order")
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([])

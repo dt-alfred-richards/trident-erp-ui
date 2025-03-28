@@ -1,6 +1,6 @@
 "use client"
 
-import { FinishedGoodsContext } from "@/app/inventory/finished-goods/context"
+import { FinishedGoodsContext, useFinished } from "@/app/inventory/finished-goods/context"
 import { Allocations } from "@/app/inventory/finished-goods/page"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -17,7 +17,7 @@ import moment from "moment"
 import { useCallback, useContext, useEffect, useMemo, useState } from "react"
 
 export function AllocationHistory() {
-  const { orderDetails } = useContext(FinishedGoodsContext);
+  const { orderDetails } = useFinished();
   const { clientInfo, productInfo } = useOrders();
   const [startDate, setStartDate] = useState<Date>()
   const [endDate, setEndDate] = useState<Date>()
