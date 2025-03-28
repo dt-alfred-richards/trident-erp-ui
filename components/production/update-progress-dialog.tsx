@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -19,6 +19,11 @@ import { AlertCircle, Clock, ArrowUp } from "lucide-react"
 import type { ProductionOrder } from "@/types/production"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
+import { ProductionDetails, useFinished } from "@/app/inventory/finished-goods/context"
+import { useOrders } from "@/contexts/order-context"
+import moment from "moment"
+import { PendingOrder } from "./pending-orders-table"
+import { DataByTableName } from "../utils/api"
 
 // Define a type for progress history entries
 interface ProgressHistoryEntry {
@@ -107,13 +112,29 @@ interface UpdateProgressDialogProps {
   onUpdateProgress: (orderId: string, progress: number) => void
 }
 
-export function UpdateProgressDialog({ open, onOpenChange, orders, onUpdateProgress }: UpdateProgressDialogProps) {
+export function UpdateProgressDialog({ open, onOpenChange, onUpdateProgress }: UpdateProgressDialogProps) {
+  const { productionDetails, triggerRerender } = useFinished();
+  const { clientInfo, productInfo } = useOrders();
   const [selectedOrderId, setSelectedOrderId] = useState<string>("")
   const [completedUnits, setCompletedUnits] = useState<number>(0)
   const [previousCompletedUnits, setPreviousCompletedUnits] = useState<number>(0)
   const [totalUnits, setTotalUnits] = useState<number>(0)
   const [progressPercentage, setProgressPercentage] = useState<number>(0)
   const [error, setError] = useState<string | null>(null)
+  const [orders, setOrders] = useState<ProductionOrder[]>([])
+
+  useEffect(() => {
+    setOrders(productionDetails.map(item => ({
+      assignedTo: clientInfo[item.clientId]?.name,
+      deadline: moment(item.startTime).format('LL'),
+      id: item.id + '',
+      progress: item.progress,
+      quantity: item.numBottles,
+      sku: productInfo[item.productionId]?.sku || '',
+      startDate: moment(item.startTime).format('LL'),
+      productionId: item.productionId
+    }) as ProductionOrder))
+  }, [productInfo, clientInfo, productionDetails])
 
   // Reset state when dialog opens
   useEffect(() => {
@@ -147,6 +168,8 @@ export function UpdateProgressDialog({ open, onOpenChange, orders, onUpdateProgr
     }
   }, [selectedOrderId, orders])
 
+  console.log({ selectedOrder: orders.find(order => order.id === selectedOrderId) })
+
   // Update progress percentage when completed units change
   const handleCompletedUnitsChange = (value: number) => {
     // Validate that new value is not less than previous value
@@ -173,16 +196,26 @@ export function UpdateProgressDialog({ open, onOpenChange, orders, onUpdateProgr
     }
   }
 
-  const handleSave = () => {
-    if (selectedOrderId && !error) {
-      // In a real app, you would also save the progress history entry here
-      onUpdateProgress(selectedOrderId, progressPercentage)
-      onOpenChange(false)
-    }
-  }
-
   const selectedOrder = orders.find((order) => order.id === selectedOrderId)
   const progressHistory = selectedOrderId ? mockProgressHistory[selectedOrderId] || [] : []
+
+  const handleSave = useCallback(() => {
+    const productionId = selectedOrder?.productionId ?? ""
+
+    const instance = new DataByTableName("production_details")
+
+    if (!productionId) return;
+
+    instance.patch({
+      key: "productionId",
+      value: productionId
+    }, { progress: progressPercentage }).then(() => {
+      onOpenChange(false)
+      triggerRerender()
+    }).catch(error => {
+      console.log({ error })
+    })
+  }, [selectedOrder])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

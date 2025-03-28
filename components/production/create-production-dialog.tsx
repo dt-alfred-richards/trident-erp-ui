@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { AlertCircle, Search, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -21,6 +21,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
+import { ProductionDetails, useFinished } from "@/app/inventory/finished-goods/context"
+import { useOrders } from "@/contexts/order-context"
+import { DataByTableName } from "../utils/api"
 
 interface CreateProductionDialogProps {
   open: boolean
@@ -32,28 +35,25 @@ interface CreateProductionDialogProps {
 export function CreateProductionDialog({ open, onOpenChange, sku, deficit }: CreateProductionDialogProps) {
   const [quantity, setQuantity] = useState(deficit > 0 ? deficit.toString() : "1000")
   const [selectedSku, setSelectedSku] = useState(sku || "")
+  const { productInfo, clientInfo } = useOrders();
+  const { triggerRerender } = useFinished()
   const [searchTerm, setSearchTerm] = useState("")
-  const [assignedTo, setAssignedTo] = useState("John D.")
+  const [assignedTo, setAssignedTo] = useState("")
   const [deadline, setDeadline] = useState(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split("T")[0])
   const [openCombobox, setOpenCombobox] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
-  const { createProductionOrder } = useProductionStore()
-
   // This would come from your API in a real application
-  const availableSkus = [
-    { value: "500ml", label: "500ml Glass Bottle" },
-    { value: "1000ml", label: "1000ml Glass Bottle" },
-    { value: "1500ml", label: "1500ml Glass Bottle" },
-    { value: "2000ml", label: "2000ml Glass Bottle" },
-    { value: "330ml-can", label: "330ml Aluminum Can" },
-    { value: "500ml-can", label: "500ml Aluminum Can" },
-    { value: "750ml-wine", label: "750ml Wine Bottle" },
-    { value: "375ml-wine", label: "375ml Wine Bottle" },
-  ]
+  const availableSkus = useMemo(() => {
+    return Object.values(productInfo).map(item => ({
+      label: item.sku, value: item.productId
+    }))
+  }, [productInfo])
 
   const existingProduction = selectedSku === "500ml" ? 2000 : selectedSku === "1000ml" ? 1000 : 0
-  const teamMembers = ["John D.", "Sarah M.", "Mike T.", "Lisa R.", "David K."]
+  const teamMembers = useMemo(() => {
+    return Object.values(clientInfo).map(item => ({ label: item.name, value: item.clientId }))
+  }, [clientInfo])
 
   // Filter SKUs based on search term
   const filteredSkus = availableSkus.filter(
@@ -89,14 +89,24 @@ export function CreateProductionDialog({ open, onOpenChange, sku, deficit }: Cre
       return // Prevent submission without a SKU
     }
 
-    createProductionOrder({
-      sku: selectedSku,
-      quantity: Number.parseInt(quantity),
-      deadline: new Date(deadline).toISOString(),
-      assignedTo,
-    })
+    const payload = {
+      clientId: assignedTo,
+      delivered: 0,
+      endTime: new Date(deadline).getTime(),
+      numBottles: Number.parseInt(quantity),
+      numCases: 0,
+      sku: productInfo[selectedSku]?.sku || "",
+      productionId: selectedSku
+    } as Partial<ProductionDetails>
 
-    onOpenChange(false)
+    const instance = new DataByTableName("production_details");
+
+    instance.post(payload).then(() => {
+      onOpenChange(false)
+      triggerRerender()
+    }).catch(error => {
+      console.log({ error })
+    })
   }
 
   return (
@@ -214,8 +224,8 @@ export function CreateProductionDialog({ open, onOpenChange, sku, deficit }: Cre
                 </SelectTrigger>
                 <SelectContent>
                   {teamMembers.map((member) => (
-                    <SelectItem key={member} value={member}>
-                      {member}
+                    <SelectItem key={member.value} value={member.value}>
+                      {member.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

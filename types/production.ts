@@ -5,6 +5,7 @@ export interface ProductionOrder {
   startDate: string
   deadline: string
   assignedTo: string
-  progress: number
+  progress: number,
+  productionId: string
 }
 

@@ -1,12 +1,15 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Search, ArrowUpDown } from "lucide-react"
 import { useProductionStore } from "@/hooks/use-production-store"
 import { ProductionActionButton } from "@/components/production/production-action-button"
+import { useFinished } from "@/app/inventory/finished-goods/context"
+import { useOrders } from "@/contexts/order-context"
+import moment from "moment"
 
 interface ProductionOverviewProps {
   onProduceClick: (sku: string, deficit: number) => void
@@ -14,19 +17,80 @@ interface ProductionOverviewProps {
   onViewDemand?: (sku: string) => void
 }
 
+interface ProductionData {
+  sku: string
+  pendingOrders: number
+  inProduction: number
+  availableStock: number
+  deficit: number
+  status: "deficit" | "sufficient",
+  id: number
+}
+
+type ProductionOrders = {
+  id: string,
+  sku: string,
+  quantity: number,
+  startDate: string,
+  deadline: string,
+  assignedTo: string,
+  progress: number,
+}
+
 export function ProductionOverview({ onProduceClick, onViewOrders, onViewDemand }: ProductionOverviewProps) {
-  const { productionData, productionOrders } = useProductionStore()
+  const { cummlative, finishedGoods, productionDetails } = useFinished();
+  // const { productionData, productionOrders } = useProductionStore()
+  const { productInfo } = useOrders();
+  const [productionData, setProductionData] = useState<ProductionData[]>([])
+  const [productionOrders, setProductionOrders] = useState<ProductionOrders[]>([]);
   const [searchQuery, setSearchQuery] = useState("")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
+  useEffect(() => {
+    if (!productInfo || !cummlative || !finishedGoods) return;
+
+    const _productionData = Object.values(productInfo).map(item => {
+      const availableStock = cummlative.find(({ productId }) => productId === item.productId)?.stock || 0;
+
+      const inProduction = finishedGoods
+        .filter(({ productId }) => productId === item.productId)
+        .reduce((acc, curr) => acc + (curr.production || 0), 0);
+
+      const pendingOrders = productionDetails.filter(({ productionId }) => productionId === item.productId).reduce((acc, curr) => {
+        acc += curr.numBottles
+        return acc;
+      }, 0)
+      return {
+        availableStock,
+        inProduction,
+        deficit: pendingOrders - (inProduction + availableStock),
+        pendingOrders,
+        sku: item.sku,
+        status: "sufficient",
+        id: item.id
+      } as ProductionData;
+    });
+
+    setProductionOrders(productionDetails.map(item => ({
+      assignedTo: "",
+      deadline: "",
+      id: item.productionId,
+      progress: 0,
+      quantity: item.numBottles,
+      sku: productInfo[item.productionId]?.sku || "",
+      startDate: moment(item.startTime).format('DD-MM-YYYY'),
+    }) as ProductionOrders))
+    setProductionData(_productionData);
+  }, [productInfo, cummlative, finishedGoods, productionDetails]);
+
   // Calculate active orders for each SKU
-  const activeOrdersBySku = productionOrders.reduce(
+  const activeOrdersBySku = useMemo(() => productionOrders.reduce(
     (acc, order) => {
-      acc[order.sku] = (acc[order.sku] || 0) + 1
+      acc[order.sku] = (acc[order?.sku] || 0) + 1
       return acc
     },
     {} as Record<string, number>,
-  )
+  ), [productionOrders])
 
   // Filter and sort the production data
   const filteredAndSortedData = useMemo(() => {
@@ -83,7 +147,8 @@ export function ProductionOverview({ onProduceClick, onViewOrders, onViewDemand 
           </TableHeader>
           <TableBody>
             {filteredAndSortedData.map((item) => (
-              <TableRow key={item.sku}>
+              <TableRow key={item.id}>
+                <TableCell className="font-medium" style={{ display: 'none' }}>{item.id}</TableCell>
                 <TableCell className="font-medium">{item.sku}</TableCell>
                 <TableCell className="text-right">{item.pendingOrders.toLocaleString()}</TableCell>
                 <TableCell className="text-right">{item.inProduction.toLocaleString()}</TableCell>

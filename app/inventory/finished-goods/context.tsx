@@ -1,5 +1,8 @@
+'use client'
+
 import { OrderDetails } from "@/components/sales/sales-dashboard";
 import { DataByTableName } from "@/components/utils/api";
+import { createType } from "@/components/utils/generic";
 import { createContext, Dispatch, ReactNode, SetStateAction, useCallback, useContext, useEffect, useState } from "react";
 
 interface OrderProduct {
@@ -42,8 +45,27 @@ type FinishedGoodsContextType = {
     cummlative: Cummulative[],
     finishedGoods: FinalProduction[],
     orderDetails: OrderDetails[],
-    triggerRerender: () => void
+    triggerRerender: () => void,
+    productionDetails: ProductionDetails[]
 }
+
+export type ProductionDetails = {
+    startTime: number,
+    endTime: number,
+    numBottles: number,
+    numCases: number,
+    createdOn: number,
+    createdBy: object,
+    modifiedOn: object,
+    modifiedBy: object,
+    id: number,
+    status: string,
+    productionId: string,
+    clientId: string,
+    delivered: number,
+    progress: number
+}
+
 const FinishedGoodsContext = createContext<FinishedGoodsContextType>({} as any);
 
 export const FinishProvider = ({ children }: { children: ReactNode }) => {
@@ -51,6 +73,7 @@ export const FinishProvider = ({ children }: { children: ReactNode }) => {
     const [finishedGoods, setFinishedGoods] = useState<FinalProduction[]>([]);
     const [orderDetails, setOrderDetails] = useState<OrderDetails[]>([]);
     const [fetchTrigger, setFetchTrigger] = useState(true); // Using a timestamp instead of a separate `rerender` state
+    const [productionDetails, setProductionDetails] = useState<ProductionDetails[]>([])
 
     const triggerRerender = useCallback(() => setFetchTrigger(p => !p), []);
 
@@ -58,20 +81,23 @@ export const FinishProvider = ({ children }: { children: ReactNode }) => {
         const orderDetailsInstance = new DataByTableName("order_details") as any;
         const finishedGoodsInstance = new DataByTableName("fact_fp_inventory_v2");
         const cummulativeInstance = new DataByTableName("cumulative_inventory");
+        const productionDetailsInstance = new DataByTableName("production_details");
 
         Promise.allSettled([
             orderDetailsInstance.get(),
             finishedGoodsInstance.get(),
-            cummulativeInstance.get()
+            cummulativeInstance.get(),
+            productionDetailsInstance.get()
         ]).then((responses: any[]) => {
             setOrderDetails(responses[0]?.value?.data?.data ?? []);
             setFinishedGoods(responses[1]?.value?.data?.data ?? []);
             setCummlative(responses[2]?.value?.data?.data ?? []);
+            setProductionDetails(responses[3]?.value?.data?.data ?? []);
         });
     }, [fetchTrigger]); // Trigger fetch when `fetchTrigger` updates
 
     return (
-        <FinishedGoodsContext.Provider value={{ cummlative, finishedGoods, orderDetails, triggerRerender }}>
+        <FinishedGoodsContext.Provider value={{ cummlative, finishedGoods, orderDetails, triggerRerender, productionDetails }}>
             {children}
         </FinishedGoodsContext.Provider>
     );

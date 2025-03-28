@@ -39,7 +39,8 @@ export type Product = {
   brand: string,
   productId: string,
   sku: string,
-  units: string
+  units: string,
+  id: number
 }
 
 export type OrderDetails = {
