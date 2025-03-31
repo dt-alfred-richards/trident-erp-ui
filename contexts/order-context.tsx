@@ -1,16 +1,17 @@
 "use client"
 
 import { createContext, Dispatch, SetStateAction, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
-import { type Order, type OrderStatus, ClientAddress, ClientInfo, ClientProposedPrice, OrderActionService } from "@/types/order"
+import { type Order, type OrderStatus, ClientAddress, ClientInfo, ClientProposedPrice, OrderActionService, StatusHistory } from "@/types/order"
 import { FactSales, OrderDetails, Product } from "@/components/sales/sales-dashboard"
 import { DataByTableName } from "@/components/utils/api"
 import { createType } from "@/components/utils/generic"
+import moment from "moment"
 
 interface OrderContextType {
   orders: Order[]
   currentUser: string
   filteredOrders: (status: OrderStatus | "all") => Order[]
-  approveOrder: (order: Order) => void
+  approveOrder: (order: string) => void
   allocateInventory: (orderId: string, productId: string, quantity: number) => void
   dispatchProducts: (orderId: string, productId: string, quantity: number) => void
   deliverProducts: (orderId: string, productId: string, quantity: number) => void
@@ -24,7 +25,9 @@ interface OrderContextType {
   updateNonSerilizedData: (data: any) => void,
   setRefetchData: Dispatch<SetStateAction<boolean>>,
   clientAddress: Record<string, ClientAddress[]>,
-  eventLogger: Record<string, EventLogger>
+  eventLogger: Record<string, EventLogger[]>,
+  rejectOrder: (orderId: string) => Promise<any>,
+  cancelOrder: (orderId: string) => Promise<any>
 }
 
 type EventLogger = {
@@ -33,7 +36,9 @@ type EventLogger = {
   tableName: string,
   fieldValue: string,
   category: string,
-  tableId: number
+  tableId: number,
+  createdOn: number,
+  clientId: string
 }
 
 type Priority = 'high' | 'medium' | 'low'
@@ -46,7 +51,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const [productInfo, setProductInfo] = useState<Record<string, Product>>({});
   const [clientAddress, setClientAddress] = useState<Record<string, ClientAddress[]>>({});
   const [clientProposedPrice, setClientProposedPrice] = useState<Record<string, ClientProposedPrice>>({})
-  const [eventLogger, setEventLogger] = useState<Record<string, EventLogger>>({})
+  const [eventLogger, setEventLogger] = useState<Record<string, EventLogger[]>>({})
   const [orderDetails, setOrderDetails] = useState<OrderDetails[]>([])
   const [sales, setSales] = useState<FactSales[]>([])
   const [currentUser, setCurrentUser] = useState<string>("Current User") // In a real app, this would come from authentication
@@ -66,11 +71,8 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   }
 
   // Approve an order
-  const approveOrder = ({ id: orderId, status }: Order) => {
+  const approveOrder = (orderId: string) => {
     try {
-      if (status !== "pending_approval") {
-        throw new Error("Only pending orders can be approved")
-      }
       OrderActionService.approveOrder(orderId, currentUser).finally(() => {
         setRefetchData(p => !p)
       })
@@ -140,7 +142,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const convertSalesToOrders = useCallback((data: FactSales[], orderDetails: OrderDetails[]) => {
+  const convertSalesToOrders = useCallback((data: FactSales[], orderDetails: OrderDetails[], tableLogs: EventLogger[]) => {
     return data.map(item => {
       const orderProducts = orderDetails.filter(order => order.orderId === item.orderId).map(({ productId, casesReserved, casesDelivered, cases }) => {
         const { brand, sku = "", units = "" } = productInfo[productId] ?? {}
@@ -177,7 +179,12 @@ export function OrderProvider({ children }: { children: ReactNode }) {
         products: orderProducts,
         reference: item.referenceName,
         status: item.status as any,
-        statusHistory: [],
+        statusHistory: tableLogs.filter(i => item.id === i.tableId).map((i: EventLogger) => ({
+          timestamp: moment(i.createdOn).format('LL'),
+          status: i.fieldValue,
+          user: clientInfo[i.clientId]?.name,
+          note: item.clientId
+        }) as StatusHistory),
         approvedAt: "",
         approvedBy: "",
         carrier: "",
@@ -210,13 +217,20 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       const _clientAddress = responses[3].value.data.data
       const _orderDetails = responses[4].value.data.data
       const _sales = responses[5].value.data.data
-      const _eventLogger = responses[6].value.data.data
+      const _eventLogger = responses[6].value.data.data as EventLogger[]
+
+      const tableLogs = _eventLogger.reduce((acc, curr) => {
+        const tableName = curr.tableName || ""
+        if (!acc[tableName]) acc[tableName] = [];
+        acc[tableName].push(curr);
+        return acc;
+      }, {} as Record<string, EventLogger[]>)
 
       setClientProposedPrice(getMapper(_proposedPrice, "productId"))
       setClientInfo(getMapper(_dimClient, "clientId"))
       setProductInfo(getMapper(_dimProduct, "productId"))
       setClientProposedPrice(getMapper(_proposedPrice, "productId"))
-      setEventLogger(getMapper(_eventLogger, "id"))
+      setEventLogger(tableLogs)
       setClientAddress(
         _clientAddress.reduce((acc: any, curr: any) => {
           if (!acc[curr.clientId]) {
@@ -231,8 +245,8 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   }, [refetchData])
 
   useEffect(() => {
-    setOrders(convertSalesToOrders(sales, orderDetails))
-  }, [productInfo, sales, orderDetails])
+    setOrders(convertSalesToOrders(sales, orderDetails, eventLogger["fact_sales"]))
+  }, [productInfo, sales, orderDetails, eventLogger])
 
   const updateNonSerilizedData = (data: any) => {
     setNonSerializedData(prev => ({
@@ -241,6 +255,23 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     }))
   }
 
+  const cancelOrder = (orderId: string) => {
+    const instance = new DataByTableName("fact_sales");
+    return instance.patch({ key: "orderId", value: orderId }, { status: "cancelled" as OrderStatus }).then(() => {
+      setRefetchData(i => !i)
+    }).catch(error => {
+      console.log({ error })
+    })
+  }
+
+  const rejectOrder = (orderId: string) => {
+    const instance = new DataByTableName("fact_sales");
+    return instance.patch({ key: "orderId", value: orderId }, { status: "rejected" as OrderStatus }).then(() => {
+      setRefetchData(i => !i)
+    }).catch(error => {
+      console.log({ error })
+    })
+  }
   // Context value
   const value = useMemo(() => ({
     orders,
@@ -260,7 +291,9 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     setRefetchData,
     clientAddress,
     productInfo,
-    eventLogger
+    eventLogger,
+    cancelOrder,
+    rejectOrder
   }), [orders, clientProposedPrice, refetchData])
   return <OrderContext.Provider value={value}>{children}</OrderContext.Provider>
 }

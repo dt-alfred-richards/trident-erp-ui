@@ -30,7 +30,8 @@ export type FactSales = {
   status: OrderStatus,
   createdBy?: string,
   createdOn?: number,
-  modifiedOn?: number
+  modifiedOn?: number,
+  id?: number
 }
 
 export type Product = {

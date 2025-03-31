@@ -53,6 +53,8 @@ export function AttendanceTracking() {
   const [leaveBalanceData, setLeaveBalanceData] = useState<Leavebalance[]>([])
   const [pastLeavesData, setPastLeavesData] = useState<PastleavesData>({})
 
+  const employees = useMemo(() => Object.fromEntries(employeeDetails.map(item => [item.id, item])), [employeeDetails])
+
   useEffect(() => {
     if (employeeDetails.length === 0) return
     const _leaveBalanceData = employeeDetails.map((item, index) => ({
@@ -84,9 +86,9 @@ export function AttendanceTracking() {
 
   useEffect(() => {
     if (attendanceRecords.length == 0) {
-      setAttendanceRecords([...attendanceDetails].slice(0, 100))
+      setAttendanceRecords([...attendanceDetails].map(item => ({ ...item, employeeName: employees[item.id]?.firstName || "" })))
     }
-  }, [attendanceDetails])
+  }, [attendanceDetails, employees])
 
   // Filter attendance data based on search query and selected status
   const filteredAttendance = useMemo(

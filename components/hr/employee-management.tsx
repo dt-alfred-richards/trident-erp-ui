@@ -48,7 +48,9 @@ export function EmployeeManagement() {
           employee.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
           employee.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
           employee.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          employee.email.toLowerCase().includes(searchQuery.toLowerCase())
+          employee.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          employee.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          employee.department.toLowerCase().includes(searchQuery.toLowerCase())
 
         const matchesEmployeeType = selectedEmployeeType === "all" || employee.employeeType === selectedEmployeeType
 
@@ -58,7 +60,7 @@ export function EmployeeManagement() {
 
         return matchesSearch && matchesEmployeeType && matchesDepartment && matchesRole
       }),
-    [employeeData, searchQuery, selectedEmployeeType, selectedDepartment, selectedRole],
+    [employeeData, searchQuery, selectedEmployeeType, selectedDepartment, selectedRole, employeeDetails],
   )
 
   // Calculate paginated data

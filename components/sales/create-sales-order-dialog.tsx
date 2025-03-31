@@ -53,7 +53,7 @@ interface CreateSalesOrderDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-type ClientType = {
+export type ClientType = {
   id: string,
   name: string,
   gstNumber: string,
@@ -316,7 +316,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
       poId,
       poNumber: '',
       referenceName: reference,
-      remarks: '',
+      remarks,
       status: "pending_approval"
     }
     const factSalesInstance = new DataByTableName("fact_sales");

@@ -30,9 +30,9 @@ export function AllocationHistory() {
     if (orderDetails.length == 0) return
     const _allocations = orderDetails.map((order, index) => ({
       id: index + "",
-      timestamp: new Date(order.createdOn).toLocaleDateString(),
+      timestamp: new Date(order.createdOn ?? "").toLocaleDateString(),
       user: order.clientId,
-      orderId: order.orderId,
+      orderId: order.orderId ?? "",
       customer: clientInfo[order.clientId]?.name ?? "",
       sku: productInfo[order.productId]?.sku ?? "",
       allocated: order.casesReserved,
@@ -55,9 +55,10 @@ export function AllocationHistory() {
       item.orderId.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.reason.toLowerCase().includes(searchQuery.toLowerCase())
+    item.sku.toLowerCase().includes(searchQuery.toLowerCase())
 
     return matchesDateRange && matchesSku && matchesStatus && matchesSearch
-  }), [allocations])
+  }), [allocations, searchQuery, filterSku])
 
   // Get unique SKUs for filter dropdown
   const uniqueSkus = Array.from(new Set(allocations.map((item) => item.sku))).filter(item => item)
@@ -223,60 +224,6 @@ export function AllocationHistory() {
             )}
           </TableBody>
         </Table>
-      </div>
-
-      <div className="mt-8">
-        <h3 className="text-lg font-medium mb-4">Order Allocation Summary</h3>
-        <div className="border rounded-md">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Order ID</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>Last Updated</TableHead>
-                <TableHead>Products</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {Object.values(orderAllocations).map((order) => {
-                const isFullyAllocated = order.items.every((item) => item.allocated === item.requested)
-                const isPartiallyAllocated = !isFullyAllocated && order.items.some((item) => item.allocated > 0)
-
-                return (
-                  <TableRow key={order.orderId}>
-                    <TableCell className="font-medium">{order.orderId}</TableCell>
-                    <TableCell>{order.customer}</TableCell>
-                    <TableCell>{order.timestamp}</TableCell>
-                    <TableCell>{order.items.length} product(s)</TableCell>
-                    <TableCell>
-                      {isFullyAllocated ? (
-                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                          Fully Allocated
-                        </Badge>
-                      ) : isPartiallyAllocated ? (
-                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-                          Partially Allocated
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
-                          Not Allocated
-                        </Badge>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-              {Object.keys(orderAllocations).length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
-                    No order allocation records found
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
       </div>
     </div>
   )

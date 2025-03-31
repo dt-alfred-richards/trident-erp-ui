@@ -16,6 +16,12 @@ export class DataByTableName {
     return axios.post(this.backendUrl, payload).then((res) => res.data);
   }
 
+  getby({ column, value }) {
+    return axios
+      .get(this.backendUrl + `/${column}/${value}`)
+      .then((res) => res.data);
+  }
+
   async patch({ key, value }, payload) {
     return axios
       .patch(`${this.backendUrl}/${key}/${value}`, payload)

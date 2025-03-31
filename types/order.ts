@@ -61,6 +61,13 @@ export type ClientInfo = {
   pan: string,
 }
 
+export type StatusHistory = {
+  timestamp: string
+  status: OrderStatus
+  user: string
+  note?: string
+}
+
 // Complete order with products
 export interface Order {
   id: string
@@ -83,12 +90,7 @@ export interface Order {
   approvedBy?: string
   approvedAt?: string
   // History of status changes for audit trail
-  statusHistory: {
-    timestamp: string
-    status: OrderStatus
-    user: string
-    note?: string
-  }[]
+  statusHistory: StatusHistory[]
 }
 
 // Valid status transitions for products

@@ -38,7 +38,7 @@ export default function RawMaterialsPage() {
     try {
       const instance = new DataByTableName("dim_raw_materials");
       const response = await instance.get();
-      const data: Response[] = response.data ?? []
+      const data: Response[] = response.data?.data ?? []
 
       const _rawMaterials: RawMaterial[] = data.map(item => ({ category: textCapitalize(item.type), type: item.name, quantity: item.size, unit: item.unitMeasure }))
       setRawMaterials(_rawMaterials)

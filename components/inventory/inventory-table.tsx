@@ -78,13 +78,13 @@ export function InventoryTable({ onAllocate }: InventoryTableProps) {
 
       return ({
         available: cummlative.find(i => i.productId === item.productId)?.stock || 0,
-        id: item.orderId,
+        id: item.orderId + '',
         inProduction: finishedGoods.find(i => i.productId === item.productId)?.production || 0,
         reserved: reserved,
         sku: productInfo[item.productId]?.sku || ""
       })
     })
-    setInventoryData(_inventoryData)
+    setInventoryData(_inventoryData.filter(item => item.sku))
   }, [orderDetails, finishedGoods, cummlative, productInfo])
 
   // Filter data based on search term
@@ -208,7 +208,7 @@ export function InventoryTable({ onAllocate }: InventoryTableProps) {
                 const total = item.available + item.reserved + item.inProduction
 
                 return (
-                  <TableRow key={item.id}>
+                  <TableRow key={item.id + item.sku}>
                     <TableCell className="font-medium hidden">item.id}</TableCell>
                     <TableCell className="font-medium">{item.sku}</TableCell>
                     <TableCell className="text-right text-blue-600 font-medium">
