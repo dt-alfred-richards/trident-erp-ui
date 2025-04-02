@@ -283,7 +283,7 @@ ${order.shippingAddress}`}
           <TabsContent value="history" className="space-y-6 py-4">
             <h3 className="text-lg font-semibold mb-3">Status History</h3>
             <div className="space-y-4">
-              {order.statusHistory.map((entry, index) => (
+              {(order?.statusHistory || []).map((entry, index) => (
                 <div key={index} className="flex items-start gap-4">
                   <div className="mt-0.5">
                     <Clock className="h-5 w-5 text-muted-foreground" />
