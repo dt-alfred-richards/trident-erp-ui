@@ -10,7 +10,7 @@ export function PendingRequisitions() {
 
   // Make sure pendingRequisitions is not null or undefined
   if (!pendingRequisitions || pendingRequisitions.length === 0) {
-    return <div className="p-4 text-center text-muted-foreground">No pending requisitions</div>
+    return <div className="p-4 text-center text-muted-foreground">No pending purchase orders</div>
   }
 
   return (
@@ -41,7 +41,7 @@ export function PendingRequisitions() {
               </TableCell>
               <TableCell className="text-right">
                 <Button variant="outline" size="sm">
-                  Approve
+                  Process
                 </Button>
               </TableCell>
             </TableRow>

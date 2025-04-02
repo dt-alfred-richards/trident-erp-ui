@@ -77,6 +77,8 @@ export function OpenPurchaseOrders() {
           <TableRow>
             <TableHead>PO #</TableHead>
             <TableHead>Supplier</TableHead>
+            <TableHead>Material</TableHead>
+            <TableHead>Order Date</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Action</TableHead>
           </TableRow>
@@ -85,19 +87,21 @@ export function OpenPurchaseOrders() {
           {openPOs.map((po) => (
             <TableRow key={po.id}>
               <TableCell className="font-medium">{po.id}</TableCell>
+              <TableCell>{po.supplier}</TableCell>
               <TableCell>
-                <div className="flex flex-col">
-                  <span>{po.supplier}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {po.material} ({po.quantity} {po.unit})
-                  </span>
-                </div>
+                {po.material} ({po.quantity} {po.unit})
               </TableCell>
+              <TableCell>{po.orderDate}</TableCell>
               <TableCell>{getStatusBadge(po.status, po.received, po.quantity)}</TableCell>
               <TableCell className="text-right">
-                <Button variant="outline" size="sm">
-                  {po.status === "sent" ? "Receive" : "View"}
-                </Button>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" size="sm">
+                    {po.status === "sent" ? "Receive" : "View"}
+                  </Button>
+                  <Button variant="ghost" size="sm">
+                    Edit
+                  </Button>
+                </div>
               </TableCell>
             </TableRow>
           ))}

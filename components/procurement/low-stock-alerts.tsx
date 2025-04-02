@@ -48,7 +48,7 @@ export function LowStockAlerts() {
               </TableCell>
               <TableCell className="text-right">
                 <Button variant="outline" size="sm">
-                  Create Requisition
+                  Create PO
                 </Button>
               </TableCell>
             </TableRow>

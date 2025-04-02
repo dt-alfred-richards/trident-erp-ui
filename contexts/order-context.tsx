@@ -179,7 +179,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
         products: orderProducts,
         reference: item.referenceName,
         status: item.status as any,
-        statusHistory: tableLogs.filter(i => item.id === i.tableId).map((i: EventLogger) => ({
+        statusHistory: tableLogs?.filter(i => item.id === i.tableId).map((i: EventLogger) => ({
           timestamp: moment(i.createdOn).format('LL'),
           status: i.fieldValue,
           user: clientInfo[i.clientId]?.name,
@@ -245,7 +245,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   }, [refetchData])
 
   useEffect(() => {
-    setOrders(convertSalesToOrders(sales, orderDetails, eventLogger["fact_sales"]))
+    setOrders(convertSalesToOrders(sales, orderDetails, eventLogger["fact_sales"]) || [])
   }, [productInfo, sales, orderDetails, eventLogger])
 
   const updateNonSerilizedData = (data: any) => {
