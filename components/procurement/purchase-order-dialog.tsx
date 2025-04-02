@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -15,6 +15,8 @@ import { CalendarIcon, Plus, Minus, DollarSign } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { PurchaseContextType, useProcurements } from "./procurement-context"
+import { DataByTableName } from "../utils/api"
 
 interface PurchaseOrderDialogProps {
   open: boolean
@@ -29,23 +31,13 @@ interface LineItem {
   price: string
 }
 
-const materials = [
-  { value: "plastic-resin", label: "Plastic Resin" },
-  { value: "bottle-caps", label: "Bottle Caps" },
-  { value: "label-adhesive", label: "Label Adhesive" },
-  { value: "cardboard-boxes", label: "Cardboard Boxes" },
-  { value: "labels", label: "Labels" },
-]
-
-const suppliers = [
-  { value: "plasticorp", label: "PlastiCorp Inc." },
-  { value: "capmakers", label: "CapMakers Ltd." },
-  { value: "adhesive", label: "Adhesive Solutions" },
-  { value: "packaging", label: "Packaging Experts" },
-  { value: "labels", label: "Label Masters" },
-]
-
 export function PurchaseOrderDialog({ open, onOpenChange }: PurchaseOrderDialogProps) {
+  const { suppliers: _suppliers = {}, rawMaterials: _rawMaterials = {}, triggerRender } = useProcurements()
+
+  const suppliers = useMemo(() => Object.values(_suppliers).map(item => ({ value: item.supplierId, label: item.name })), [_suppliers])
+
+  const materials = useMemo(() => Object.values(_rawMaterials).map(item => ({ value: item.materialId, label: item.name })), [_suppliers])
+
   const [supplier, setSupplier] = useState("")
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined)
   const [currency, setCurrency] = useState("USD")
@@ -73,16 +65,28 @@ export function PurchaseOrderDialog({ open, onOpenChange }: PurchaseOrderDialogP
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Creating purchase order:", {
-      supplier,
-      dueDate,
+
+    const purchasePayload = lineItems.map(item => ({
+      expectedDeliveryDate: dueDate?.getTime() || 0,
+      materialId: item.material,
+      notes,
+      supplierId: supplier,
+      total: parseInt(item.price) * parseInt(item.quantity),
       currency,
       paymentTerms,
-      notes,
       priority,
-      lineItems,
+      quantity: item.quantity,
+      price: item.price
+    }))
+
+    const instance = new DataByTableName('purchase_orders');
+
+    instance.post(purchasePayload).then(_ => {
+      triggerRender()
+      onOpenChange(false)
+    }).catch(error => {
+      console.log({ error })
     })
-    onOpenChange(false)
   }
 
   const calculateTotal = () => {
@@ -100,6 +104,10 @@ export function PurchaseOrderDialog({ open, onOpenChange }: PurchaseOrderDialogP
     lineItems.every(
       (item) => item.material && item.quantity && Number(item.quantity) > 0 && item.price && Number(item.price) > 0,
     )
+
+  const availableUnits = useMemo(() => {
+    return Array.from(new Set(Object.values(_rawMaterials).map(item => item.units)))
+  }, [_rawMaterials])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -259,7 +267,7 @@ export function PurchaseOrderDialog({ open, onOpenChange }: PurchaseOrderDialogP
 
                 <ScrollArea className="h-[340px] pr-4">
                   <div className="space-y-4">
-                    {lineItems.map((item, index) => (
+                    {lineItems.map((item) => (
                       <div key={item.id} className="p-4 rounded-lg border bg-card">
                         <div className="flex items-center justify-between mb-3">
                           <Select
@@ -306,17 +314,15 @@ export function PurchaseOrderDialog({ open, onOpenChange }: PurchaseOrderDialogP
                                 className="flex-1"
                               />
                               <Select
-                                value={item.unit}
+                                value={_rawMaterials[item.material]?.units}
+                                disabled
                                 onValueChange={(value) => handleLineItemChange(item.id, "unit", value)}
                               >
                                 <SelectTrigger className="w-[80px]">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="kg">kg</SelectItem>
-                                  <SelectItem value="liters">L</SelectItem>
-                                  <SelectItem value="pcs">pcs</SelectItem>
-                                  <SelectItem value="boxes">box</SelectItem>
+                                  {availableUnits.map((item, index) => <SelectItem key={item + index} value={item}>{item}</SelectItem>)}
                                 </SelectContent>
                               </Select>
                             </div>

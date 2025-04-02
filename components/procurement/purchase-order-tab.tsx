@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,12 +26,29 @@ import type { DateRange } from "react-day-picker"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useToast } from "@/components/ui/use-toast"
+import { useProcurements } from "./procurement-context"
+import moment from "moment"
+import { createType } from "../utils/generic"
+import { DataByTableName } from "../utils/api"
 
 interface PurchaseOrderTabProps {
   onNewOrder?: () => void
 }
 
+type PurchaseOrder = {
+  id: string,
+  supplier: string,
+  material: string,
+  quantity: number,
+  unit: string,
+  orderDate: string,
+  expectedDelivery: string,
+  status: string,
+  totalValue: number
+}
+
 export function PurchaseOrderTab({ onNewOrder }: PurchaseOrderTabProps) {
+  const { rawMaterials = {}, suppliers = {}, triggerRender, purchaseOrders: purchases = [] } = useProcurements();
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string[]>([])
   const [receiveDialogOpen, setReceiveDialogOpen] = useState(false)
@@ -51,64 +68,23 @@ export function PurchaseOrderTab({ onNewOrder }: PurchaseOrderTabProps) {
   const { toast } = useToast()
 
   // Mock data for purchase orders with simplified statuses
-  const [purchaseOrders, setPurchaseOrders] = useState([
-    {
-      id: "PO-001",
-      supplier: "PlastiCorp Inc.",
-      material: "Plastic Resin",
-      quantity: 500,
-      unit: "kg",
-      orderDate: "2023-06-01",
-      expectedDelivery: "2023-06-08",
-      status: "pending",
-      totalValue: 2500,
-    },
-    {
-      id: "PO-002",
-      supplier: "CapMakers Ltd.",
-      material: "Bottle Caps",
-      quantity: 10000,
-      unit: "pcs",
-      orderDate: "2023-06-02",
-      expectedDelivery: "2023-06-09",
-      status: "partial",
-      received: 5000,
-      totalValue: 1000,
-    },
-    {
-      id: "PO-003",
-      supplier: "Adhesive Solutions",
-      material: "Label Adhesive",
-      quantity: 100,
-      unit: "liters",
-      orderDate: "2023-06-03",
-      expectedDelivery: "2023-06-10",
-      status: "pending", // Changed from shipped to pending
-      totalValue: 1500,
-    },
-    {
-      id: "PO-004",
-      supplier: "Packaging Experts",
-      material: "Cardboard Boxes",
-      quantity: 1000,
-      unit: "pcs",
-      orderDate: "2023-05-28",
-      expectedDelivery: "2023-06-05",
-      status: "completed",
-      totalValue: 800,
-    },
-    {
-      id: "PO-005",
-      supplier: "Label Masters",
-      material: "Product Labels",
-      quantity: 5000,
-      unit: "sheets",
-      orderDate: "2023-05-30",
-      expectedDelivery: "2023-06-07",
-      status: "cancelled",
-      totalValue: 1200,
-    },
-  ])
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([])
+
+  useEffect(() => {
+    setPurchaseOrders(
+      purchases.map(item => ({
+        id: item.purchaseId + '',
+        supplier: suppliers[item.supplierId].name,
+        material: rawMaterials[item.materialId].name,
+        quantity: item.quantity,
+        unit: rawMaterials[item.materialId].units,
+        orderDate: moment(item.createdOn).format('YYYY-MM-DD'),
+        expectedDelivery: moment(item.expectedDeliveryDate).format('YYYY-MM-DD'),
+        status: item.status,
+        totalValue: item.total,
+      }))
+    )
+  }, [suppliers, rawMaterials])
 
   const getStatusBadge = (status: string, received?: number, quantity?: number) => {
     switch (status) {
@@ -142,20 +118,22 @@ export function PurchaseOrderTab({ onNewOrder }: PurchaseOrderTabProps) {
   }
 
   // Filter purchase orders based on search query and status filter
-  const filteredOrders = purchaseOrders.filter((po) => {
-    const matchesSearch =
-      po.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      po.supplier.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      po.material.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredOrders = useMemo(() => {
+    return purchaseOrders.filter((po) => {
+      const matchesSearch =
+        po.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        po.supplier.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        po.material.toLowerCase().includes(searchQuery.toLowerCase())
 
-    const matchesStatus = statusFilter.length === 0 || statusFilter.includes(po.status)
+      const matchesStatus = statusFilter.length === 0 || statusFilter.includes(po.status)
 
-    const orderDate = new Date(po.orderDate)
-    const matchesDate =
-      !dateRange?.from || (orderDate >= dateRange.from && (!dateRange.to || orderDate <= dateRange.to))
+      const orderDate = new Date(po.orderDate)
+      const matchesDate =
+        !dateRange?.from || (orderDate >= dateRange.from && (!dateRange.to || orderDate <= dateRange.to))
 
-    return matchesSearch && matchesStatus && matchesDate
-  })
+      return matchesSearch && matchesStatus && matchesDate
+    })
+  }, [searchQuery, purchaseOrders])
 
   const toggleStatusFilter = (status: string) => {
     setStatusFilter((prev) => (prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]))
@@ -184,23 +162,26 @@ export function PurchaseOrderTab({ onNewOrder }: PurchaseOrderTabProps) {
   }
 
   // Add a function to confirm cancellation
-  const confirmCancelOrder = () => {
+  const confirmCancelOrder = useCallback(() => {
     // Update the purchase orders state with the cancelled order
-    setPurchaseOrders((prevOrders) =>
-      prevOrders.map((order) => (order.id === poToCancel ? { ...order, status: "cancelled" } : order)),
-    )
+    const instance = new DataByTableName("purchase_orders")
 
-    // Show success notification
-    toast({
-      title: "Purchase Order Cancelled",
-      description: `Purchase order ${poToCancel} has been cancelled successfully.`,
-      variant: "default",
+    instance.patch({
+      key: 'purchaseId',
+      value: poToCancel
+    }, { status: 'cancelled' }).then(_ => {
+      toast({
+        title: "Purchase Order Cancelled",
+        description: `Purchase order ${poToCancel} has been cancelled successfully.`,
+        variant: "default",
+      })
+      setCancelDialogOpen(false)
+      setPoToCancel("")
+      triggerRender()
+    }).catch(error => {
+      console.log({ error })
     })
-
-    // Close the dialog
-    setCancelDialogOpen(false)
-    setPoToCancel("")
-  }
+  }, [poToCancel])
 
   // Function to clear all filters
   const clearAllFilters = () => {

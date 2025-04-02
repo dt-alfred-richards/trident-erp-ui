@@ -7,6 +7,9 @@ import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Clock, CheckCircle2, AlertTriangle, Printer, Download } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { useMemo } from "react"
+import { PurchaseContextType, useProcurements } from "./procurement-context"
+import moment from "moment"
 
 interface PurchaseOrderViewDialogProps {
   open: boolean
@@ -132,7 +135,31 @@ const getPurchaseOrderData = (poId: string) => {
 }
 
 export function PurchaseOrderViewDialog({ open, onOpenChange, poId }: PurchaseOrderViewDialogProps) {
-  const po = getPurchaseOrderData(poId)
+  const { purchaseOrders, suppliers = {}, rawMaterials = {} } = useProcurements();
+  const po = useMemo(() => {
+    const order = purchaseOrders.find(item => item.purchaseId === poId);
+    const { name, contactNumber, email } = suppliers[order?.supplierId || ""] || {}
+    return {
+      id: order?.purchaseId,
+      supplier: name,
+      supplierContact: contactNumber,
+      supplierEmail: email,
+      date: moment(order?.createdOn).format('YYYY-MM-DD'),
+      dueDate: moment(order?.expectedDeliveryDate).format('YYYY-MM-DD'),
+      status: order?.status,
+      currency: order?.currency,
+      paymentTerms: order?.paymentTerms,
+      priority: order?.priority,
+      notes: order?.notes,
+      items: purchaseOrders.filter(item => item.purchaseId === poId).map((item: PurchaseContextType["purchaseOrders"][0]) => ({
+        material: rawMaterials[item.materialId].name,
+        quantity: item.quantity,
+        unit: rawMaterials[item.materialId].units,
+        price: item.price || 0,
+      }))
+    }
+  }, [poId])
+
   const { toast } = useToast()
 
   if (!po) {

@@ -41,6 +41,10 @@ type EventLogger = {
   clientId: string
 }
 
+export const getMapper = (data: any[], key: string = '') => {
+  return Object.fromEntries(data.map(item => [item[key], item]))
+}
+
 type Priority = 'high' | 'medium' | 'low'
 const OrderContext = createContext<OrderContextType | undefined>(undefined)
 
@@ -128,9 +132,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const getMapper = (data: any[], key: string = '') => {
-    return Object.fromEntries(data.map(item => [item[key], item]))
-  }
+
 
   const getPriority = useCallback((quantity: number): Priority => {
     if (quantity <= 1000) {
