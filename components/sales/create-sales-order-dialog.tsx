@@ -340,6 +340,8 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
         orderId
       } as OrderDetails))
       return orderDetailsInstance.post(orderDetailsPayload)
+    }).then(resetForm).catch(error => {
+      console.log({ error })
     })
   }, [clientId, discount, expectedDeliveryDate, orderDate, poDate, poId, poNumber, reference, selectedShippingAddressId, subtotal, taxesEnabled])
 
