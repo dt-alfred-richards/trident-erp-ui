@@ -12,7 +12,7 @@ import { AllocationHistory } from "@/components/inventory/allocation-history"
 import { Separator } from "@/components/ui/separator"
 import { OrderDetails } from "@/components/sales/sales-dashboard"
 import { DataByTableName } from "@/components/utils/api"
-import { useOrders } from "@/contexts/order-context"
+import { OrderProvider, useOrders } from "@/contexts/order-context"
 import { FinishedGoodsContext, FinishProvider } from "./context"
 
 export interface Order {
@@ -99,73 +99,75 @@ export default function FinishedGoodsPage() {
   }
 
   return (
-    <FinishProvider>
-      <DashboardShell className="p-6">
-        <CardHeader className="px-0 pt-0 pb-4 flex flex-row items-center justify-between">
-          <CardTitle className="text-2xl font-bold">Finished Goods Inventory Management</CardTitle>
-          <Button
-            onClick={() => {
-              setSelectedSku(null) // Clear any selected SKU
-              setShowAllocationDialog(true)
-            }}
-            className="ml-auto"
-            variant="default"
-          >
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Allocate Stock
-          </Button>
-        </CardHeader>
+    <OrderProvider>
+      <FinishProvider>
+        <DashboardShell className="p-6">
+          <CardHeader className="px-0 pt-0 pb-4 flex flex-row items-center justify-between">
+            <CardTitle className="text-2xl font-bold">Finished Goods Inventory Management</CardTitle>
+            <Button
+              onClick={() => {
+                setSelectedSku(null) // Clear any selected SKU
+                setShowAllocationDialog(true)
+              }}
+              className="ml-auto"
+              variant="default"
+            >
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Allocate Stock
+            </Button>
+          </CardHeader>
 
-        <div className="space-y-6">
-          {/* Inventory Overview */}
-          <Card>
-            <CardContent className="pt-6">
-              <InventoryTable
-                onAllocate={(sku) => {
-                  setSelectedSku(sku)
-                  setShowAllocationDialog(true)
-                }}
-              />
-            </CardContent>
-          </Card>
+          <div className="space-y-6">
+            {/* Inventory Overview */}
+            <Card>
+              <CardContent className="pt-6">
+                <InventoryTable
+                  onAllocate={(sku) => {
+                    setSelectedSku(sku)
+                    setShowAllocationDialog(true)
+                  }}
+                />
+              </CardContent>
+            </Card>
 
-          {/* Allocation History Section - Now expanded by default */}
-          <div>
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium">Allocation History</h3>
-              <Button variant="ghost" size="sm" onClick={() => setShowHistory(!showHistory)}>
-                {showHistory ? (
-                  <>
-                    <ChevronUp className="h-4 w-4 mr-2" />
-                    Hide History
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="h-4 w-4 mr-2" />
-                    Show History
-                  </>
-                )}
-              </Button>
+            {/* Allocation History Section - Now expanded by default */}
+            <div>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium">Allocation History</h3>
+                <Button variant="ghost" size="sm" onClick={() => setShowHistory(!showHistory)}>
+                  {showHistory ? (
+                    <>
+                      <ChevronUp className="h-4 w-4 mr-2" />
+                      Hide History
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="h-4 w-4 mr-2" />
+                      Show History
+                    </>
+                  )}
+                </Button>
+              </div>
+              <Separator className="my-4" />
+              {showHistory && (
+                <Card>
+                  <CardContent className="pt-6">
+                    <AllocationHistory />
+                  </CardContent>
+                </Card>
+              )}
             </div>
-            <Separator className="my-4" />
-            {showHistory && (
-              <Card>
-                <CardContent className="pt-6">
-                  <AllocationHistory />
-                </CardContent>
-              </Card>
-            )}
           </div>
-        </div>
 
-        <AllocationDialog
-          open={showAllocationDialog}
-          onOpenChange={setShowAllocationDialog}
-          onAllocate={handleAllocate}
-          initialSku={selectedSku}
-        />
-      </DashboardShell>
-    </FinishProvider>
+          <AllocationDialog
+            open={showAllocationDialog}
+            onOpenChange={setShowAllocationDialog}
+            onAllocate={handleAllocate}
+            initialSku={selectedSku}
+          />
+        </DashboardShell>
+      </FinishProvider>
+    </OrderProvider>
   )
 }
 

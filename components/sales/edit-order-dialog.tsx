@@ -89,17 +89,17 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
   const [orderDetails, setOrderDetails] = useState<OrderDetails[]>([])
 
   // Order header state (non-editable)
-  const [orderDate, setOrderDate] = useState<Date>(sales.date ? new Date(sales.date) : new Date())
+  const [orderDate, setOrderDate] = useState<Date>(sales?.orderDate ? new Date(sales.orderDate) : new Date())
   const [customer, setCustomer] = useState("");
-  const [poNumber, setPoNumber] = useState(sales.poNumber || "")
-  const [poId, setPoId] = useState(order.poId || "")
-  const [poDate, setPoDate] = useState<Date | undefined>(sales.poDate ? new Date(sales.poDate) : undefined)
-  const [remarks, setRemarks] = useState(sales.remarks || "")
+  const [poNumber, setPoNumber] = useState(sales?.purchaseOrderNumber || "")
+  const [poId, setPoId] = useState(sales?.purchaseOrderId || "")
+  const [poDate, setPoDate] = useState<Date | undefined>(sales?.purchaseDate ? new Date(sales.purchaseDate) : undefined)
+  const [remarks, setRemarks] = useState(sales?.remarks || "")
 
   // Editable fields
-  const [reference, setReference] = useState(sales.referenceName)
+  const [reference, setReference] = useState(sales?.reference)
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<Date | undefined>(
-    sales.expectedDeliveryDate ? new Date(sales.expectedDeliveryDate) : undefined,
+    sales?.expectedDeliveryDate ? new Date(sales.expectedDeliveryDate) : undefined,
   )
 
   const productCatalog = useMemo(() => {
@@ -110,7 +110,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
 
   useEffect(() => {
     if (order.id) {
-      const instance = new DataByTableName("fact_sales");
+      const instance = new DataByTableName("fact_sales_v2");
       const instance2 = new DataByTableName("order_details");
       Promise.allSettled([
         instance.getby({ column: "orderId", value: order.id }),
@@ -118,23 +118,22 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
       ]).then((responses: any[]) => {
         const _sales = lodashGet({ data: responses, path: '0.value.data.data.0' }) as FactSales
         const _orderDetails = lodashGet({ data: responses, path: '1.value.data.data' }) as OrderDetails[]
+
+        if (!_sales) return
         setSales(_sales)
         setOrderDetails(_orderDetails)
         setCustomer(clientInfo[_sales.clientId]?.name || "")
-        setPoNumber(_sales.poNumber)
-        setPoDate(new Date(_sales.poDate))
+        setPoNumber(_sales.purchaseOrderNumber)
+        setPoDate(new Date(_sales.purchaseDate))
         setRemarks(_sales.remarks || "")
-        setPoId(new Date(_sales.poDate))
-        setOrderDate(sales.date ? new Date(sales.date) : new Date())
+        setPoId(_sales.purchaseOrderId)
+        setOrderDate(sales.orderDate ? new Date(sales.orderDate) : new Date())
+        setSubtotal(_sales.subTotal);
       })
     }
   }, [order])
 
   // Client details (auto-populated)
-  const [clientName, setClientName] = useState(clientInfo[sales.clientId ?? ""]?.name ?? "")
-  const [gstNumber, setGstNumber] = useState("")
-  const [panNumber, setPanNumber] = useState("")
-  const [availableReferences, setAvailableReferences] = useState<string[]>([])
   const [shippingAddresses, setShippingAddresses] = useState<
     Array<{ id: string; name: string; address: string; isDefault?: boolean }>
   >([])
@@ -155,7 +154,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
   const [orderItems, setOrderItems] = useState<OrderItem[]>([])
 
   // Order summary state
-  const [subtotal, setSubtotal] = useState(0)
+  const [subtotal, setSubtotal] = useState(sales?.subTotal || 0)
   const [taxTotal, setTaxTotal] = useState(0)
   const [discount, setDiscount] = useState(order.summary?.discount || 0)
   const [discountType, setDiscountType] = useState<"percentage" | "amount">(order.summary?.discountType || "amount")
@@ -382,17 +381,16 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const salesPayload: Partial<FactSales> = {
-      amount: total,
       clientId: sales.clientId ?? "",
-      date: dateConverter(orderDate),
+      orderDate: orderDate.getTime(),
       expectedDeliveryDate: expectedDeliveryDate?.getTime(),
-      poDate: poDate?.getTime(),
-      poId,
-      referenceName: reference,
+      purchaseDate: poDate?.getTime(),
+      purchaseOrderId: poId,
+      reference,
       remarks,
       status: "pending_approval"
     }
-    const factSalesInstance = new DataByTableName("fact_sales");
+    const factSalesInstance = new DataByTableName("fact_sales_v2");
     const orderDetailsInstance = new DataByTableName("order_details");
     const orderDetailsPayload = orderItems.map(order => ({
       cases: order.cases,

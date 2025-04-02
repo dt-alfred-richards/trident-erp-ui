@@ -151,7 +151,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
         return ({
           id: productId,
           name: brand,
-          price: clientProposedPrice[item.clientId]?.proposedPrice ?? 0,
+          price: clientProposedPrice[productId]?.proposedPrice ?? 0,
           quantity: cases,
           allocated: casesReserved,
           delivered: casesDelivered,
@@ -173,13 +173,13 @@ export function OrderProvider({ children }: { children: ReactNode }) {
         customer: name,
         deliveryDate: new Date(item.expectedDeliveryDate).toDateString(),
         id: item.orderId ?? '',
-        orderDate: item.date,
+        orderDate: item.orderDate,
         priority: getPriority(orderProducts.reduce((acc, curr) => {
           acc += curr.quantity ?? 0;
           return acc;
         }, 0)),
         products: orderProducts,
-        reference: item.referenceName,
+        reference: item.reference,
         status: item.status as any,
         statusHistory: tableLogs?.filter(i => item.id === i.tableId).map((i: EventLogger) => ({
           timestamp: moment(i.createdOn).format('LL'),
@@ -187,10 +187,11 @@ export function OrderProvider({ children }: { children: ReactNode }) {
           user: clientInfo[i.clientId]?.name,
           note: item.clientId
         }) as StatusHistory),
-        approvedAt: "",
-        approvedBy: "",
-        carrier: "",
-        trackingId: ""
+        approvedAt: item.approvedOn,
+        approvedBy: item.approvedBy,
+        carrier: item.carrier,
+        trackingId: item.trackingId,
+        subtotal: item.subTotal
       })
     }).sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime())
   }, [clientInfo, clientProposedPrice, productInfo])
@@ -201,7 +202,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     const dimProduct = new DataByTableName("dim_product");
     const clientAddress = new DataByTableName("client_address");
     const orderDetails = new DataByTableName("order_details");
-    const salesInstance = new DataByTableName("fact_sales");
+    const salesInstance = new DataByTableName("fact_sales_v2");
     const eventLogger = new DataByTableName("events_logger");
 
     Promise.allSettled([
@@ -247,7 +248,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   }, [refetchData])
 
   useEffect(() => {
-    setOrders(convertSalesToOrders(sales, orderDetails, eventLogger["fact_sales"]) || [])
+    setOrders(convertSalesToOrders(sales, orderDetails, eventLogger["fact_sales_v2"]) || [])
   }, [productInfo, sales, orderDetails, eventLogger])
 
   const updateNonSerilizedData = (data: any) => {
@@ -258,7 +259,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   }
 
   const cancelOrder = (orderId: string) => {
-    const instance = new DataByTableName("fact_sales");
+    const instance = new DataByTableName("fact_sales_v2");
     return instance.patch({ key: "orderId", value: orderId }, { status: "cancelled" as OrderStatus }).then(() => {
       setRefetchData(i => !i)
     }).catch(error => {
@@ -267,7 +268,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   }
 
   const rejectOrder = (orderId: string) => {
-    const instance = new DataByTableName("fact_sales");
+    const instance = new DataByTableName("fact_sales_v2");
     return instance.patch({ key: "orderId", value: orderId }, { status: "rejected" as OrderStatus }).then(() => {
       setRefetchData(i => !i)
     }).catch(error => {

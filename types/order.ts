@@ -71,7 +71,7 @@ export type StatusHistory = {
 // Complete order with products
 export interface Order {
   id: string
-  orderDate: string
+  orderDate: number,
   customer: string,
   customerEmail: string,
   customerNumber: number,
@@ -88,9 +88,10 @@ export interface Order {
   createdBy: string
   createdAt?: string
   approvedBy?: string
-  approvedAt?: string
+  approvedAt?: any
   // History of status changes for audit trail
-  statusHistory: StatusHistory[]
+  statusHistory: StatusHistory[],
+  subtotal: number
 }
 
 // Valid status transitions for products
@@ -142,7 +143,7 @@ export function calculateOrderStatus(products: OrderProduct[]): OrderStatus {
 export const OrderActionService = {
   // Approve an order
   async approveOrder(orderId: string, user: string) {
-    const factSalesInstance = new DataByTableName("fact_sales");
+    const factSalesInstance = new DataByTableName("fact_sales_v2");
     return await factSalesInstance.patch({
       key: "orderId",
       value: orderId

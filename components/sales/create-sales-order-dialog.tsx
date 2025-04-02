@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils"
 import { useOrders } from "@/contexts/order-context"
 import { DataByTableName } from "../utils/api"
 import { FactSales, OrderDetails } from "./sales-dashboard"
+import { lodashGet } from "../common/generic"
 
 interface OrderItem {
   id: string
@@ -305,50 +306,42 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
   const handleConfirmedSubmit = useCallback(() => {
     // Get the selected shipping address details
     const selectedAddress = shippingAddresses.find((addr) => addr.id === selectedShippingAddressId)
-    const salesPayload: Partial<FactSales> = {
-      amount: total,
-      clientId: clientId,
-      date: dateConverter(orderDate),
-      expectedDeliveryDate: new Date().getTime(),
-      invoiceNumber: '',
-      numOrders: 0,
-      poDate: poDate?.getTime(),
-      poId,
-      poNumber: '',
-      referenceName: reference,
-      remarks,
-      status: "pending_approval"
-    }
-    const factSalesInstance = new DataByTableName("fact_sales");
-    const orderDetailsInstance = new DataByTableName("order_details");
-
-    const orderDetailsPayload = orderItems.map(order => ({
-      cases: order.cases,
-      casesDelivered: 0,
-      casesReserved: 0,
+    const salesPayload = {
       clientId,
-      expectedDeliveryDate: new Date(expectedDeliveryDate || "").getTime(),
-      productId: order.productId,
-      addressId: selectedAddress?.id || "",
-      status: "pending_approval",
-      tradePrice: order.pricePerCase,
-    } as OrderDetails))
+      discount,
+      expectedDeliveryDate: expectedDeliveryDate?.getTime(),
+      orderDate: orderDate.getTime(),
+      purchaseDate: poDate?.getTime(),
+      purchaseOrderId: poId,
+      purchaseOrderNumber: poNumber,
+      reference: reference,
+      remarks,
+      shippingAddressId: selectedAddress?.id,
+      subTotal: subtotal,
+      taxesEnabled
+    } as Partial<FactSales>
 
-    factSalesInstance.post(salesPayload).then(res => {
-      const createdId = res?.data.data[0]?.orderId ?? "";
-      if (createdId) {
-        const orderPayload = orderDetailsPayload.map(item => ({ ...item, orderId: createdId }))
-        return orderDetailsInstance.post(orderPayload)
-      } else {
-        throw new Error("Order id is not created")
-      }
-    }).then(() => {
-      resetForm();
+    const salesInstance = new DataByTableName("fact_sales_v2")
+
+    salesInstance.post(salesPayload).then(res => {
+      const orderId = lodashGet({ data: res, path: "data.data.0.orderId" })
+      const orderDetailsInstance = new DataByTableName("order_details");
+
+      const orderDetailsPayload = orderItems.map(order => ({
+        cases: order.cases,
+        casesDelivered: 0,
+        casesReserved: 0,
+        clientId,
+        expectedDeliveryDate: expectedDeliveryDate?.getTime(),
+        productId: order.productId,
+        addressId: selectedAddress?.id || "",
+        status: "pending_approval",
+        tradePrice: order.pricePerCase,
+        orderId
+      } as OrderDetails))
+      return orderDetailsInstance.post(orderDetailsPayload)
     })
-      .catch(error => {
-        alert(error.message)
-      })
-  }, [orderItems, clientId, reference, selectedProductId])
+  }, [clientId, discount, expectedDeliveryDate, orderDate, poDate, poId, poNumber, reference, selectedShippingAddressId, subtotal, taxesEnabled])
 
   // Reset the form to initial state
   const resetForm = () => {

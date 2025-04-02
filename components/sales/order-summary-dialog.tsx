@@ -16,6 +16,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import type { Order, OrderProduct } from "@/types/order"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
+import { useOrders } from "@/contexts/order-context"
 
 interface OrderSummaryDialogProps {
   open: boolean
@@ -25,7 +26,7 @@ interface OrderSummaryDialogProps {
 
 export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDialogProps) {
   // Calculate order totals
-  const subtotal = order.products.reduce((sum, product) => sum + product.price * product.quantity, 0)
+  const subtotal = order?.subtotal || 0
   const taxes = subtotal * 0.18
   const discount = 0 // Could be dynamic in a real app
   const total = subtotal + taxes - discount
@@ -33,6 +34,7 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
     window.print()
   }
 
+  console.log({ order })
   // Format date for display
   const formatDate = (dateString: string) => {
     if (!dateString) return "—"

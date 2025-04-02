@@ -8,30 +8,36 @@ import { useCallback, useContext, useEffect, useState } from "react"
 import { PlusCircle } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DataByTableName } from "../utils/api"
-import { useOrders } from "@/contexts/order-context"
+import { OrderProvider, useOrders } from "@/contexts/order-context"
 import { Order, OrderProduct, OrderStatus } from "@/types/order"
 import { createType } from "../utils/generic"
 
 export type FactSales = {
-  amount: number,
-  clientId: string,
-  date: string,
-  dc: string,
-  dcDate: string,
+  id: number,
+  orderDate: number,
   expectedDeliveryDate: number,
-  invoiceNumber: string,
-  numOrders: number,
-  orderId?: string,
-  poDate: string | number,
-  poId: string,
-  poNumber: string,
-  referenceName: string,
+  clientId: string,
+  reference: string,
+  purchaseDate: number,
+  purchaseOrderId: string,
+  purchaseOrderNumber: string,
+  shippingAddressId: string,
   remarks: string,
-  status: OrderStatus,
-  createdBy?: string,
-  createdOn?: number,
-  modifiedOn?: number,
-  id?: number
+  subTotal: number,
+  discount: number,
+  taxesEnabled: boolean,
+  igst: number,
+  status: string,
+  primarySku: object,
+  createdOn: number
+  modifiedOn: number,
+  modifiedBy: string,
+  createdBy: string,
+  orderId: string,
+  approvedOn: number,
+  approvedBy: string,
+  carrier: string,
+  trackingId: string
 }
 
 export type Product = {
@@ -75,7 +81,7 @@ export function SalesDashboard() {
   const [activeTab, setActiveTab] = useState("order-book")
 
   return (
-    <div className="space-y-4">
+    <OrderProvider>    <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div className="space-y-1">
           <h2 className="text-2xl font-bold tracking-tight">Sales Management</h2>
@@ -104,6 +110,8 @@ export function SalesDashboard() {
 
       <CreateSalesOrderDialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen} />
     </div>
+    </OrderProvider>
+
   )
 }
 
