@@ -9,6 +9,7 @@ import { Search, ArrowUpDown, Calendar, AlertCircle } from "lucide-react"
 import { useFinished } from "@/app/inventory/finished-goods/context"
 import { useOrders } from "@/contexts/order-context"
 import moment from "moment"
+import { createType } from "../utils/generic"
 
 export interface PendingOrder {
   id: string
@@ -37,13 +38,13 @@ export function PendingOrdersTable({ filterSku }: PendingOrdersTableProps) {
   useEffect(() => {
     setSamplePendingOrders(productionDetails.map(item => ({
       customer: clientInfo[item.clientId]?.name || "",
-      deliveryDate: moment(item.endTime).format('LL'),
+      deliveryDate: moment(item.date).format("YYYY-MM-DD"),
       id: item.id + "",
-      orderDate: moment(item.startTime).format('LL'),
+      orderDate: moment(item.startTime).format("YYYY-MM-DD"),
       orderQuantity: item.numBottles,
       pendingQuantity: Math.abs(item.numBottles - item.delivered),
       priority: "high",
-      sku: productInfo[item.productionId]?.sku || ""
+      sku: item.sku || ""
     }) as PendingOrder))
   }, [clientInfo, productionDetails, productInfo])
 
@@ -78,6 +79,9 @@ export function PendingOrdersTable({ filterSku }: PendingOrdersTableProps) {
       }
     })
   }, [samplePendingOrders, searchQuery, sortField, sortDirection, filterSku])
+
+  console.log({ samplePendingOrders, filteredAndSortedOrders, productionDetails })
+
 
   // Toggle sort direction or change sort field
   const handleSort = (field: keyof PendingOrder) => {

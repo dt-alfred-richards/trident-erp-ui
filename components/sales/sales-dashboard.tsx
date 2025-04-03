@@ -11,6 +11,7 @@ import { DataByTableName } from "../utils/api"
 import { OrderProvider, useOrders } from "@/contexts/order-context"
 import { Order, OrderProduct, OrderStatus } from "@/types/order"
 import { createType } from "../utils/generic"
+import { useAccess } from "../Auth/auth-context"
 
 export type FactSales = {
   id: number,
@@ -77,6 +78,8 @@ const getNumber = (str: string) => {
 };
 
 export function SalesDashboard() {
+  const { canDelete, canRead, canUpdate, canWrite } = useAccess("fact_sales_v2")
+
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("order-book")
 

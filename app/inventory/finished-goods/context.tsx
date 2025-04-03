@@ -50,20 +50,22 @@ type FinishedGoodsContextType = {
 }
 
 export type ProductionDetails = {
-    startTime: number,
-    endTime: number,
     numBottles: number,
     numCases: number,
     createdOn: number,
-    createdBy: object,
-    modifiedOn: object,
-    modifiedBy: object,
+    createdBy: string,
+    modifiedOn: number,
+    modifiedBy: string,
     id: number,
     status: string,
     productionId: string,
-    clientId: string,
+    endTime: string,
     delivered: number,
-    progress: number
+    clientId: string,
+    sku: string,
+    startTime: number,
+    progress: number,
+    date: string
 }
 
 const FinishedGoodsContext = createContext<FinishedGoodsContextType>({} as any);

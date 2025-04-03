@@ -351,7 +351,6 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
     setOrderItems(orderItems.filter((item) => item.id !== itemId))
   }
 
-  console.log({ orderItems })
   // Handle product quantity change
   const handleProductQuantityChange = (itemId: string, newQuantity: number) => {
     if (newQuantity < 1) return

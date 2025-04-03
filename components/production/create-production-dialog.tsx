@@ -84,11 +84,6 @@ export function CreateProductionDialog({ open, onOpenChange, sku, deficit }: Cre
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-
-    if (!selectedSku) {
-      return // Prevent submission without a SKU
-    }
-
     const payload = {
       clientId: assignedTo,
       delivered: 0,
@@ -233,7 +228,7 @@ export function CreateProductionDialog({ open, onOpenChange, sku, deficit }: Cre
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit" disabled={!selectedSku}>
+            <Button type="submit">
               Create Production Order
             </Button>
           </DialogFooter>

@@ -123,8 +123,6 @@ export function PayrollManagement() {
         }) : payrollData,
     [searchQuery, selectedStatus, selectedMonth, payrollData, employeePayroll]
   )
-
-  console.log({ selectedMonth })
   // Calculate paginated data
   const paginatedPayroll = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage

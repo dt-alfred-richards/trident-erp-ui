@@ -48,6 +48,7 @@
     "embla-carousel-react": "8.5.1",
     "immer": "latest",
     "input-otp": "1.4.1",
+    "jwt-decode": "^4.0.0",
     "lodash.get": "^4.4.2",
     "lodash.update": "^4.10.2",
     "lucide-react": "^0.454.0",

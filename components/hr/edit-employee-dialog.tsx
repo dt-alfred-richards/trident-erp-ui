@@ -42,7 +42,6 @@ export function EditEmployeeDialog({ open, onOpenChange, employee, onSave }: Edi
 
   const handleChange = useCallback((field: string, value: string | number) => {
     if (formData) {
-      console.log({ field, value })
       setFormData(prevState => {
         const newPrev = { ...prevState } as any
         updateChild(newPrev, field, () => value);

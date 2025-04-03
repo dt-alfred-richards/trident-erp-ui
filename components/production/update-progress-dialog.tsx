@@ -168,8 +168,6 @@ export function UpdateProgressDialog({ open, onOpenChange, onUpdateProgress }: U
     }
   }, [selectedOrderId, orders])
 
-  console.log({ selectedOrder: orders.find(order => order.id === selectedOrderId) })
-
   // Update progress percentage when completed units change
   const handleCompletedUnitsChange = (value: number) => {
     // Validate that new value is not less than previous value

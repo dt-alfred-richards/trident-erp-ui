@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils"
 import { ThemeToggle } from "@/components/theme/theme-toggle"
 import { UserNav } from "@/components/layout/user-nav"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { useState } from "react"
+import { Fragment, useState } from "react"
 import { Button } from "@/components/ui/button"
 
 // Define navigation items with categories
@@ -109,7 +109,7 @@ const navigationItems = [
         href: "/workflows",
         label: "Workflows",
         icon: Workflow,
-      },
+      }
     ],
   },
 ]
