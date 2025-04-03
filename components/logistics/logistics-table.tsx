@@ -17,7 +17,9 @@ export function LogisticsTable({ status }: LogisticsTableProps) {
   const [selectedOrder, setSelectedOrder] = useState<any>(null)
 
   // Get logistics data from custom hook
-  const { orders, filteredOrders } = useLogisticsData(status)
+  const { orders, filteredOrders, triggerRender } = useLogisticsData(status)
+
+  console.log({ filteredOrders })
 
   const handleDispatchClick = (order: any) => {
     setSelectedOrder(order)
@@ -85,7 +87,7 @@ export function LogisticsTable({ status }: LogisticsTableProps) {
         </Table>
       </div>
 
-      {selectedOrder && <DispatchDialog open={openDialog} onOpenChange={setOpenDialog} order={selectedOrder} />}
+      {selectedOrder && <DispatchDialog open={openDialog} onOpenChange={setOpenDialog} order={selectedOrder} triggerRender={triggerRender} />}
     </div>
   )
 }

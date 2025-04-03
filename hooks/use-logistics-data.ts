@@ -1,9 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { DataByTableName } from "@/components/utils/api"
+import { createType } from "@/components/utils/generic"
+import { OrderStatus, ProductStatus } from "@/types/order"
+import moment from "moment"
+import { useState, useEffect, useCallback } from "react"
 
 interface LogisticsOrder {
-  id: string
+  id: string,
+  orderId: string,
   customer: string
   sku: string
   quantity: number
@@ -14,71 +19,59 @@ interface LogisticsOrder {
   deliveryDate?: string
 }
 
+type Fact_logistics = {
+  id: number,
+  orderId: string,
+  customer: string,
+  sku: string,
+  quantity: number,
+  status: string,
+  trackingId: string,
+  notes: string,
+  createdOn: number,
+  createdBy: string,
+  modifiedOn: number,
+  modifiedBy: string,
+  carrier: string,
+  deliveryDate: number
+}
+
 export function useLogisticsData(status: "all" | "ready" | "dispatched" | "delivered") {
   const [orders, setOrders] = useState<LogisticsOrder[]>([])
   const [filteredOrders, setFilteredOrders] = useState<LogisticsOrder[]>([])
+  const [rerender, setRerender] = useState(false);
+
+  const triggerRender = useCallback(() => {
+    setRerender(r => !r)
+  }, [setRerender])
 
   useEffect(() => {
-    // This would come from your API in a real application
-    const logisticsData: LogisticsOrder[] = [
-      {
-        id: "SO-0995",
-        customer: "Health Foods",
-        sku: "500ml",
-        quantity: 1000,
-        status: "ready",
-        date: "2023-06-01",
-      },
-      {
-        id: "SO-0996",
-        customer: "Wellness Store",
-        sku: "750ml",
-        quantity: 500,
-        status: "ready",
-        date: "2023-06-02",
-      },
-      {
-        id: "SO-0997",
-        customer: "Fitness Center",
-        sku: "1000ml",
-        quantity: 300,
-        status: "dispatched",
-        trackingId: "TRK-12345",
-        carrier: "FedEx",
-        date: "2023-06-03",
-      },
-      {
-        id: "SO-0998",
-        customer: "Organic Life",
-        sku: "2000ml",
-        quantity: 200,
-        status: "delivered",
-        trackingId: "TRK-12346",
-        carrier: "UPS",
-        date: "2023-06-04",
-        deliveryDate: "2023-06-07",
-      },
-      {
-        id: "SO-0999",
-        customer: "Green Grocers",
-        sku: "750ml",
-        quantity: 350,
-        status: "delivered",
-        trackingId: "TRK-12347",
-        carrier: "DHL",
-        date: "2023-06-05",
-        deliveryDate: "2023-06-08",
-      },
-    ]
+    const logisticsInstance = new DataByTableName("fact_logistics");
 
-    setOrders(logisticsData)
+    logisticsInstance.get().then(res => {
+      const data = (res.data?.data || []) as Fact_logistics[]
+      const _orders = data.map(item => ({
+        id: item.id + "",
+        orderId: item.orderId,
+        customer: item.customer,
+        sku: item.sku,
+        quantity: item.quantity,
+        status: item.status as OrderStatus | ProductStatus,
+        date: moment(item.createdOn).format('YYYY-MM-DD'),
+        trackingId: item.trackingId,
+        carrier: item.carrier,
+        deliveryDate: moment(item.deliveryDate).format('YYYY-MM-DD')
+      } as LogisticsOrder))
+      setOrders(_orders)
+      // Filter orders based on selected tab
+      const filtered = status === "all" ? _orders : _orders.filter((order) => order.status === status)
 
-    // Filter orders based on selected tab
-    const filtered = status === "all" ? logisticsData : logisticsData.filter((order) => order.status === status)
+      setFilteredOrders(filtered)
+    }).catch(error => {
+      console.log({ error })
+    })
+  }, [status, rerender])
 
-    setFilteredOrders(filtered)
-  }, [status])
-
-  return { orders, filteredOrders }
+  return { orders, filteredOrders, triggerRender }
 }
 
