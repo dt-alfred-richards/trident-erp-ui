@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { StatusBadge } from "@/components/common/status-badge"
 import { TrackingInfo } from "@/components/logistics/tracking-info"
 import { DispatchDialog } from "@/components/logistics/dispatch-dialog"
 import { useLogisticsData } from "@/hooks/use-logistics-data"
+import { DataByTableName } from "../utils/api"
 
 interface LogisticsTableProps {
   status: "all" | "ready" | "dispatched" | "delivered"
@@ -26,17 +27,25 @@ export function LogisticsTable({ status }: LogisticsTableProps) {
     setOpenDialog(true)
   }
 
-  const handleActionClick = (order: any) => {
+  const handleActionClick = useCallback((order: any) => {
+    const instance = new DataByTableName("fact_logistics");
+
     if (order.status === "ready") {
       handleDispatchClick(order)
     } else if (order.status === "dispatched") {
-      console.log("Mark as delivered:", order.id)
-      // In a real app, this would update the order status
+
+      instance.patch({ key: 'id', value: order.id }, {
+        status: "delivered"
+      }).then(res => {
+        triggerRender();
+      }).catch(error => {
+        console.log({ error })
+      })
     } else {
       console.log("View order details:", order.id)
       // In a real app, this would show order details
     }
-  }
+  }, [])
 
   return (
     <div className="space-y-4">
