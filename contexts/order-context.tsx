@@ -2,7 +2,7 @@
 
 import { createContext, Dispatch, SetStateAction, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
 import { type Order, type OrderStatus, ClientAddress, ClientInfo, ClientProposedPrice, OrderActionService, StatusHistory } from "@/types/order"
-import { FactSales, OrderDetails, Product } from "@/components/sales/sales-dashboard"
+import { FactSales, OrderDetails, ProductInfo as ProductInfo } from "@/components/sales/sales-dashboard"
 import { DataByTableName } from "@/components/utils/api"
 import { createType } from "@/components/utils/generic"
 import moment from "moment"
@@ -18,7 +18,7 @@ interface OrderContextType {
   getOrderById: (orderId: string) => Order | undefined,
   setOrders: Dispatch<SetStateAction<Order[]>>
   clientProposedPrice: Record<string, ClientProposedPrice>,
-  productInfo: Record<string, Product>,
+  productInfo: Record<string, ProductInfo>,
   clientInfo: Record<string, ClientInfo>,
   refetchData: boolean,
   nonSerializedData: Record<string, any>,
@@ -52,7 +52,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const [orders, setOrders] = useState<Order[]>([])
   const [refetchData, setRefetchData] = useState(false);
   const [clientInfo, setClientInfo] = useState<Record<string, ClientInfo>>({});
-  const [productInfo, setProductInfo] = useState<Record<string, Product>>({});
+  const [productInfo, setProductInfo] = useState<Record<string, ProductInfo>>({});
   const [clientAddress, setClientAddress] = useState<Record<string, ClientAddress[]>>({});
   const [clientProposedPrice, setClientProposedPrice] = useState<Record<string, ClientProposedPrice>>({})
   const [eventLogger, setEventLogger] = useState<Record<string, EventLogger[]>>({})

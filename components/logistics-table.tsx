@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { StatusBadge } from "@/components/common/status-badge"
@@ -18,19 +18,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { DataByTableName } from "./utils/api"
 
 interface LogisticsTableProps {
   status: "all" | "ready" | "dispatched" | "delivered"
 }
 
 export function LogisticsTable({ status }: LogisticsTableProps) {
+  const { triggerRender } = useLogisticsData();
   const [openDispatchDialog, setOpenDispatchDialog] = useState(false)
   const [openDetailsDialog, setOpenDetailsDialog] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<any>(null)
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false)
 
   // Get logistics data from custom hook
-  const { orders, filteredOrders } = useLogisticsData(status)
+  const { orders, filteredOrders } = useLogisticsData()
 
   const handleDispatchClick = (order: any) => {
     setSelectedOrder(order)
@@ -51,12 +53,16 @@ export function LogisticsTable({ status }: LogisticsTableProps) {
     }
   }
 
-  const handleDeliveryConfirmed = () => {
-    console.log("Order marked as delivered:", selectedOrder?.id)
-    // In a real app, this would update the order status to "delivered"
-    // For now, we'll just close the dialog
-    setOpenConfirmDialog(false)
-  }
+  const handleDeliveryConfirmed = useCallback(() => {
+    const instance = new DataByTableName("fact_logistics");
+
+    instance.patch({ key: "orderId", value: selectedOrder.id }, { status: "delivered" }).then(() => {
+      triggerRender();
+      setOpenConfirmDialog(false)
+    }).catch(error => {
+      console.log({ error })
+    })
+  }, [selectedOrder])
 
   const isDispatched = (status: string) => {
     return ["dispatched", "partial_fulfillment", "delivered"].includes(status)

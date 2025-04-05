@@ -1,51 +1,73 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { StatusBadge } from "@/components/common/status-badge"
-import { TrackingInfo } from "@/components/logistics/tracking-info"
 import { DispatchDialog } from "@/components/logistics/dispatch-dialog"
+import { ShipmentDetailsDialog } from "@/components/logistics/shipment-details-dialog"
 import { useLogisticsData } from "@/hooks/use-logistics-data"
+import { Eye } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { DataByTableName } from "../utils/api"
 
 interface LogisticsTableProps {
   status: "all" | "ready" | "dispatched" | "delivered"
 }
 
-export function LogisticsTable({ status }: LogisticsTableProps) {
-  const [openDialog, setOpenDialog] = useState(false)
+export function LogisticsTable({ status = 'all' }: LogisticsTableProps) {
+  const [openDispatchDialog, setOpenDispatchDialog] = useState(false)
+  const [openDetailsDialog, setOpenDetailsDialog] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<any>(null)
+  const [openConfirmDialog, setOpenConfirmDialog] = useState(false)
 
   // Get logistics data from custom hook
-  const { orders, filteredOrders, triggerRender } = useLogisticsData(status)
-
-  console.log({ filteredOrders })
+  const { orders, triggerRender } = useLogisticsData()
 
   const handleDispatchClick = (order: any) => {
     setSelectedOrder(order)
-    setOpenDialog(true)
+    setOpenDispatchDialog(true)
   }
 
-  const handleActionClick = useCallback((order: any) => {
-    const instance = new DataByTableName("fact_logistics");
+  const handleViewDetails = (order: any) => {
+    setSelectedOrder(order)
+    setOpenDetailsDialog(true)
+  }
 
+  const handleActionClick = (order: any) => {
     if (order.status === "ready") {
       handleDispatchClick(order)
     } else if (order.status === "dispatched") {
-
-      instance.patch({ key: 'id', value: order.id }, {
-        status: "delivered"
-      }).then(res => {
-        triggerRender();
-      }).catch(error => {
-        console.log({ error })
-      })
-    } else {
-      console.log("View order details:", order.id)
-      // In a real app, this would show order details
+      setSelectedOrder(order)
+      setOpenConfirmDialog(true)
     }
-  }, [])
+  }
+
+  const handleDeliveryConfirmed = useCallback(() => {
+    const instance = new DataByTableName("fact_logistics");
+
+    instance.patch({ key: "orderId", value: selectedOrder.id }, { status: "delivered" }).then(() => {
+      triggerRender();
+      setOpenConfirmDialog(false)
+    }).catch(error => {
+      console.log({ error })
+    })
+  }, [selectedOrder])
+
+  const filteredOrders = useMemo(() => status === "all" ? orders : orders.filter(item => item.status === status), [status, orders])
+
+  const isDispatched = (status: string) => {
+    return ["dispatched", "partial_fulfillment", "delivered"].includes(status)
+  }
 
   return (
     <div className="space-y-4">
@@ -55,10 +77,8 @@ export function LogisticsTable({ status }: LogisticsTableProps) {
             <TableRow>
               <TableHead>Order ID</TableHead>
               <TableHead>Customer</TableHead>
-              <TableHead>SKU</TableHead>
-              <TableHead className="text-right">Quantity</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Tracking</TableHead>
+              <TableHead>Shipment ID</TableHead>
               <TableHead className="text-right">Action</TableHead>
             </TableRow>
           </TableHeader>
@@ -68,26 +88,47 @@ export function LogisticsTable({ status }: LogisticsTableProps) {
                 <TableRow key={order.id}>
                   <TableCell className="font-medium">{order.id}</TableCell>
                   <TableCell>{order.customer}</TableCell>
-                  <TableCell>{order.sku}</TableCell>
-                  <TableCell className="text-right">{order.quantity.toLocaleString()}</TableCell>
                   <TableCell>
                     <StatusBadge status={order.status} />
                   </TableCell>
                   <TableCell>
-                    <TrackingInfo
-                      trackingId={order.trackingId}
-                      carrier={order.carrier}
-                      deliveryDate={order.deliveryDate}
-                    />
+                    {isDispatched(order.status) ? (
+                      order.shipmentId ||
+                      `SH-${Math.floor(Math.random() * 10000)
+                        .toString()
+                        .padStart(4, "0")}`
+                    ) : (
+                      <span className="text-muted-foreground">Not dispatched</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
-                    <ActionButton status={order.status} onClick={() => handleActionClick(order)} />
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => handleViewDetails(order)}
+                        title="View shipment details"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      {order.status === "ready" && (
+                        <Button variant="default" size="sm" onClick={() => handleDispatchClick(order)}>
+                          Dispatch
+                        </Button>
+                      )}
+                      {order.status === "dispatched" && (
+                        <Button variant="outline" size="sm" onClick={() => handleActionClick(order)}>
+                          Mark Delivered
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
+                <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
                   No shipments found
                 </TableCell>
               </TableRow>
@@ -96,31 +137,27 @@ export function LogisticsTable({ status }: LogisticsTableProps) {
         </Table>
       </div>
 
-      {selectedOrder && <DispatchDialog open={openDialog} onOpenChange={setOpenDialog} order={selectedOrder} triggerRender={triggerRender} />}
+      {selectedOrder && (
+        <>
+          <DispatchDialog open={openDispatchDialog} onOpenChange={setOpenDispatchDialog} order={selectedOrder} />
+          <ShipmentDetailsDialog open={openDetailsDialog} onOpenChange={setOpenDetailsDialog} order={selectedOrder} />
+          <AlertDialog open={openConfirmDialog} onOpenChange={setOpenConfirmDialog}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirm Delivery</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to mark this order as delivered? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeliveryConfirmed}>Confirm</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
+      )}
     </div>
-  )
-}
-
-interface ActionButtonProps {
-  status: string
-  onClick: () => void
-}
-
-function ActionButton({ status, onClick }: ActionButtonProps) {
-  let buttonText = "View"
-  let buttonVariant: "default" | "outline" = "outline"
-
-  if (status === "ready") {
-    buttonText = "Dispatch"
-    buttonVariant = "default"
-  } else if (status === "dispatched") {
-    buttonText = "Mark Delivered"
-  }
-
-  return (
-    <Button variant={buttonVariant} size="sm" onClick={onClick}>
-      {buttonText}
-    </Button>
   )
 }
 

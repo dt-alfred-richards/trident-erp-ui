@@ -41,7 +41,7 @@ export type FactSales = {
   trackingId: string
 }
 
-export type Product = {
+export type ProductInfo = {
   size: string,
   type: string,
   brand: string,

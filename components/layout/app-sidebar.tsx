@@ -22,10 +22,10 @@ import { cn } from "@/lib/utils"
 import { ThemeToggle } from "@/components/theme/theme-toggle"
 import { UserNav } from "@/components/layout/user-nav"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { Fragment, useState } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 
-// Define navigation items with categories
+// Update the navigationItems array to include subitems for Logistics
 const navigationItems = [
   {
     category: "Overview",
@@ -44,6 +44,16 @@ const navigationItems = [
         href: "/sales",
         label: "Sales",
         icon: ShoppingCart,
+        subItems: [
+          {
+            href: "/sales/order-book",
+            label: "Order Book",
+          },
+          {
+            href: "/sales/client-list",
+            label: "Client List",
+          },
+        ],
       },
       {
         href: "/production",
@@ -69,11 +79,31 @@ const navigationItems = [
         href: "/logistics",
         label: "Logistics",
         icon: Truck,
+        subItems: [
+          {
+            href: "/logistics/shipment-tracking",
+            label: "Shipment Tracking",
+          },
+          {
+            href: "/logistics/vehicles-drivers",
+            label: "Vehicles & Drivers List",
+          },
+        ],
       },
       {
         href: "/procurement",
         label: "Procurement",
         icon: ShoppingBag,
+        subItems: [
+          {
+            href: "/procurement/purchase-orders",
+            label: "Purchase Order - TB",
+          },
+          {
+            href: "/procurement/suppliers",
+            label: "Supplier List",
+          },
+        ],
       },
     ],
   },
@@ -109,7 +139,7 @@ const navigationItems = [
         href: "/workflows",
         label: "Workflows",
         icon: Workflow,
-      }
+      },
     ],
   },
 ]
@@ -243,4 +273,3 @@ export function AppSidebar() {
     </div>
   )
 }
-
