@@ -54,7 +54,8 @@ interface LogisticsContextType {
   triggerRender: VoidFunction,
   filteredOrders: LogisticsOrder[],
   productInfo: Record<string, ProductInfo>,
-  vehicles: Record<string, Vehicle>
+  vehicles: Record<string, Vehicle>,
+  drivers: Record<string, Driver>
 }
 
 export const LogisticsContext = createContext<LogisticsContextType>({
@@ -63,23 +64,40 @@ export const LogisticsContext = createContext<LogisticsContextType>({
   triggerRender: () => { },
   filteredOrders: [],
   productInfo: {},
-  vehicles: {}
+  vehicles: {},
+  drivers: {}
 })
 
 type Vehicle = {
-  vehicleNumber: string,
-  type: string,
-  driverName: string,
-  contactNumber: number,
-  idNumber: string,
   id: number,
   vehicleId: string,
+  type: string,
+  model: string,
+  loadCapacity: number,
+  loadUnits: string,
+  maxLoad: string,
+  registrationNumber: string,
   createdOn: number,
-  createdBy: string,
   modifiedOn: number,
-  modifiedBy: string,
-  capacity: string,
-  model: string
+  createdBy: string,
+  modifiedBy: string
+}
+
+type Driver = {
+  id: number,
+  driverId: string,
+  name: string,
+  phoneNumber: number,
+  drivingLicense: string,
+  email: string,
+  vehicleIds: object,
+  address: string,
+  joiningDate: string,
+  isActive: boolean,
+  createdOn: number,
+  modifiedOn: number,
+  createdBy: string,
+  modifiedBy: string
 }
 
 export const LogisticsProvider = ({ children }: { children: React.ReactNode }) => {
@@ -88,6 +106,7 @@ export const LogisticsProvider = ({ children }: { children: React.ReactNode }) =
   const [rerender, setRerender] = useState(false);
   const [productInfo, setProductInfo] = useState<Record<string, ProductInfo>>({})
   const [vehicles, setVehicles] = useState<Record<string, Vehicle>>({})
+  const [drivers, setDrivers] = useState<Record<string, Driver>>({})
 
   const updateOrderStatus = (orderId: string, updatedOrder: Partial<LogisticsOrder>) => {
     setOrders((prevOrders) => prevOrders.map((order) => (order.id === orderId ? { ...order, ...updatedOrder } : order)))
@@ -101,18 +120,22 @@ export const LogisticsProvider = ({ children }: { children: React.ReactNode }) =
     const logisticsInstance = new DataByTableName("fact_logistics");
     const dimProduct = new DataByTableName("dim_product");
     const dimVehicle = new DataByTableName("dim_vehicle");
+    const dimDrivers = new DataByTableName("dim_drivers");
 
     Promise.allSettled([
       logisticsInstance.get(),
       dimProduct.get(),
-      dimVehicle.get()
+      dimVehicle.get(),
+      dimDrivers.get()
     ]).then(responses => {
       const data = lodashGet({ data: responses, path: '0.value.data.data' }) || [];
       const products = lodashGet({ data: responses, path: '1.value.data.data' }) || [];
-      const _vehicles = lodashGet({ data: responses, path: '2.value.data.data' }) || [];
+      const _vehicles = (lodashGet({ data: responses, path: '2.value.data.data' }) || []).sort((a: any, b: any) => b.id - a.id);
+      const _drivers = (lodashGet({ data: responses, path: '3.value.data.data' }) || []).sort((a: any, b: any) => b.id - a.id);
 
       const productsMapper = getMapper(products, "productId");
       const vehicleMapper = getMapper(_vehicles, "vehicleId");
+      const driverMapper = getMapper(_drivers, "driverId");
 
       const _orders = data.map((item: Fact_logistics) => ({
         id: item.orderId + "",
@@ -134,12 +157,13 @@ export const LogisticsProvider = ({ children }: { children: React.ReactNode }) =
 
       setFilteredOrders(filtered)
       setVehicles(vehicleMapper)
+      setDrivers(driverMapper)
     }).catch(error => {
       console.log({ error })
     })
   }, [rerender])
 
-  const value = useMemo(() => ({ orders, filteredOrders, triggerRender, updateOrderStatus, productInfo, vehicles }), [orders, filteredOrders])
+  const value = useMemo(() => ({ orders, filteredOrders, triggerRender, updateOrderStatus, productInfo, vehicles, drivers }), [orders, filteredOrders])
 
   return <LogisticsContext.Provider value={value}>{children}</LogisticsContext.Provider>
 }

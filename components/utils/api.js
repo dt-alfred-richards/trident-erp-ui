@@ -45,6 +45,12 @@ export class DataByTableName {
       .patch(`${this.backendUrl}/${key}/${value}`, payload)
       .then((res) => res.data);
   }
+
+  deleteById({ key, value }) {
+    return axiosInstance
+      .delete(`${this.backendUrl}/${key}/${value}`)
+      .then((res) => res.data);
+  }
 }
 
 export default axiosInstance;

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -18,59 +18,28 @@ import { useToast } from "@/components/ui/use-toast"
 import { Edit, Plus, Trash2 } from "lucide-react"
 import { ConfirmationDialog } from "@/components/common/confirmation-dialog"
 import { useLogisticsData } from "@/hooks/use-logistics-data"
+import moment from "moment"
+import { DataByTableName } from "../utils/api"
 
-// Sample driver data
-const initialDrivers = [
-  {
-    id: "DRV001",
-    name: "Rajesh Kumar",
-    licenseNumber: "DL-0123456789",
-    contactNumber: "+91 98765 43210",
-    address: "123 Main Street, Mumbai",
-    joiningDate: "2022-03-15",
-  },
-  {
-    id: "DRV002",
-    name: "Suresh Patel",
-    licenseNumber: "DL-9876543210",
-    contactNumber: "+91 87654 32109",
-    address: "456 Park Avenue, Delhi",
-    joiningDate: "2022-05-20",
-  },
-  {
-    id: "DRV003",
-    name: "Amit Singh",
-    licenseNumber: "DL-5678901234",
-    contactNumber: "+91 76543 21098",
-    address: "789 Lake View, Bangalore",
-    joiningDate: "2022-07-10",
-  },
-  {
-    id: "DRV004",
-    name: "Priya Sharma",
-    licenseNumber: "DL-2345678901",
-    contactNumber: "+91 65432 10987",
-    address: "234 Hill Road, Chennai",
-    joiningDate: "2022-09-05",
-  },
-  {
-    id: "DRV005",
-    name: "Vikram Mehta",
-    licenseNumber: "DL-3456789012",
-    contactNumber: "+91 54321 09876",
-    address: "567 River View, Kolkata",
-    joiningDate: "2022-11-15",
-  },
-]
+type Driver = {
+  id: string,
+  name: string,
+  licenseNumber: string,
+  contactNumber: string,
+  address: string,
+  joiningDate: string,
+}
 
 export function DriversTable() {
-  const { vehicles: _vehicles = {} } = useLogisticsData();
+  const { vehicles: _vehicles = {}, drivers: _drivers = {}, triggerRender } = useLogisticsData();
 
-  const [drivers, setDrivers] = useState(initialDrivers)
+  const driverInstance = new DataByTableName("dim_drivers");
+
+  const [drivers, setDrivers] = useState<Driver[]>([])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [selectedDriver, setSelectedDriver] = useState<any>(null)
+  const [selectedDriver, setSelectedDriver] = useState<Partial<Driver>>({})
   const [driverToDelete, setDriverToDelete] = useState<string | null>(null)
   const [newDriver, setNewDriver] = useState({
     id: "",
@@ -82,67 +51,72 @@ export function DriversTable() {
   })
   const { toast } = useToast()
 
-  // useEffect(() => {
-  //   setDrivers(Object.values(_vehicles).map(item => ({
-  //     id: item,
-  //     name: "Vikram Mehta",
-  //     licenseNumber: "DL-3456789012",
-  //     contactNumber: "+91 54321 09876",
-  //     address: "567 River View, Kolkata",
-  //     joiningDate: "2022-11-15",
-  //   })) as any)
-  // }, [_vehicles])
+  useEffect(() => {
+    setDrivers(Object.values(_drivers).map(item => (
+      {
+        id: item.driverId,
+        name: item.name,
+        licenseNumber: item.drivingLicense,
+        contactNumber: item.phoneNumber,
+        address: item.address,
+        joiningDate: item.joiningDate ? moment(item.joiningDate).format('YYYY-MM-DD') : '-'
+      }
+    )) as any)
+  }, [_vehicles])
 
-  const handleAddDriver = () => {
-    // Generate a new ID
-    const newId = `DRV${(drivers.length + 1).toString().padStart(3, "0")}`
-    const driverToAdd = { ...newDriver, id: newId }
+  const handleAddDriver = useCallback(() => {
+    const { address, contactNumber, joiningDate, licenseNumber, name } = newDriver
 
-    setDrivers([...drivers, driverToAdd])
-    setNewDriver({
-      id: "",
-      name: "",
-      licenseNumber: "",
-      contactNumber: "",
-      address: "",
-      joiningDate: "",
+    driverInstance.post({
+      address, phoneNumber: contactNumber, joiningDate: joiningDate ? new Date(joiningDate).getTime() : null, drivingLicense: licenseNumber, name
+    }).then(() => {
+      triggerRender();
+      setNewDriver({
+        id: "",
+        name: "",
+        licenseNumber: "",
+        contactNumber: "",
+        address: "",
+        joiningDate: "",
+      })
+      setIsAddDialogOpen(false)
+    }).catch(error => {
+      console.log({ error })
     })
-    setIsAddDialogOpen(false)
+  }, [newDriver])
 
-    toast({
-      title: "Driver Added",
-      description: `Driver ${newId} has been added successfully.`,
+  const handleEditDriver = useCallback(() => {
+    const { address, contactNumber, joiningDate, licenseNumber, id, name } = selectedDriver
+
+    driverInstance.patch({
+      key: "driverId",
+      value: id
+    }, {
+      address, phoneNumber: contactNumber, joiningDate: joiningDate ? new Date(joiningDate).getTime() : null, drivingLicense: licenseNumber, name
+    }).then(() => {
+      triggerRender();
+      setIsEditDialogOpen(false)
+    }).catch(error => {
+      console.log({ error })
     })
-  }
-
-  const handleEditDriver = () => {
-    setDrivers(drivers.map((driver) => (driver.id === selectedDriver.id ? selectedDriver : driver)))
-    setIsEditDialogOpen(false)
-
-    toast({
-      title: "Driver Updated",
-      description: `Driver ${selectedDriver.id} has been updated successfully.`,
-    })
-  }
+  }, [selectedDriver])
 
   const confirmDelete = (id: string) => {
     setDriverToDelete(id)
     setIsDeleteDialogOpen(true)
   }
 
-  const handleDeleteDriver = () => {
+  const handleDeleteDriver = useCallback(() => {
     if (!driverToDelete) return
 
-    setDrivers(drivers.filter((driver) => driver.id !== driverToDelete))
-    setIsDeleteDialogOpen(false)
-
-    toast({
-      title: "Driver Deleted",
-      description: `Driver ${driverToDelete} has been deleted successfully.`,
+    driverInstance.deleteById({ key: 'driverId', value: driverToDelete }).then(() => {
+      triggerRender();
+      setIsDeleteDialogOpen(false);
+      setDriverToDelete(null)
+    }).catch(error => {
+      console.log({ error })
     })
-
-    setDriverToDelete(null)
-  }
+  }, [driverToDelete])
 
   const openEditDialog = (driver: any) => {
     setSelectedDriver(driver)
@@ -189,6 +163,7 @@ export function DriversTable() {
                   <Label htmlFor="contactNumber">Contact Number</Label>
                   <Input
                     id="contactNumber"
+                    type="number"
                     value={newDriver.contactNumber}
                     onChange={(e) => setNewDriver({ ...newDriver, contactNumber: e.target.value })}
                   />

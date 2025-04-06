@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -18,9 +18,12 @@ import { useToast } from "@/components/ui/use-toast"
 import { Edit, Plus, Trash2 } from "lucide-react"
 import { ConfirmationDialog } from "@/components/common/confirmation-dialog"
 import { useLogisticsData } from "@/hooks/use-logistics-data"
+import { DataByTableName } from "../utils/api"
 
 export function VehiclesTable() {
-  const { vehicles: _vehicles = {} } = useLogisticsData();
+  const dimVehicleInstance = new DataByTableName("dim_vehicle");
+
+  const { vehicles: _vehicles = {}, triggerRender = () => { } } = useLogisticsData();
 
   const [vehicles, setVehicles] = useState<any[]>([])
 
@@ -38,65 +41,75 @@ export function VehiclesTable() {
   })
   const { toast } = useToast()
 
+  console.log({ newVehicle })
+
   useEffect(() => {
     setVehicles(Object.values(_vehicles).map(item => ({
       id: item.vehicleId,
       type: item.type,
       model: item.model,
-      capacity: item.capacity,
-      registrationNumber: item.vehicleNumber
+      capacity: item.maxLoad,
+      registrationNumber: item.registrationNumber
     })) as any)
   }, [_vehicles])
 
-  const handleAddVehicle = () => {
-    // Generate a new ID
-    const newId = `VEH${(vehicles.length + 1).toString().padStart(3, "0")}`
-    const vehicleToAdd = { ...newVehicle, id: newId }
-
-    setVehicles([...vehicles, vehicleToAdd])
-    setNewVehicle({
-      id: "",
-      type: "",
-      model: "",
-      capacity: "",
-      registrationNumber: "",
+  const handleAddVehicle = useCallback(() => {
+    const { type, capacity, model, registrationNumber } = newVehicle
+    dimVehicleInstance.post({
+      type,
+      model,
+      registrationNumber,
+      maxLoad: capacity
+    }).then(() => {
+      triggerRender();
+      setIsAddDialogOpen(false)
+    }).catch(error => {
+      console.log({ error })
     })
-    setIsAddDialogOpen(false)
+  }, [newVehicle])
 
-    toast({
-      title: "Vehicle Added",
-      description: `Vehicle ${newId} has been added successfully.`,
+  const handleEditVehicle = useCallback(() => {
+
+    const payload = Object.fromEntries(Object.entries({
+      type: selectedVehicle.type,
+      model: selectedVehicle.model,
+      maxLoad: selectedVehicle.capacity,
+      registrationNumber: selectedVehicle.registrationNumber
+    }).filter(item => item[1]))
+
+    dimVehicleInstance.patch({
+      key: "vehicleId",
+      value: selectedVehicle?.id || ""
+    }, payload).then(_ => {
+      triggerRender()
+      setIsEditDialogOpen(false)
+    }).catch(error => {
+      console.log({ error })
     })
-  }
-
-  const handleEditVehicle = () => {
-    setVehicles(vehicles.map((vehicle) => (vehicle.id === selectedVehicle.id ? selectedVehicle : vehicle)))
-    setIsEditDialogOpen(false)
-
-    toast({
-      title: "Vehicle Updated",
-      description: `Vehicle ${selectedVehicle.id} has been updated successfully.`,
-    })
-  }
+  }, [selectedVehicle])
 
   const confirmDelete = (id: string) => {
     setVehicleToDelete(id)
     setIsDeleteDialogOpen(true)
   }
 
-  const handleDeleteVehicle = () => {
-    if (!vehicleToDelete) return
+  const handleDeleteVehicle = useCallback(() => {
+    if (!vehicleToDelete) return;
 
-    setVehicles(vehicles.filter((vehicle) => vehicle.id !== vehicleToDelete))
-    setIsDeleteDialogOpen(false)
-
-    toast({
-      title: "Vehicle Deleted",
-      description: `Vehicle ${vehicleToDelete} has been deleted successfully.`,
+    dimVehicleInstance.deleteById(
+      {
+        key: "vehicleId",
+        value: vehicleToDelete || ""
+      }
+    ).then(() => {
+      triggerRender();
+      setVehicleToDelete(null)
+      setIsDeleteDialogOpen(false)
+    }).catch(error => {
+      console.log({ error })
     })
 
-    setVehicleToDelete(null)
-  }
+  }, [vehicleToDelete])
 
   const openEditDialog = (vehicle: any) => {
     setSelectedVehicle(vehicle)
