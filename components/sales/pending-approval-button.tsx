@@ -21,4 +21,3 @@ export function PendingApprovalButton({ count, onClick }: PendingApprovalButtonP
     </Button>
   )
 }
-

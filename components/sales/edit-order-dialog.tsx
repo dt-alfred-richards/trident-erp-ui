@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { format } from "date-fns"
 import { CalendarIcon, Plus, Trash2, Check, ChevronsUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -27,12 +27,6 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from "@/lib/utils"
 import type { Order } from "@/types/order"
 import { useOrders } from "@/contexts/order-context"
-import { DataByTableName } from "../utils/api"
-import { FactSales, OrderDetails } from "./sales-dashboard"
-import { lodashGet } from "../common/generic"
-import moment from "moment"
-import { ClientType } from "./create-sales-order-dialog"
-
 
 // Mock shipping addresses database
 const customerAddresses: Record<string, { id: string; name: string; address: string; isDefault?: boolean }[]> = {
@@ -64,6 +58,18 @@ const customerAddresses: Record<string, { id: string; name: string; address: str
   ],
 }
 
+// Mock product catalog
+const productCatalog = [
+  { id: "prod1", name: "Premium Water Bottle", sku: "500ml", price: 120, taxRate: 18 },
+  { id: "prod2", name: "Premium Water Bottle", sku: "750ml", price: 180, taxRate: 18 },
+  { id: "prod3", name: "Premium Water Bottle", sku: "1000ml", price: 220, taxRate: 18 },
+  { id: "prod4", name: "Premium Water Bottle", sku: "2000ml", price: 350, taxRate: 18 },
+  { id: "prod5", name: "Insulated Water Bottle", sku: "500ml", price: 250, taxRate: 18 },
+  { id: "prod6", name: "Insulated Water Bottle", sku: "750ml", price: 320, taxRate: 18 },
+  { id: "prod7", name: "Sports Water Bottle", sku: "500ml", price: 150, taxRate: 18 },
+  { id: "prod8", name: "Sports Water Bottle", sku: "750ml", price: 200, taxRate: 18 },
+]
+
 interface OrderItem {
   id: string
   productId: string
@@ -79,65 +85,35 @@ interface OrderItem {
 interface EditOrderDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  order: any
+  order: Order
 }
 
 export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogProps) {
-  const { updateOrder, clientInfo, productInfo, clientAddress, clientProposedPrice = {} } = useOrders()
-
-  const [sales, setSales] = useState<Partial<FactSales>>({})
-  const [orderDetails, setOrderDetails] = useState<OrderDetails[]>([])
+  const { updateOrder } = useOrders()
 
   // Order header state (non-editable)
-  const [orderDate, setOrderDate] = useState<Date>(sales?.orderDate ? new Date(sales.orderDate) : new Date())
-  const [customer, setCustomer] = useState("");
-  const [poNumber, setPoNumber] = useState(sales?.purchaseOrderNumber || "")
-  const [poId, setPoId] = useState(sales?.purchaseOrderId || "")
-  const [poDate, setPoDate] = useState<Date | undefined>(sales?.purchaseDate ? new Date(sales.purchaseDate) : undefined)
-  const [remarks, setRemarks] = useState(sales?.remarks || "")
+  const [orderDate] = useState<Date>(order.orderDate ? new Date(order.orderDate) : new Date())
+  const [customer, setCustomer] = useState(order.customer)
+  const [poNumber, setPoNumber] = useState(order.poNumber || "")
+  const [poId, setPoId] = useState(order.poId || "")
+  const [poDate, setPoDate] = useState<Date | undefined>(order.poDate ? new Date(order.poDate) : undefined)
+  const [remarks, setRemarks] = useState(order.remarks || "")
 
   // Editable fields
-  const [reference, setReference] = useState(sales?.reference)
+  const [reference, setReference] = useState(order.reference)
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<Date | undefined>(
-    sales?.expectedDeliveryDate ? new Date(sales.expectedDeliveryDate) : undefined,
+    order.deliveryDate ? new Date(order.deliveryDate) : undefined,
   )
 
-  const productCatalog = useMemo(() => {
-    return Object.values(productInfo).map(product => ({
-      id: product.productId, name: product.brand, price: clientProposedPrice[product.productId]?.proposedPrice, taxRate: 0, sku: product.sku
-    }))
-  }, [productInfo])
-
-  useEffect(() => {
-    if (order.id) {
-      const instance = new DataByTableName("fact_sales_v2");
-      const instance2 = new DataByTableName("order_details");
-      Promise.allSettled([
-        instance.getby({ column: "orderId", value: order.id }),
-        instance2.getby({ column: "orderId", value: order.id })
-      ]).then((responses: any[]) => {
-        const _sales = lodashGet({ data: responses, path: '0.value.data.data.0' }) as FactSales
-        const _orderDetails = lodashGet({ data: responses, path: '1.value.data.data' }) as OrderDetails[]
-
-        if (!_sales) return
-        setSales(_sales)
-        setOrderDetails(_orderDetails)
-        setCustomer(clientInfo[_sales.clientId]?.name || "")
-        setPoNumber(_sales.purchaseOrderNumber)
-        setPoDate(new Date(_sales.purchaseDate))
-        setRemarks(_sales.remarks || "")
-        setPoId(_sales.purchaseOrderId)
-        setOrderDate(sales.orderDate ? new Date(sales.orderDate) : new Date())
-        setSubtotal(_sales.subTotal);
-      })
-    }
-  }, [order])
-
   // Client details (auto-populated)
+  const [clientName, setClientName] = useState(order.customer)
+  const [gstNumber, setGstNumber] = useState("")
+  const [panNumber, setPanNumber] = useState("")
+  const [availableReferences, setAvailableReferences] = useState<string[]>([])
   const [shippingAddresses, setShippingAddresses] = useState<
     Array<{ id: string; name: string; address: string; isDefault?: boolean }>
   >([])
-  const [selectedShippingAddressId, setSelectedShippingAddressId] = useState("")
+  const [selectedShippingAddressId, setSelectedShippingAddressId] = useState(order.shippingAddressId || "")
 
   // Tax location state
   const [isInTelangana, setIsInTelangana] = useState(true)
@@ -154,7 +130,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
   const [orderItems, setOrderItems] = useState<OrderItem[]>([])
 
   // Order summary state
-  const [subtotal, setSubtotal] = useState(sales?.subTotal || 0)
+  const [subtotal, setSubtotal] = useState(0)
   const [taxTotal, setTaxTotal] = useState(0)
   const [discount, setDiscount] = useState(order.summary?.discount || 0)
   const [discountType, setDiscountType] = useState<"percentage" | "amount">(order.summary?.discountType || "amount")
@@ -164,46 +140,24 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
   // Initialize order items from order products
   useEffect(() => {
     if (open && order.products) {
-      const items: OrderItem[] = orderDetails.map((product) => ({
-        id: product.id + '',
-        productId: productInfo[product.productId].sku || "",
-        productName: productInfo[product.productId].brand,
-        cases: product.cases,
-        pricePerCase: product.tradePrice,
+      const items: OrderItem[] = order.products.map((product) => ({
+        id: product.id,
+        productId: product.sku,
+        productName: product.name,
+        cases: product.quantity,
+        pricePerCase: product.price,
         taxRate: 18, // Default tax rate
-        basePay: product.tradePrice * product.cases,
+        basePay: product.price * product.quantity,
         taxAmount: 0, // Will be calculated in useEffect
         status: product.status,
       }))
       setOrderItems(items)
     }
-  }, [open, order, orderDetails])
-
-  const clients = useMemo(() => {
-    return Object.values(clientInfo).map(client => {
-      if (!clientAddress) return
-      const address = clientAddress[client.clientId] ?? []
-      return ({
-        id: client.clientId,
-        name: client.name,
-        gstNumber: client.gst,
-        panNumber: client.pan,
-        references: [client.reference],
-        shippingAddresses: address.map((a, index) => ({
-          id: a.addressId,
-          name: [a.addressLine_1, a.addressLine_2, a.cityDistrictState, a.pincode].join(","),
-          address: [a.addressLine_1, a.addressLine_2, a.cityDistrictState, a.pincode].join(","),
-          isDefault: index === 0,
-        }))
-      }) as ClientType
-    })
-  }, [clientInfo, clientAddress])
+  }, [open, order])
 
   // Update available addresses when customer changes
   useEffect(() => {
-    const selectedClient = clients.find((client) => client?.id === sales.clientId)
-
-    const addresses = selectedClient?.shippingAddresses || []
+    const addresses = customerAddresses[customer] || []
     setShippingAddresses(addresses)
 
     if (selectedShippingAddressId && !addresses.find((addr) => addr.id === selectedShippingAddressId)) {
@@ -353,8 +307,6 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
 
   // Handle product quantity change
   const handleProductQuantityChange = (itemId: string, newQuantity: number) => {
-    if (newQuantity < 1) return
-
     setOrderItems((prevItems) =>
       prevItems.map((item) => {
         if (item.id === itemId) {
@@ -370,54 +322,55 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
     )
   }
 
-
-  const dateConverter = (date: Date | undefined) => {
-    if (!date) return "";
-    return date.toISOString().split("T")[0]
-  }
-
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const salesPayload: Partial<FactSales> = {
-      clientId: sales.clientId ?? "",
-      orderDate: orderDate.getTime(),
-      expectedDeliveryDate: expectedDeliveryDate?.getTime(),
-      purchaseDate: poDate?.getTime(),
-      purchaseOrderId: poId,
-      reference,
-      remarks,
-      status: "pending_approval"
-    }
-    const factSalesInstance = new DataByTableName("fact_sales_v2");
-    const orderDetailsInstance = new DataByTableName("order_details");
-    const orderDetailsPayload = orderItems.map(order => ({
-      cases: order.cases,
-      casesDelivered: 0,
-      casesReserved: 0,
-      clientId: sales.clientId,
-      expectedDeliveryDate: new Date(expectedDeliveryDate || "").getTime(),
-      productId: order.productId,
-      addressId: selectedShippingAddressId,
-      status: "pending_approval",
-      tradePrice: order.pricePerCase,
-    } as OrderDetails))
+    e.preventDefault()
 
-    factSalesInstance.patch({
-      key: "orderId",
-      value: sales.orderId
-    }, salesPayload)
-      .then((res) => {
-        const createdId = lodashGet({ data: res, path: 'data.data.0.orderId' }) || ""
-        const orderPayload = orderDetailsPayload.map(item => ({ ...item, orderId: createdId }))
-        return orderDetailsInstance.post(orderPayload)
-      }).then(() => {
-        onOpenChange(false)
-      })
-      .catch(error => {
-        console.log({ error })
-      })
+    // Get the selected shipping address details
+    const selectedAddress = shippingAddresses.find((addr) => addr.id === selectedShippingAddressId)
+
+    // Create updated products array
+    const updatedProducts = orderItems.map((item) => ({
+      id: item.id,
+      name: item.productName,
+      sku: item.productId,
+      quantity: item.cases,
+      price: item.pricePerCase,
+      status: item.status,
+    }))
+
+    // Create the updated order
+    const updatedOrder: Partial<Order> = {
+      reference,
+      deliveryDate: expectedDeliveryDate ? format(expectedDeliveryDate, "yyyy-MM-dd") : "",
+      products: updatedProducts,
+      shippingAddressId: selectedShippingAddressId,
+      shippingAddress: selectedAddress
+        ? {
+            id: selectedAddress.id,
+            name: selectedAddress.name,
+            address: selectedAddress.address,
+          }
+        : undefined,
+      summary: {
+        subtotal,
+        discountType,
+        discount,
+        taxesEnabled,
+        taxType: isInTelangana ? "CGST+SGST" : "IGST",
+        taxTotal,
+        total,
+      },
+    }
+
+    // Update the order
+    updateOrder(order.id, updatedOrder)
+    onOpenChange(false)
   }
+
+  // CSS to hide number input arrows
+  const hideNumberInputArrows =
+    "appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -499,7 +452,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
               {/* Purchase Order ID (Non-editable) */}
               <div className="space-y-2">
                 <Label htmlFor="po-id">Purchase Order ID</Label>
-                <Input id="po-id" value={moment(poId).format('LL')} readOnly className="bg-muted" />
+                <Input id="po-id" value={poId} readOnly className="bg-muted" />
               </div>
 
               {/* Purchase Order Number (Non-editable) */}
@@ -638,6 +591,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
                         onChange={(e) => setCases(e.target.value)}
                         min="1"
                         placeholder="Enter quantity"
+                        className={hideNumberInputArrows}
                       />
                     </div>
 
@@ -709,11 +663,19 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
                                 variant="outline"
                                 size="icon"
                                 className="h-6 w-6"
-                                onClick={() => handleProductQuantityChange(item.id, item.cases - 1)}
+                                onClick={() => handleProductQuantityChange(item.id, Math.max(0, item.cases - 1))}
                               >
                                 -
                               </Button>
-                              <span className="w-8 text-center">{item.cases}</span>
+                              <Input
+                                type="number"
+                                value={item.cases === 0 ? "" : item.cases}
+                                onChange={(e) => {
+                                  const value = e.target.value === "" ? 0 : Number.parseInt(e.target.value, 10)
+                                  handleProductQuantityChange(item.id, isNaN(value) ? 0 : value)
+                                }}
+                                className={`w-16 text-center h-6 px-1 ${hideNumberInputArrows}`}
+                              />
                               <Button
                                 type="button"
                                 variant="outline"
@@ -734,7 +696,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
                         <TableCell className="text-right">₹{item.taxAmount.toFixed(2)}</TableCell>
                         <TableCell className="text-center">
                           <Badge variant={item.status === "pending" ? "outline" : "secondary"}>
-                            {item.status?.replace("_", " ")}
+                            {item.status.replace("_", " ")}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -827,4 +789,3 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
     </Dialog>
   )
 }
-

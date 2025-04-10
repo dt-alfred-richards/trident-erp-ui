@@ -16,7 +16,6 @@ import { Card, CardContent } from "@/components/ui/card"
 import type { Order, OrderProduct } from "@/types/order"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
-import { useOrders } from "@/contexts/order-context"
 
 interface OrderSummaryDialogProps {
   open: boolean
@@ -26,15 +25,18 @@ interface OrderSummaryDialogProps {
 
 export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDialogProps) {
   // Calculate order totals
-  const subtotal = order?.subtotal || 0
-  const taxes = subtotal * 0.18
-  const discount = 0 // Could be dynamic in a real app
-  const total = subtotal + taxes - discount
+  const subtotal = order.products.reduce((sum, product) => sum + product.price * product.quantity, 0)
+  const discount = subtotal * 0.05 // Assuming 5% discount, adjust as needed
+  const taxableAmount = subtotal - discount
+  const cgst = taxableAmount * 0.09
+  const sgst = taxableAmount * 0.09
+  const taxes = cgst + sgst // Keep total taxes for the final calculation
+  const total = taxableAmount + taxes
+
   const handlePrint = () => {
     window.print()
   }
 
-  console.log({ order })
   // Format date for display
   const formatDate = (dateString: string) => {
     if (!dateString) return "—"
@@ -59,9 +61,8 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
         </DialogHeader>
 
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="details">Order Details</TabsTrigger>
-            <TabsTrigger value="products">Products</TabsTrigger>
             <TabsTrigger value="history">Status History</TabsTrigger>
           </TabsList>
 
@@ -85,11 +86,11 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
                     </div>
                     <div className="grid grid-cols-2">
                       <span className="text-sm text-muted-foreground">Contact:</span>
-                      <span className="text-sm">{order.customerNumber}</span>
+                      <span className="text-sm">{"+91 98765 43210"}</span>
                     </div>
                     <div className="grid grid-cols-2">
                       <span className="text-sm text-muted-foreground">Email:</span>
-                      <span className="text-sm">{order.customerEmail}</span>
+                      <span className="text-sm">{`info@${order.customer.toLowerCase().replace(/\s+/g, "")}.com`}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -132,6 +133,38 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
             </div>
 
             {/* Order Summary */}
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold mb-3">Products</h3>
+              <div className="border rounded-md mb-6">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Product</TableHead>
+                      <TableHead className="text-right">Quantity</TableHead>
+                      <TableHead className="text-right">Price</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {order.products.map((product: OrderProduct) => (
+                      <TableRow key={product.id}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{product.name}</div>
+                            <div className="text-sm text-muted-foreground">{product.sku}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">{product.quantity.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">₹{product.price.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">₹{(product.quantity * product.price).toFixed(2)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+
+            {/* Order Summary */}
             <div className="flex justify-end">
               <div className="w-full md:w-1/2 space-y-2">
                 <div className="flex justify-between py-1">
@@ -139,15 +172,17 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
                   <span>₹{subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between py-1">
-                  <span className="text-muted-foreground">Taxes (18%):</span>
-                  <span>₹{taxes.toFixed(2)}</span>
+                  <span className="text-muted-foreground">Discount:</span>
+                  <span>-₹{discount.toFixed(2)}</span>
                 </div>
-                {discount > 0 && (
-                  <div className="flex justify-between py-1">
-                    <span className="text-muted-foreground">Discount:</span>
-                    <span>-₹{discount.toFixed(2)}</span>
-                  </div>
-                )}
+                <div className="flex justify-between py-1">
+                  <span className="text-muted-foreground">CGST (9%):</span>
+                  <span>₹{cgst.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between py-1">
+                  <span className="text-muted-foreground">SGST (9%):</span>
+                  <span>₹{sgst.toFixed(2)}</span>
+                </div>
                 <hr className="my-2 border-t border-border" />
                 <div className="flex justify-between py-2 font-bold">
                   <span>Total:</span>
@@ -160,60 +195,60 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
             {(order.status === "dispatched" ||
               order.status === "delivered" ||
               order.status === "partial_fulfillment") && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Payment Details */}
-                  <Card>
-                    <CardContent className="p-4 space-y-3">
-                      <h3 className="font-medium">Payment Details</h3>
-                      <div className="space-y-2">
-                        <div className="grid grid-cols-2">
-                          <span className="text-sm text-muted-foreground">Payment Method:</span>
-                          <span className="text-sm">Bank Transfer</span>
-                        </div>
-                        <div className="grid grid-cols-2">
-                          <span className="text-sm text-muted-foreground">Transaction ID:</span>
-                          <span className="text-sm">{"TXN-" + order.id.substring(3)}</span>
-                        </div>
-                        <div className="grid grid-cols-2">
-                          <span className="text-sm text-muted-foreground">Amount:</span>
-                          <span className="text-sm font-medium">₹{total.toFixed(2)}</span>
-                        </div>
-                        <div className="grid grid-cols-2">
-                          <span className="text-sm text-muted-foreground">Status:</span>
-                          <span className="text-sm text-green-600 font-medium">Paid</span>
-                        </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Payment Details */}
+                <Card>
+                  <CardContent className="p-4 space-y-3">
+                    <h3 className="font-medium">Payment Details</h3>
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2">
+                        <span className="text-sm text-muted-foreground">Payment Method:</span>
+                        <span className="text-sm">Bank Transfer</span>
                       </div>
-                    </CardContent>
-                  </Card>
+                      <div className="grid grid-cols-2">
+                        <span className="text-sm text-muted-foreground">Transaction ID:</span>
+                        <span className="text-sm">{"TXN-" + order.id.substring(3)}</span>
+                      </div>
+                      <div className="grid grid-cols-2">
+                        <span className="text-sm text-muted-foreground">Amount:</span>
+                        <span className="text-sm font-medium">₹{total.toFixed(2)}</span>
+                      </div>
+                      <div className="grid grid-cols-2">
+                        <span className="text-sm text-muted-foreground">Status:</span>
+                        <span className="text-sm text-green-600 font-medium">Paid</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
-                  {/* Shipping Details */}
-                  <Card>
-                    <CardContent className="p-4 space-y-3">
-                      <h3 className="font-medium">Shipping Details</h3>
-                      <div className="space-y-2">
-                        <div className="grid grid-cols-2">
-                          <span className="text-sm text-muted-foreground">Carrier:</span>
-                          <span className="text-sm">{order.carrier || "Dhaara Logistics"}</span>
-                        </div>
-                        <div className="grid grid-cols-2">
-                          <span className="text-sm text-muted-foreground">Tracking Code:</span>
-                          <span className="text-sm">{order.trackingId || "TRK-" + order.id.substring(3)}</span>
-                        </div>
-                        <div className="grid grid-cols-2">
-                          <span className="text-sm text-muted-foreground">Status:</span>
-                          <span className="text-sm text-green-600 font-medium">
-                            {order.status === "delivered"
-                              ? "Delivered"
-                              : order.status === "dispatched"
-                                ? "In Transit"
-                                : "Partially Shipped"}
-                          </span>
-                        </div>
+                {/* Shipping Details */}
+                <Card>
+                  <CardContent className="p-4 space-y-3">
+                    <h3 className="font-medium">Shipping Details</h3>
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2">
+                        <span className="text-sm text-muted-foreground">Carrier:</span>
+                        <span className="text-sm">{order.carrier || "Dhaara Logistics"}</span>
                       </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
+                      <div className="grid grid-cols-2">
+                        <span className="text-sm text-muted-foreground">Tracking Code:</span>
+                        <span className="text-sm">{order.trackingId || "TRK-" + order.id.substring(3)}</span>
+                      </div>
+                      <div className="grid grid-cols-2">
+                        <span className="text-sm text-muted-foreground">Status:</span>
+                        <span className="text-sm text-green-600 font-medium">
+                          {order.status === "delivered"
+                            ? "Delivered"
+                            : order.status === "dispatched"
+                              ? "In Transit"
+                              : "Partially Shipped"}
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
             {/* Addresses */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -223,7 +258,9 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
                   <h3 className="font-medium">Billing Address</h3>
                   <p className="text-sm">
                     {`${order.customer}
-${order.billingAddress}`}
+123 Business Park, Industrial Area
+Bangalore, Karnataka 560001
+India`}
                   </p>
                 </CardContent>
               </Card>
@@ -234,58 +271,19 @@ ${order.billingAddress}`}
                   <h3 className="font-medium">Shipping Address</h3>
                   <p className="text-sm">
                     {`${order.customer}
-${order.shippingAddress}`}
+123 Business Park, Industrial Area
+Bangalore, Karnataka 560001
+India`}
                   </p>
                 </CardContent>
               </Card>
             </div>
           </TabsContent>
 
-          <TabsContent value="products" className="space-y-6 py-4">
-            <h3 className="text-lg font-semibold mb-3">Products</h3>
-            <div className="border rounded-md">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead className="text-right">Quantity</TableHead>
-                    <TableHead className="text-right">Allocated</TableHead>
-                    <TableHead className="text-right">Dispatched</TableHead>
-                    <TableHead className="text-right">Delivered</TableHead>
-                    <TableHead className="text-right">Price</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {order.products.map((product: OrderProduct) => (
-                    <TableRow key={product.id}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{product.name}</div>
-                          <div className="text-sm text-muted-foreground">{product.sku}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">{product.quantity.toLocaleString()}</TableCell>
-                      <TableCell className="text-right">{product.allocated?.toLocaleString() || 0}</TableCell>
-                      <TableCell className="text-right">{product.dispatched?.toLocaleString() || 0}</TableCell>
-                      <TableCell className="text-right">{product.delivered?.toLocaleString() || 0}</TableCell>
-                      <TableCell className="text-right">₹{product.price.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">₹{(product.quantity * product.price).toFixed(2)}</TableCell>
-                      <TableCell>
-                        <StatusBadge status={product.status} />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </TabsContent>
-
           <TabsContent value="history" className="space-y-6 py-4">
             <h3 className="text-lg font-semibold mb-3">Status History</h3>
             <div className="space-y-4">
-              {(order?.statusHistory || []).map((entry, index) => (
+              {order.statusHistory.map((entry, index) => (
                 <div key={index} className="flex items-start gap-4">
                   <div className="mt-0.5">
                     <Clock className="h-5 w-5 text-muted-foreground" />
@@ -321,4 +319,3 @@ ${order.shippingAddress}`}
     </Dialog>
   )
 }
-

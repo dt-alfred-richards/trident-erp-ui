@@ -24,8 +24,8 @@ export function OrderTrackingKanban() {
     "approved",
     "ready",
     "dispatched",
-    "delivered",
     "partial_fulfillment",
+    "delivered",
   ]
 
   // Use all orders since we're not filtering
@@ -140,4 +140,3 @@ export function OrderTrackingKanban() {
     </div>
   )
 }
-

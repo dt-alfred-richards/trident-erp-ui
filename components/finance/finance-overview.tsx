@@ -8,8 +8,6 @@ import { useState } from "react"
 
 export function FinanceOverview() {
   const { journalEntries, invoices, bills, accounts } = useFinance()
-  const [isJournalEntryFormOpen, setIsJournalEntryFormOpen] = useState(false)
-  const [isInvoiceFormOpen, setIsInvoiceFormOpen] = useState(false)
 
   // Calculate financial metrics
   const totalRevenue = accounts

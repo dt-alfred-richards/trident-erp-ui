@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { format } from "date-fns"
 import { CalendarIcon, Plus, Trash2, Check, ChevronsUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -68,6 +68,15 @@ export type ClientType = {
   }[]
 }
 
+// Size SKU options
+const SIZE_SKUS = [
+  { id: "250ML", name: "250ML" },
+  { id: "500ML", name: "500ML" },
+  { id: "750ML", name: "750ML" },
+  { id: "1000ML", name: "1000ML" },
+  { id: "2000ML", name: "2000ML" },
+]
+
 export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderDialogProps) {
   const { clientInfo, productInfo, clientAddress = {}, clientProposedPrice = {}, setRefetchData } = useOrders()  // Order header state
   const [orderDate] = useState<Date>(new Date()) // Remove setOrderDate since it's now fixed
@@ -121,6 +130,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
   // Item entry state
   const [showItemForm, setShowItemForm] = useState(false)
   const [selectedProductId, setSelectedProductId] = useState("")
+  const [selectedSizeSku, setSelectedSizeSku] = useState("")
   const [cases, setCases] = useState("")
 
   // Combobox state
@@ -129,7 +139,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
   // Order items state
   const [orderItems, setOrderItems] = useState<OrderItem[]>([])
 
-  // Order summary state  
+  // Order summary state
   const [subtotal, setSubtotal] = useState(0)
   const [taxTotal, setTaxTotal] = useState(0)
   const [discount, setDiscount] = useState(0)
@@ -228,6 +238,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
         return sum + (discountedItemAmount * item.taxRate) / 100
       }, 0) || 0
     }
+
     setSubtotal(newSubtotal)
     setTaxTotal(newTaxTotal)
     setTotal(discountedSubtotal + newTaxTotal)
@@ -235,7 +246,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
 
   // Handle adding a new item to the order
   const handleAddItem = () => {
-    if (!selectedProductId || !cases || Number(cases) <= 0) {
+    if (!selectedProductId || !selectedSizeSku || !cases || Number(cases) <= 0) {
       return
     }
 
@@ -243,16 +254,16 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
     if (!product) return
 
     const quantity = Number(cases)
-    const basePay = product.price * quantity || 0
-    // Tax amount will be calculated in the useEffect based on discounts and tax toggle
-    const taxAmount = 0 // Initialize to 0, will be calculated in useEffect
+    const basePay = product.price * quantity
+    // Calculate tax amount based on base pay and tax rate
+    const taxAmount = (basePay * product.taxRate) / 100
 
     const newItem: OrderItem = {
       id: `item-${Date.now()}`,
       productId: product.id,
-      productName: product.name,
+      productName: `${product.name} (${selectedSizeSku})`,
       cases: quantity,
-      pricePerCase: product.price || 0,
+      pricePerCase: product.price,
       taxRate: product.taxRate,
       basePay,
       taxAmount,
@@ -262,6 +273,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
 
     // Reset form
     setSelectedProductId("")
+    setSelectedSizeSku("")
     setCases("")
     setShowItemForm(false)
   }
@@ -361,6 +373,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
     setTaxesEnabled(true)
     setShowItemForm(false)
     setSelectedProductId("")
+    setSelectedSizeSku("")
     setCases("")
     setShippingAddresses([])
     setSelectedShippingAddressId("")
@@ -589,7 +602,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
               {showItemForm && (
                 <Card>
                   <CardContent className="p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       {/* Product Selection - Replaced with Combobox */}
                       <div className="space-y-2">
                         <Label htmlFor="product">Product</Label>
@@ -638,6 +651,23 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                         </Popover>
                       </div>
 
+                      {/* Size SKU Selection - New Dropdown */}
+                      <div className="space-y-2">
+                        <Label htmlFor="size-sku">Size SKU</Label>
+                        <Select value={selectedSizeSku} onValueChange={setSelectedSizeSku}>
+                          <SelectTrigger id="size-sku">
+                            <SelectValue placeholder="Select size..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SIZE_SKUS.map((size) => (
+                              <SelectItem key={size.id} value={size.id}>
+                                {size.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
                       {/* Cases */}
                       <div className="space-y-2">
                         <Label htmlFor="cases">Cases</Label>
@@ -658,7 +688,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                           id="price"
                           value={
                             selectedProductId
-                              ? `₹${products.find((p) => p.id === selectedProductId)?.price?.toFixed(2) || "0.00"}`
+                              ? `₹${products.find((p) => p.id === selectedProductId)?.price.toFixed(2) || "0.00"}`
                               : ""
                           }
                           readOnly
@@ -674,6 +704,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                         onClick={() => {
                           setShowItemForm(false)
                           setSelectedProductId("")
+                          setSelectedSizeSku("")
                           setCases("")
                         }}
                       >
@@ -682,7 +713,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                       <Button
                         type="button"
                         onClick={handleAddItem}
-                        disabled={!selectedProductId || !cases || Number(cases) <= 0}
+                        disabled={!selectedProductId || !selectedSizeSku || !cases || Number(cases) <= 0}
                       >
                         Add
                       </Button>
@@ -864,4 +895,3 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
     </>
   )
 }
-

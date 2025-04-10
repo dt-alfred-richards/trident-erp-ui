@@ -198,7 +198,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const proposedPrice = new DataByTableName("client_proposed_price");
-    const dimClient = new DataByTableName("dim_client");
+    const dimClient = new DataByTableName("dim_client_v2");
     const dimProduct = new DataByTableName("dim_product");
     const clientAddress = new DataByTableName("client_address");
     const orderDetails = new DataByTableName("order_details");

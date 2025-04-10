@@ -198,4 +198,3 @@ export function TrackOrderDialog({ open, onOpenChange, order }: TrackOrderDialog
     </Dialog>
   )
 }
-

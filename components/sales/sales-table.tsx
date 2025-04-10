@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -26,16 +26,15 @@ import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
 import { OrderSummaryDialog } from "@/components/sales/order-summary-dialog"
 import { TrackOrderDialog } from "@/components/sales/track-order-dialog"
-// import { EditOrderDialog } from "@/components/sales/edit-order-dialog"
+import { EditOrderDialog } from "@/components/sales/edit-order-dialog"
 import type { OrderStatus } from "@/types/order"
 import { useOrders } from "@/contexts/order-context"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { EditOrderDialog } from "./edit-order-dialog"
-import { ConfirmationDialog } from "../common/confirmation-dialog"
+import { ConfirmationDialog } from "@/components/common/confirmation-dialog"
 
 export function SalesTable() {
   // Use order context
-  const { orders, approveOrder, getOrderById, rejectOrder, cancelOrder } = useOrders()
+  const { orders, approveOrder, rejectOrder, getOrderById, cancelOrder } = useOrders()
 
   // Filter states
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined)
@@ -58,10 +57,10 @@ export function SalesTable() {
 
   // Add pagination state variables
   const [currentPage, setCurrentPage] = useState(1)
-  const [ordersPerPage] = useState(20) // Changed from 25 to 20
+  const [ordersPerPage] = useState(10) // Reduced to 10 to make pagination more visible
 
   // Apply filters to orders
-  const filtered = useMemo(() => orders.filter((order) => {
+  const filtered = orders.filter((order) => {
     // Status filter
     if (statusFilter !== "all" && order.status !== statusFilter) {
       return false
@@ -69,12 +68,11 @@ export function SalesTable() {
 
     // Search query (across multiple fields)
     if (searchQuery) {
-      const { id = "", customer = "", reference = "", products = [] } = order
       const query = searchQuery.toLowerCase()
-      const matchesId = id.toLowerCase().includes(query)
-      const matchesCustomer = customer.toLowerCase().includes(query)
-      const matchesReference = reference.toLowerCase().includes(query)
-      const matchesSku = products.some((p) => p?.sku?.toLowerCase()?.includes(query))
+      const matchesId = order.id.toLowerCase().includes(query)
+      const matchesCustomer = order.customer.toLowerCase().includes(query)
+      const matchesReference = order.reference.toLowerCase().includes(query)
+      const matchesSku = order.products.some((p) => p.sku.toLowerCase().includes(query))
 
       if (!(matchesId || matchesCustomer || matchesReference || matchesSku)) {
         return false
@@ -111,7 +109,7 @@ export function SalesTable() {
     }
 
     return true
-  }), [orders, searchQuery])
+  })
 
   // Calculate pagination
   const indexOfLastOrder = currentPage * ordersPerPage
@@ -194,17 +192,6 @@ export function SalesTable() {
   const handleEditOrder = (orderId: string) => {
     setSelectedOrderId(orderId)
     setIsEditOrderOpen(true)
-  }
-
-  // Get the primary SKU for display in the table
-  const getPrimarySku = (order: any) => {
-    if (order.products.length === 0) return "N/A"
-    return order.products[0].sku
-  }
-
-  // Get the total quantity for display in the table
-  const getTotalQuantity = (order: any) => {
-    return order.products.reduce((total: number, product: any) => total + product.quantity, 0)
   }
 
   // Get the selected order
@@ -378,8 +365,6 @@ export function SalesTable() {
               <TableHead className="font-medium">Order ID</TableHead>
               <TableHead className="font-medium">Client Name</TableHead>
               <TableHead className="font-medium">Reference</TableHead>
-              <TableHead className="font-medium">Primary SKU</TableHead>
-              <TableHead className="font-medium text-right">Quantity</TableHead>
               <TableHead className="font-medium">Delivery Date</TableHead>
               <TableHead className="font-medium">Priority</TableHead>
               <TableHead className="font-medium">Status</TableHead>
@@ -394,8 +379,6 @@ export function SalesTable() {
                   <TableCell className="font-medium text-primary">{order.id}</TableCell>
                   <TableCell>{order.customer}</TableCell>
                   <TableCell>{order.reference}</TableCell>
-                  <TableCell>{getPrimarySku(order)}</TableCell>
-                  <TableCell className="text-right">{getTotalQuantity(order).toLocaleString()}</TableCell>
                   <TableCell>{new Date(order.deliveryDate).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <PriorityIndicator priority={order.priority} />
@@ -524,27 +507,29 @@ export function SalesTable() {
                           </TooltipProvider>
                         </div>
                       )}
-                      {/* Add Cancel button for all statuses except cancelled */}
-                      {order.status !== "cancelled" && order.status !== "pending_approval" && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => handleCancelOrder(order.id)}
-                                className="h-8 w-8 border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-900/50"
-                              >
-                                <Ban className="h-4 w-4" />
-                                <span className="sr-only">Cancel order</span>
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Cancel order</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
+                      {/* Add Cancel button for orders that are not cancelled, pending approval, or delivered */}
+                      {order.status !== "cancelled" &&
+                        order.status !== "pending_approval" &&
+                        order.status !== "delivered" && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() => handleCancelOrder(order.id)}
+                                  className="h-8 w-8 border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-900/50"
+                                >
+                                  <Ban className="h-4 w-4" />
+                                  <span className="sr-only">Cancel order</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Cancel order</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -569,74 +554,75 @@ export function SalesTable() {
         </Table>
       </div>
 
-      {/* Pagination - only show if there are more than 20 orders */}
-      {filtered.length > ordersPerPage && (
-        <div className="flex items-center justify-between mt-4">
-          <div className="text-sm text-muted-foreground">
-            Showing {indexOfFirstOrder + 1} to {Math.min(indexOfLastOrder, filtered.length)} of {filtered.length} orders
-          </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="h-8 w-8 p-0"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              <span className="sr-only">Previous page</span>
-            </Button>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              // Show pages around current page
-              let pageNum = 1
-              if (totalPages <= 5) {
-                pageNum = i + 1
-              } else if (currentPage <= 3) {
-                pageNum = i + 1
-              } else if (currentPage >= totalPages - 2) {
-                pageNum = totalPages - 4 + i
-              } else {
-                pageNum = currentPage - 2 + i
-              }
-
-              return (
-                <Button
-                  key={pageNum}
-                  variant={currentPage === pageNum ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => handlePageChange(pageNum)}
-                  className="h-8 w-8 p-0"
-                >
-                  {pageNum}
-                </Button>
-              )
-            })}
-            {totalPages > 5 && currentPage < totalPages - 2 && (
-              <>
-                {currentPage < totalPages - 3 && <span className="px-2 text-muted-foreground">...</span>}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(totalPages)}
-                  className="h-8 w-8 p-0"
-                >
-                  {totalPages}
-                </Button>
-              </>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="h-8 w-8 p-0"
-            >
-              <ChevronRight className="h-4 w-4" />
-              <span className="sr-only">Next page</span>
-            </Button>
-          </div>
+      {/* Pagination */}
+      <div className="flex items-center justify-between mt-4">
+        <div className="text-sm text-muted-foreground">
+          Showing {filtered.length > 0 ? indexOfFirstOrder + 1 : 0} to {Math.min(indexOfLastOrder, filtered.length)} of{" "}
+          {filtered.length} orders
         </div>
-      )}
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || filtered.length === 0}
+            className="h-8 w-8 p-0"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <span className="sr-only">Previous page</span>
+          </Button>
+          {Array.from({ length: Math.min(5, totalPages || 1) }, (_, i) => {
+            // Show pages around current page
+            let pageNum = 1
+            if (totalPages <= 5) {
+              pageNum = i + 1
+            } else if (currentPage <= 3) {
+              pageNum = i + 1
+            } else if (currentPage >= totalPages - 2) {
+              pageNum = totalPages - 4 + i
+            } else {
+              pageNum = currentPage - 2 + i
+            }
+
+            return (
+              <Button
+                key={pageNum}
+                variant={currentPage === pageNum ? "default" : "outline"}
+                size="sm"
+                onClick={() => handlePageChange(pageNum)}
+                disabled={filtered.length === 0}
+                className="h-8 w-8 p-0"
+              >
+                {pageNum}
+              </Button>
+            )
+          })}
+          {totalPages > 5 && currentPage < totalPages - 2 && (
+            <>
+              {currentPage < totalPages - 3 && <span className="px-2 text-muted-foreground">...</span>}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(totalPages)}
+                disabled={filtered.length === 0}
+                className="h-8 w-8 p-0"
+              >
+                {totalPages}
+              </Button>
+            </>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || filtered.length === 0}
+            className="h-8 w-8 p-0"
+          >
+            <ChevronRight className="h-4 w-4" />
+            <span className="sr-only">Next page</span>
+          </Button>
+        </div>
+      </div>
 
       {/* Dialogs */}
       {selectedOrder && (
@@ -669,4 +655,3 @@ export function SalesTable() {
     </div>
   )
 }
-

@@ -12,4 +12,3 @@ export function OrderBookHeader({ children }: OrderBookHeaderProps) {
     </div>
   )
 }
-

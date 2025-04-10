@@ -10,7 +10,7 @@ export type ProductStatus =
   | "partially_delivered"
 
 // Order status types
-export type OrderStatus = "pending_approval" | "approved" | "ready" | "dispatched" | "delivered" | "partial_fulfillment"
+export type OrderStatus = "pending_approval" | "approved" | "ready" | "dispatched" | "delivered" | "partial_fulfillment" | "cancelled"
 
 // Product item within an order
 export interface OrderProduct {
@@ -35,6 +35,7 @@ export interface OrderProduct {
 
 export type ClientProposedPrice = {
   clientId: string,
+  id: number,
   paymentTimePeriod: number,
   productId: string,
   proposedPrice: number,
@@ -59,6 +60,7 @@ export type ClientInfo = {
   type: string,
   gst: string,
   pan: string,
+  contactPerson: string
 }
 
 export type StatusHistory = {
