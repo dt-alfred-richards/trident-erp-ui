@@ -41,8 +41,6 @@ export function VehiclesTable() {
   })
   const { toast } = useToast()
 
-  console.log({ newVehicle })
-
   useEffect(() => {
     setVehicles(Object.values(_vehicles).map(item => ({
       id: item.vehicleId,

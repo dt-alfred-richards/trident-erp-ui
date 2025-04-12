@@ -8,6 +8,7 @@ export const BreadCrumb = ({ children }: { children: ReactNode }) => {
     const [token, setToken] = useState<string | null>(null);
 
     useEffect(() => {
+        if (typeof window === undefined) return;
         const storedToken = localStorage.getItem("token") || sessionStorage.getItem("token");
         setToken(storedToken);
     }, []);

@@ -20,6 +20,7 @@ export const AccessProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const router = useRouter();
     const pathname = usePathname();
     const [roleMapping, setRoleMapping] = useState<Record<string, string[]>>({})
+    const [token, setToken] = useState("")
 
     useEffect(() => {
         const accessInstance = new DataByTableName("access_mapping");
@@ -39,7 +40,12 @@ export const AccessProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
     }, [pathname])
 
-    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+    useEffect(() => {
+        if (typeof window === undefined) return;
+        const storedToken = localStorage.getItem("token") || sessionStorage.getItem("token") || '';
+        setToken(storedToken)
+    }, [])
+
 
     useEffect(() => {
         if (Object.values(roleMapping).length === 0) return;

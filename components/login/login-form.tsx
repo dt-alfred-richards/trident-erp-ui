@@ -41,6 +41,8 @@ export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [passwordFocused, setPasswordFocused] = useState(false)
+  const [token, setToken] = useState("")
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -67,7 +69,12 @@ export function LoginForm() {
     setValidations(newValidations)
   }, [formData.password])
 
-  const token = localStorage.getItem("token") || sessionStorage.getItem("token")
+  useEffect(() => {
+    if (typeof window === undefined) return;
+    const storedToken = localStorage.getItem("token") || sessionStorage.getItem("token") || '';
+    setToken(storedToken)
+  }, [])
+
   useEffect(() => {
     if (token) {
       router.push("/")
