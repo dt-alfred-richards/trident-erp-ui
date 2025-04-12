@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { DataByTableName } from "../utils/api"
+import { DataTablePagination } from "../ui/data-table-pagination"
 
 interface LogisticsTableProps {
   status: "all" | "ready" | "dispatched" | "delivered"
@@ -69,6 +70,20 @@ export function LogisticsTable({ status = 'all' }: LogisticsTableProps) {
     return ["dispatched", "partial_fulfillment", "delivered"].includes(status)
   }
 
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 5
+
+  const currentItems = useMemo(() => {
+    const indexOfLastItem = currentPage * itemsPerPage
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage
+    return filteredOrders.slice(indexOfFirstItem, indexOfLastItem)
+  }, [filteredOrders, currentPage])
+
+  // Get unique SKUs for filter dropdown
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page)
+  }, [])
+
   return (
     <div className="space-y-4">
       <div className="w-full overflow-auto">
@@ -83,8 +98,8 @@ export function LogisticsTable({ status = 'all' }: LogisticsTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredOrders.length > 0 ? (
-              filteredOrders.map((order) => (
+            {currentItems.length > 0 ? (
+              currentItems.map((order) => (
                 <TableRow key={order.id}>
                   <TableCell className="font-medium">{order.id}</TableCell>
                   <TableCell>{order.customer}</TableCell>
@@ -136,6 +151,12 @@ export function LogisticsTable({ status = 'all' }: LogisticsTableProps) {
           </TableBody>
         </Table>
       </div>
+      <DataTablePagination
+        totalItems={filteredOrders.length}
+        itemsPerPage={itemsPerPage}
+        currentPage={currentPage}
+        onPageChange={handlePageChange}
+      />
 
       {selectedOrder && (
         <>

@@ -1,36 +1,166 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Search, Filter, FileText, CalendarIcon, XCircle, ClipboardCheck } from "lucide-react"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuCheckboxItem,
-} from "@/components/ui/dropdown-menu"
+import { FileText, XCircle, ClipboardCheck, PlusCircle, Search } from "lucide-react"
 import { GoodsReceivedDialog } from "./goods-received-dialog"
 import { PurchaseOrderViewDialog } from "./purchase-order-view-dialog"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format } from "date-fns"
-import { cn } from "@/lib/utils"
 import type { DateRange } from "react-day-picker"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useToast } from "@/components/ui/use-toast"
+import { PurchaseOrderDialog } from "./purchase-order-dialog"
+import { Input } from "@/components/ui/input"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
 
-interface PurchaseOrderTabProps {
-  onNewOrder?: () => void
+interface PurchaseOrder {
+  id: string
+  supplier: string
+  supplierName?: string
+  material: string
+  materialName?: string
+  quantity: number
+  unit: string
+  orderDate: string
+  expectedDelivery: string
+  status: string
+  totalValue: number
+  received?: number
 }
 
-export function PurchaseOrderTab({ onNewOrder }: PurchaseOrderTabProps) {
+// Update the PurchaseOrderTabProps interface to make the props optional with default values
+interface PurchaseOrderTabProps {
+  purchaseOrders?: PurchaseOrder[]
+  setPurchaseOrders?: React.Dispatch<React.SetStateAction<PurchaseOrder[]>>
+}
+
+// Add default mock data inside the component
+export function PurchaseOrderTab({
+  purchaseOrders: externalPurchaseOrders,
+  setPurchaseOrders: externalSetPurchaseOrders,
+}: PurchaseOrderTabProps) {
+  // Mock data for purchase orders with simplified statuses
+  const defaultPurchaseOrders = [
+    {
+      id: "PO-001",
+      supplier: "PlastiCorp Inc.",
+      supplierName: "PlastiCorp Inc.",
+      material: "Plastic Resin",
+      materialName: "Plastic Resin",
+      quantity: 500,
+      unit: "kg",
+      orderDate: "2023-06-01",
+      expectedDelivery: "2023-06-08",
+      status: "pending",
+      totalValue: 2500,
+    },
+    {
+      id: "PO-002",
+      supplier: "CapMakers Ltd.",
+      supplierName: "CapMakers Ltd.",
+      material: "Bottle Caps",
+      materialName: "Bottle Caps",
+      quantity: 10000,
+      unit: "pcs",
+      orderDate: "2023-06-02",
+      expectedDelivery: "2023-06-09",
+      status: "partial",
+      received: 5000,
+      totalValue: 1000,
+    },
+    {
+      id: "PO-003",
+      supplier: "Adhesive Solutions",
+      supplierName: "Adhesive Solutions",
+      material: "Label Adhesive",
+      materialName: "Label Adhesive",
+      quantity: 100,
+      unit: "liters",
+      orderDate: "2023-06-03",
+      expectedDelivery: "2023-06-10",
+      status: "pending",
+      totalValue: 1500,
+    },
+    {
+      id: "PO-004",
+      supplier: "Packaging Experts",
+      supplierName: "Packaging Experts",
+      material: "Cardboard Boxes",
+      materialName: "Cardboard Boxes",
+      quantity: 1000,
+      unit: "pcs",
+      orderDate: "2023-05-28",
+      expectedDelivery: "2023-06-05",
+      status: "completed",
+      totalValue: 800,
+    },
+    {
+      id: "PO-005",
+      supplier: "Label Masters",
+      supplierName: "Label Masters",
+      material: "Product Labels",
+      materialName: "Product Labels",
+      quantity: 5000,
+      unit: "sheets",
+      orderDate: "2023-05-30",
+      expectedDelivery: "2023-06-07",
+      status: "cancelled",
+      totalValue: 1200,
+    },
+    {
+      id: "PO-006",
+      supplier: "Glass Works",
+      supplierName: "Glass Works",
+      material: "Glass Bottles",
+      materialName: "Glass Bottles",
+      quantity: 2000,
+      unit: "pcs",
+      orderDate: "2023-06-05",
+      expectedDelivery: "2023-06-15",
+      status: "pending",
+      totalValue: 3000,
+    },
+    {
+      id: "PO-007",
+      supplier: "Metal Suppliers",
+      supplierName: "Metal Suppliers",
+      material: "Aluminum Caps",
+      materialName: "Aluminum Caps",
+      quantity: 8000,
+      unit: "pcs",
+      orderDate: "2023-06-07",
+      expectedDelivery: "2023-06-17",
+      status: "pending",
+      totalValue: 1600,
+    },
+    {
+      id: "PO-008",
+      supplier: "Eco Packaging",
+      supplierName: "Eco Packaging",
+      material: "Biodegradable Wraps",
+      materialName: "Biodegradable Wraps",
+      quantity: 3000,
+      unit: "sheets",
+      orderDate: "2023-06-08",
+      expectedDelivery: "2023-06-18",
+      status: "pending",
+      totalValue: 2100,
+    },
+  ]
+
+  // Use external state if provided, otherwise use internal state
+  const [internalPurchaseOrders, setInternalPurchaseOrders] = useState(defaultPurchaseOrders)
+
+  // Use either the external or internal state management
+  const purchaseOrders = externalPurchaseOrders?.length ? externalPurchaseOrders : internalPurchaseOrders
+  const setPurchaseOrders = externalSetPurchaseOrders || setInternalPurchaseOrders
+
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string[]>([])
   const [receiveDialogOpen, setReceiveDialogOpen] = useState(false)
@@ -47,65 +177,46 @@ export function PurchaseOrderTab({ onNewOrder }: PurchaseOrderTabProps) {
   const [grnViewDialogOpen, setGrnViewDialogOpen] = useState(false)
   const [selectedGrnPo, setSelectedGrnPo] = useState<string>("")
 
-  // Mock data for purchase orders with simplified statuses
-  const purchaseOrders = [
-    {
-      id: "PO-001",
-      supplier: "PlastiCorp Inc.",
-      material: "Plastic Resin",
-      quantity: 500,
-      unit: "kg",
-      orderDate: "2023-06-01",
-      expectedDelivery: "2023-06-08",
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 5
+
+  const { toast } = useToast()
+
+  // Add a new state variable for the order dialog
+  const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false)
+
+  // Add a function to handle the new order button click
+  const handleNewOrder = () => {
+    setIsOrderDialogOpen(true)
+  }
+
+  // Add a function to add a new purchase order
+  const addPurchaseOrder = (newOrder: Omit<PurchaseOrder, "id" | "orderDate" | "status">) => {
+    // Generate a new PO ID
+    const poId = `PO-${String(purchaseOrders.length + 1).padStart(3, "0")}`
+
+    // Create the new order object
+    const order: PurchaseOrder = {
+      id: poId,
+      orderDate: new Date().toISOString().split("T")[0], // Today's date
       status: "pending",
-      totalValue: 2500,
-    },
-    {
-      id: "PO-002",
-      supplier: "CapMakers Ltd.",
-      material: "Bottle Caps",
-      quantity: 10000,
-      unit: "pcs",
-      orderDate: "2023-06-02",
-      expectedDelivery: "2023-06-09",
-      status: "partial",
-      received: 5000,
-      totalValue: 1000,
-    },
-    {
-      id: "PO-003",
-      supplier: "Adhesive Solutions",
-      material: "Label Adhesive",
-      quantity: 100,
-      unit: "liters",
-      orderDate: "2023-06-03",
-      expectedDelivery: "2023-06-10",
-      status: "pending", // Changed from shipped to pending
-      totalValue: 1500,
-    },
-    {
-      id: "PO-004",
-      supplier: "Packaging Experts",
-      material: "Cardboard Boxes",
-      quantity: 1000,
-      unit: "pcs",
-      orderDate: "2023-05-28",
-      expectedDelivery: "2023-06-05",
-      status: "completed",
-      totalValue: 800,
-    },
-    {
-      id: "PO-005",
-      supplier: "Label Masters",
-      material: "Product Labels",
-      quantity: 5000,
-      unit: "sheets",
-      orderDate: "2023-05-30",
-      expectedDelivery: "2023-06-07",
-      status: "cancelled",
-      totalValue: 1200,
-    },
-  ]
+      ...newOrder,
+    }
+
+    // Update the state with the new order
+    setPurchaseOrders((prev) => [order, ...prev])
+
+    // Show success notification
+    toast({
+      title: "Purchase Order Created",
+      description: `Purchase order ${poId} has been created successfully.`,
+      variant: "default",
+    })
+
+    // Close the dialog
+    setIsOrderDialogOpen(false)
+  }
 
   const getStatusBadge = (status: string, received?: number, quantity?: number) => {
     switch (status) {
@@ -142,8 +253,8 @@ export function PurchaseOrderTab({ onNewOrder }: PurchaseOrderTabProps) {
   const filteredOrders = purchaseOrders.filter((po) => {
     const matchesSearch =
       po.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      po.supplier.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      po.material.toLowerCase().includes(searchQuery.toLowerCase())
+      (po.supplierName || po.supplier).toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (po.materialName || po.material).toLowerCase().includes(searchQuery.toLowerCase())
 
     const matchesStatus = statusFilter.length === 0 || statusFilter.includes(po.status)
 
@@ -153,6 +264,16 @@ export function PurchaseOrderTab({ onNewOrder }: PurchaseOrderTabProps) {
 
     return matchesSearch && matchesStatus && matchesDate
   })
+
+  // Get current orders for pagination
+  const indexOfLastOrder = currentPage * itemsPerPage
+  const indexOfFirstOrder = indexOfLastOrder - itemsPerPage
+  const currentOrders = filteredOrders.slice(indexOfFirstOrder, indexOfLastOrder)
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
 
   const toggleStatusFilter = (status: string) => {
     setStatusFilter((prev) => (prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]))
@@ -182,85 +303,89 @@ export function PurchaseOrderTab({ onNewOrder }: PurchaseOrderTabProps) {
 
   // Add a function to confirm cancellation
   const confirmCancelOrder = () => {
-    // Here you would typically call an API to cancel the order
-    console.log(`Cancelling order ${poToCancel}`)
+    // Update the purchase orders state with the cancelled order
+    setPurchaseOrders((prevOrders) =>
+      prevOrders.map((order) => (order.id === poToCancel ? { ...order, status: "cancelled" } : order)),
+    )
 
-    // For demo purposes, we'll just close the dialog
+    // Show success notification
+    toast({
+      title: "Purchase Order Cancelled",
+      description: `Purchase order ${poToCancel} has been cancelled successfully.`,
+      variant: "default",
+    })
+
+    // Close the dialog
     setCancelDialogOpen(false)
     setPoToCancel("")
   }
 
+  // Function to clear all filters
+  const clearAllFilters = () => {
+    setStatusFilter([])
+    setDateRange({ from: undefined, to: undefined })
+    setSearchQuery("")
+  }
+
+  // Check if any filters are applied
+  const hasFilters = statusFilter.length > 0 || dateRange?.from || searchQuery
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h2 className="text-2xl font-bold tracking-tight">Purchase Orders</h2>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+        <h2 className="text-2xl font-bold tracking-tight">Purchase Order - TB</h2>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex gap-2 w-full sm:w-auto">
           <div className="relative flex-1 sm:w-64">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              type="search"
               placeholder="Search orders..."
-              className="pl-8"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8"
             />
           </div>
-
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="icon" className={cn("relative", dateRange && "bg-muted")}>
-                <CalendarIcon className="h-4 w-4" />
-                {dateRange && <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-primary" />}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <Calendar initialFocus mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={2} />
-            </PopoverContent>
-          </Popover>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="relative">
-                <Filter className="h-4 w-4" />
-                {statusFilter.length > 0 && (
-                  <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-primary"></span>
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Filter By Status</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem
-                checked={statusFilter.includes("pending")}
-                onCheckedChange={() => toggleStatusFilter("pending")}
-              >
-                Pending
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem
-                checked={statusFilter.includes("partial")}
-                onCheckedChange={() => toggleStatusFilter("partial")}
-              >
-                Partially Received
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem
-                checked={statusFilter.includes("completed")}
-                onCheckedChange={() => toggleStatusFilter("completed")}
-              >
-                Completed
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem
-                checked={statusFilter.includes("cancelled")}
-                onCheckedChange={() => toggleStatusFilter("cancelled")}
-              >
-                Cancelled
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setStatusFilter([])}>Clear Filters</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button onClick={handleNewOrder} className="gap-1 whitespace-nowrap">
+            <PlusCircle className="h-4 w-4" />
+            <span>New Order</span>
+          </Button>
         </div>
       </div>
+
+      {/* Moved filter indicators to top of table */}
+      {hasFilters && (
+        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-4 bg-muted/30 p-2 rounded-md">
+          <span className="font-medium">Filtered by:</span>
+          {searchQuery && (
+            <Badge variant="secondary">
+              Search: {searchQuery}
+              <button className="ml-1 text-xs" onClick={() => setSearchQuery("")}>
+                ×
+              </button>
+            </Badge>
+          )}
+          {statusFilter.map((status) => (
+            <Badge key={status} variant="secondary" className="capitalize">
+              Status: {status}
+              <button className="ml-1 text-xs" onClick={() => toggleStatusFilter(status)}>
+                ×
+              </button>
+            </Badge>
+          ))}
+          {dateRange?.from && (
+            <Badge variant="secondary">
+              Date: {format(dateRange.from, "PP")}
+              {dateRange.to ? ` - ${format(dateRange.to, "PP")}` : ""}
+              <button className="ml-1 text-xs" onClick={() => setDateRange({ from: undefined, to: undefined })}>
+                ×
+              </button>
+            </Badge>
+          )}
+          <Button variant="outline" size="sm" className="h-7 px-2 text-xs ml-auto" onClick={clearAllFilters}>
+            Clear all filters
+          </Button>
+        </div>
+      )}
 
       <Card>
         <CardContent className="p-0">
@@ -269,32 +394,25 @@ export function PurchaseOrderTab({ onNewOrder }: PurchaseOrderTabProps) {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[100px]">PO #</TableHead>
-                  <TableHead>Supplier / Material</TableHead>
-                  <TableHead className="hidden md:table-cell">Order Date</TableHead>
+                  <TableHead>Supplier</TableHead>
+                  <TableHead>Order Date</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredOrders.length === 0 ? (
+                {currentOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center">
                       No purchase orders found.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredOrders.map((po) => (
+                  currentOrders.map((po) => (
                     <TableRow key={po.id}>
                       <TableCell className="font-medium">{po.id}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{po.supplier}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {po.material} ({po.quantity} {po.unit})
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">{po.orderDate}</TableCell>
+                      <TableCell>{po.supplierName || po.supplier}</TableCell>
+                      <TableCell>{po.orderDate}</TableCell>
                       <TableCell>{getStatusBadge(po.status, po.received, po.quantity)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
@@ -374,39 +492,13 @@ export function PurchaseOrderTab({ onNewOrder }: PurchaseOrderTabProps) {
         </CardContent>
       </Card>
 
-      {(statusFilter.length > 0 || dateRange?.from) && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Filtered by:</span>
-          {statusFilter.map((status) => (
-            <Badge key={status} variant="secondary" className="capitalize">
-              {status}
-              <button className="ml-1 text-xs" onClick={() => toggleStatusFilter(status)}>
-                ×
-              </button>
-            </Badge>
-          ))}
-          {dateRange?.from && (
-            <Badge variant="secondary">
-              Date: {format(dateRange.from, "PP")}
-              {dateRange.to ? ` - ${format(dateRange.to, "PP")}` : ""}
-              <button className="ml-1 text-xs" onClick={() => setDateRange({ from: undefined, to: undefined })}>
-                ×
-              </button>
-            </Badge>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 px-2 text-xs"
-            onClick={() => {
-              setStatusFilter([])
-              setDateRange({ from: undefined, to: undefined })
-            }}
-          >
-            Clear all
-          </Button>
-        </div>
-      )}
+      {/* Pagination */}
+      <DataTablePagination
+        totalItems={filteredOrders.length}
+        itemsPerPage={itemsPerPage}
+        currentPage={currentPage}
+        onPageChange={handlePageChange}
+      />
 
       {receiveDialogOpen && (
         <GoodsReceivedDialog open={receiveDialogOpen} onOpenChange={setReceiveDialogOpen} poNumber={selectedPO} />
@@ -497,7 +589,14 @@ export function PurchaseOrderTab({ onNewOrder }: PurchaseOrderTabProps) {
           </DialogContent>
         </Dialog>
       )}
+
+      {isOrderDialogOpen && (
+        <PurchaseOrderDialog
+          open={isOrderDialogOpen}
+          onOpenChange={setIsOrderDialogOpen}
+          onCreateOrder={addPurchaseOrder}
+        />
+      )}
     </div>
   )
 }
-

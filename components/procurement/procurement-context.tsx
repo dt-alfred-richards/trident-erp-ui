@@ -1,120 +1,90 @@
-import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { DataByTableName } from "../utils/api";
-import { lodashGet } from "../common/generic";
-import { createType } from "../utils/generic";
-import { getMapper } from "@/contexts/order-context";
+import React, { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react';
+import { DataByTableName } from '../utils/api';
 
+export type Supplier = {
+    id: number;
+    supplierId: string;
+    name: string;
+    contactPerson: string;
+    email: string;
+    phone: number;
+    gstNumber?: string;
+    createdOn?: number;
+    createdBy?: string;
+    modifiedOn?: number;
+    modifiedBy?: string;
+};
 
-type RawMaterials = {
-    id: number,
-    materialId: string,
-    name: string,
-    size: number,
-    units: string,
-    type: string,
-    createdOn: number,
-    modifiedOn: object
+type Purchase = {
+    id: number;
+    supplier_id: string;
+    item_name: string;
+    quantity: number;
+    price: number;
+    purchase_date: string;
+    // Add more fields if needed
+};
+
+type ProcurementContextType = {
+    suppliersData: Supplier[];
+    purchaseData: Purchase[];
+    triggerRender: () => void;
+    loading: boolean;
+};
+
+export const sortByid = (data = []) => {
+    return data.sort((a: any, b: any) => b.id - a.id)
 }
 
-type Suppliers = {
-    name: string,
-    gstIn: string,
-    contactNumber: number,
-    email: string,
-    address: string,
-    id: number,
-    supplierId: string,
-    createdOn: number,
-    createdBy: object,
-    modifiedOn: object,
-    modifiedBy: object
-}
+const ProcurementContext = createContext<ProcurementContextType | undefined>(undefined);
 
-
-type PurchaseOrders = {
-    id: number,
-    purchaseId: string,
-    supplierId: string,
-    materialId: string,
-    createdOn: number,
-    status: string,
-    modifiedOn: number,
-    expectedDeliveryDate: number,
-    total: number,
-    notes: string,
-    currency: string,
-    paymentTerms: string,
-    priority: string,
-    quantity: number,
-    price: number
-}
-
-export type PurchaseContextType = {
-    suppliers: Record<string, Suppliers>,
-    rawMaterials: Record<string, RawMaterials>,
-    triggerRender: VoidFunction
-    purchaseOrders: PurchaseOrders[]
-}
-
-const ProcurementContext = createContext<PurchaseContextType>({
-    suppliers: {},
-    rawMaterials: {},
-    triggerRender: () => { },
-    purchaseOrders: []
-})
-
-
+export const useProcurement = () => {
+    const context = useContext(ProcurementContext);
+    if (!context) throw new Error('useProcurement must be used within ProcurementProvider');
+    return context;
+};
 
 export const ProcurementProvider = ({ children }: { children: ReactNode }) => {
-    const [suppliers, setSuppliers] = useState<PurchaseContextType["suppliers"]>({})
-    const [rawMaterials, setRawMaterials] = useState<PurchaseContextType["rawMaterials"]>({})
-    const [purchaseOrders, setPurchaseOrders] = useState([])
+    const [suppliersData, setSuppliersData] = useState<Supplier[]>([]);
+    const [purchaseData, setPurchaseData] = useState<Purchase[]>([]);
+    const [renderTrigger, setRenderTrigger] = useState(0);
+    const [loading, setLoading] = useState(false);
+    const fetchRef = useRef(true);
+    const fetchData = async () => {
+        try {
+            setLoading(true);
 
-    const [render, setRender] = useState(false);
+            const suppliesInstance = new DataByTableName("dim_supplies");
+            // const purchaseInstance = new DataByTableName("fact_purchases");
 
-    const triggerRender = useCallback(() => {
-        setRender(i => !i)
-    }, [setRender])
+            const [suppliersResponse] = await Promise.all([
+                suppliesInstance.get(),
+                // purchaseInstance.get(),
+            ]);
+
+            setSuppliersData(sortByid(suppliersResponse?.data?.data));
+            // setPurchaseData(purchaseResponse?.data || []);
+        } catch (err) {
+            console.error('Error fetching procurement data:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const triggerRender = () => {
+        setRenderTrigger(prev => prev + 1);
+    };
 
     useEffect(() => {
-        const suppliersInstance = new DataByTableName('dim_supplies');
-        const rawMaterialsInstance = new DataByTableName('dim_raw_materials_v1');
-        const purchaseOrdersInstance = new DataByTableName('purchase_orders');
+        if (!fetchRef.current) return;
 
-        Promise.allSettled([
-            suppliersInstance.get(),
-            rawMaterialsInstance.get(),
-            purchaseOrdersInstance.get()
-        ]).then(responses => {
-            const suppliers = lodashGet({ data: responses[0], path: 'value.data.data' }) || []
-            const rawMaterials = lodashGet({ data: responses[1], path: 'value.data.data' }) || []
-            const purchaseOrders = lodashGet({ data: responses[2], path: 'value.data.data' }) || []
+        fetchRef.current = false;
+        fetchData();
+    }, [renderTrigger, fetchRef]);
 
-            setPurchaseOrders(purchaseOrders.sort((a: any, b: any) => b.id - a.id));
-            setSuppliers(getMapper(suppliers, 'supplierId'))
-            setRawMaterials(getMapper(rawMaterials, 'materialId'))
-        }).catch(error => {
-            console.log('error')
-        })
-    }, [render])
-
-    const values = useMemo(() => ({
-        suppliers,
-        rawMaterials,
-        triggerRender,
-        purchaseOrders
-    }), [suppliers, rawMaterials])
-
-    return <ProcurementContext.Provider value={values}>{children}</ProcurementContext.Provider>
-}
-
-
-export const useProcurements = () => {
-    const context = useContext(ProcurementContext);
-
-    if (context === null) {
-        console.log('procurement context is not ready');
-    }
-
-    return context;
-}
+    return (
+        <ProcurementContext.Provider value={{ suppliersData, purchaseData, triggerRender, loading }}>
+            {children}
+        </ProcurementContext.Provider>
+    );
+};

@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useContext, useEffect, useRef, useState } from "react"
+import { useState, useEffect } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,8 @@ import { Order } from "@/types/order"
 import { createType } from "../utils/generic"
 import { useFinished } from "@/app/inventory/finished-goods/context"
 import { OrderDetails } from "../sales/sales-dashboard"
+import { DataTablePagination } from "../ui/data-table-pagination"
+import { Item } from "@radix-ui/react-radio-group"
 
 interface InventoryTableProps {
   onAllocate?: (sku: string) => void
@@ -65,6 +67,8 @@ export function InventoryTable({ onAllocate }: InventoryTableProps) {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const { toast } = useToast()
   const [inventoryData, setInventoryData] = useState<InventoryData[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(10)
 
   useEffect(() => {
     const ordersMapper = Object.fromEntries(
@@ -103,6 +107,11 @@ export function InventoryTable({ onAllocate }: InventoryTableProps) {
       return aValue < bValue ? 1 : -1
     }
   })
+
+  // Calculate pagination
+  const indexOfLastItem = currentPage * itemsPerPage
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage
+  const paginatedData = sortedData.slice(indexOfFirstItem, indexOfLastItem)
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -147,18 +156,10 @@ export function InventoryTable({ onAllocate }: InventoryTableProps) {
         />
       </div>
 
-      <div className="w-full overflow-auto" style={{ maxHeight: "400px" }}>
+      <div className="w-full overflow-auto border rounded-md">
         <Table>
           <TableHeader className="sticky top-0 bg-background z-10">
             <TableRow>
-              <TableHead className="cursor-pointer hidden" onClick={() => handleSort("id")}>
-                <div className="flex items-center">
-                  id
-                  {sortColumn === "id" && (
-                    <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === "desc" ? "transform rotate-180" : ""}`} />
-                  )}
-                </div>
-              </TableHead>
               <TableHead className="cursor-pointer" onClick={() => handleSort("sku")}>
                 <div className="flex items-center">
                   SKU
@@ -203,13 +204,12 @@ export function InventoryTable({ onAllocate }: InventoryTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedData.length > 0 ? (
-              sortedData.map((item) => {
+            {paginatedData.length > 0 ? (
+              paginatedData.map((item) => {
                 const total = item.available + item.reserved + item.inProduction
 
                 return (
-                  <TableRow key={item.id + item.sku}>
-                    <TableCell className="font-medium hidden">item.id}</TableCell>
+                  <TableRow key={`${item.id}-${item.sku}`}>
                     <TableCell className="font-medium">{item.sku}</TableCell>
                     <TableCell className="text-right text-blue-600 font-medium">
                       {item.available.toLocaleString()}
@@ -240,7 +240,14 @@ export function InventoryTable({ onAllocate }: InventoryTableProps) {
           </TableBody>
         </Table>
       </div>
+
+      {/* Pagination */}
+      <DataTablePagination
+        totalItems={sortedData.length}
+        itemsPerPage={itemsPerPage}
+        currentPage={currentPage}
+        onPageChange={setCurrentPage}
+      />
     </div>
   )
 }
-

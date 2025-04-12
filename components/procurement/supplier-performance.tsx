@@ -102,4 +102,3 @@ export function SupplierPerformance() {
     </div>
   )
 }
-

@@ -15,12 +15,22 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { AlertCircle, Check, X } from "lucide-react"
+import { AlertCircle, X } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+
+interface POItem {
+  id: string
+  material: string
+  quantity: number
+  unit: string
+  supplier: string
+  receivedQuantity: string
+  selected: boolean
+}
 
 interface GoodsReceivedDialogProps {
   open: boolean
@@ -29,9 +39,38 @@ interface GoodsReceivedDialogProps {
 }
 
 export function GoodsReceivedDialog({ open, onOpenChange, poNumber }: GoodsReceivedDialogProps) {
+  // Mock data for PO items - in a real app, this would be fetched based on the PO number
+  const [poItems, setPoItems] = useState<POItem[]>([
+    {
+      id: "1",
+      material: "Plastic Resin",
+      quantity: 500,
+      unit: "kg",
+      supplier: "PlastiCorp Inc.",
+      receivedQuantity: "",
+      selected: false,
+    },
+    {
+      id: "2",
+      material: "Bottle Caps",
+      quantity: 10000,
+      unit: "pcs",
+      supplier: "CapMakers Ltd.",
+      receivedQuantity: "",
+      selected: false,
+    },
+    {
+      id: "3",
+      material: "Label Adhesive",
+      quantity: 100,
+      unit: "liters",
+      supplier: "Adhesive Solutions",
+      receivedQuantity: "",
+      selected: false,
+    },
+  ])
+
   const [formData, setFormData] = useState({
-    receivedQuantity: "",
-    qualityStatus: "accept",
     notes: "",
     useSubstitution: false,
     substitutionItems: [
@@ -45,37 +84,26 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber }: GoodsRecei
     ],
   })
 
-  // This would come from your API in a real application
-  const pendingPOs = [
-    {
-      id: "PO-001",
-      supplier: "PlastiCorp Inc.",
-      material: "Plastic Resin",
-      quantity: 500,
-      unit: "kg",
-      status: "pending",
-    },
-    {
-      id: "PO-002",
-      supplier: "CapMakers Ltd.",
-      material: "Bottle Caps",
-      quantity: 10000,
-      unit: "pcs",
-      status: "partial",
-      received: 5000,
-    },
-    {
-      id: "PO-003",
-      supplier: "Adhesive Solutions",
-      material: "Label Adhesive",
-      quantity: 100,
-      unit: "liters",
-      status: "pending",
-    },
-  ]
+  const handleItemSelection = (itemId: string, checked: boolean) => {
+    setPoItems((prevItems) =>
+      prevItems.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              selected: checked,
+              // Clear received quantity when deselected
+              receivedQuantity: checked ? item.receivedQuantity : "",
+            }
+          : item,
+      ),
+    )
+  }
 
-  // Find the selected PO details
-  const selectedPoDetails = pendingPOs.find((po) => po.id === poNumber) || null
+  const handleReceivedQuantityChange = (itemId: string, value: string) => {
+    setPoItems((prevItems) =>
+      prevItems.map((item) => (item.id === itemId && item.selected ? { ...item, receivedQuantity: value } : item)),
+    )
+  }
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({
@@ -145,9 +173,39 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber }: GoodsRecei
     })
   }
 
+  // Check if any items have partial delivery
+  const hasPartialDelivery = () => {
+    return poItems.some((item) => {
+      if (!item.selected) return false
+      const receivedQty = Number(item.receivedQuantity)
+      return receivedQty > 0 && receivedQty < item.quantity
+    })
+  }
+
   // Update the handleSubmit function to include the material in the submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Check if at least one item has been selected
+    const hasSelectedItems = poItems.some((item) => item.selected)
+
+    if (!hasSelectedItems) {
+      alert("Please select at least one item to receive")
+      return
+    }
+
+    // Check if all selected items have a received quantity
+    const allSelectedItemsHaveQuantity = poItems
+      .filter((item) => item.selected)
+      .every((item) => {
+        const qty = Number(item.receivedQuantity)
+        return !isNaN(qty) && qty > 0
+      })
+
+    if (!allSelectedItemsHaveQuantity) {
+      alert("Please enter received quantity for all selected items")
+      return
+    }
 
     // Validate substitution data if enabled
     if (formData.useSubstitution && !isValidSubstitutionQuantity()) {
@@ -158,6 +216,7 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber }: GoodsRecei
     // Here you would submit the GRN to your API
     console.log("Creating GRN:", {
       poId: poNumber,
+      items: poItems.filter((item) => item.selected && Number(item.receivedQuantity) > 0),
       ...formData,
       // Only include substitution data if enabled
       ...(formData.useSubstitution
@@ -176,115 +235,70 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber }: GoodsRecei
     onOpenChange(false)
   }
 
-  if (!selectedPoDetails) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Error</DialogTitle>
-            <DialogDescription>Purchase order not found.</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button onClick={() => onOpenChange(false)}>Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    )
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] h-[85vh] flex flex-col p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-[800px] h-[85vh] flex flex-col p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-2">
           <DialogTitle>Receive Goods for PO {poNumber}</DialogTitle>
-          <DialogDescription>Record receipt of goods from {selectedPoDetails.supplier}</DialogDescription>
+          <DialogDescription>Record receipt of goods for this purchase order</DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="flex-1 h-full px-6 py-2 overflow-auto">
           <form id="grn-form" onSubmit={handleSubmit} className="space-y-4 pb-2">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="po-details">Purchase Order Details</Label>
-                <div id="po-details" className="p-3 bg-muted rounded-md">
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Material:</span>
-                    </div>
-                    <div className="font-medium">{selectedPoDetails.material}</div>
-
-                    <div>
-                      <span className="text-muted-foreground">Ordered Quantity:</span>
-                    </div>
-                    <div className="font-medium">
-                      {selectedPoDetails.quantity} {selectedPoDetails.unit}
-                    </div>
-
-                    <div>
-                      <span className="text-muted-foreground">Supplier:</span>
-                    </div>
-                    <div className="font-medium">{selectedPoDetails.supplier}</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="received-quantity">Received Quantity</Label>
-                <div className="flex gap-2 items-center">
-                  <Input
-                    id="received-quantity"
-                    type="number"
-                    value={formData.receivedQuantity}
-                    onChange={(e) => handleChange("receivedQuantity", e.target.value)}
-                    min="1"
-                    max={selectedPoDetails.quantity}
-                    required
-                  />
-                  <span className="text-sm text-muted-foreground w-16">{selectedPoDetails.unit}</span>
-                </div>
-
-                {formData.receivedQuantity &&
-                  Number.parseInt(formData.receivedQuantity) < selectedPoDetails.quantity && (
-                    <Alert variant="warning" className="mt-2">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertTitle>Partial Delivery</AlertTitle>
-                      <AlertDescription>
-                        You're recording a partial delivery ({formData.receivedQuantity} of {selectedPoDetails.quantity}{" "}
-                        {selectedPoDetails.unit})
-                      </AlertDescription>
-                    </Alert>
-                  )}
-              </div>
-            </div>
-
             <div className="space-y-2">
-              <Label>Quality Check</Label>
-              <RadioGroup
-                value={formData.qualityStatus}
-                onValueChange={(value) => handleChange("qualityStatus", value)}
-                className="flex flex-col space-y-1"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="accept" id="accept" />
-                  <Label htmlFor="accept" className="flex items-center">
-                    <Check className="h-4 w-4 mr-2 text-green-500" />
-                    Accept - Material meets quality standards
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="reject" id="reject" />
-                  <Label htmlFor="reject" className="flex items-center">
-                    <X className="h-4 w-4 mr-2 text-red-500" />
-                    Reject - Material does not meet quality standards
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="partial" id="partial" />
-                  <Label htmlFor="partial" className="flex items-center">
-                    <AlertCircle className="h-4 w-4 mr-2 text-amber-500" />
-                    Partial Accept - Some items accepted, some rejected
-                  </Label>
-                </div>
-              </RadioGroup>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[50px]">Select</TableHead>
+                      <TableHead>Material</TableHead>
+                      <TableHead>Ordered Quantity</TableHead>
+                      <TableHead>Supplier</TableHead>
+                      <TableHead>Received Quantity</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {poItems.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell>
+                          <Checkbox
+                            checked={item.selected}
+                            onCheckedChange={(checked) => handleItemSelection(item.id, checked as boolean)}
+                          />
+                        </TableCell>
+                        <TableCell>{item.material}</TableCell>
+                        <TableCell>
+                          {item.quantity} {item.unit}
+                        </TableCell>
+                        <TableCell>{item.supplier}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2 items-center">
+                            <Input
+                              type="number"
+                              value={item.receivedQuantity}
+                              onChange={(e) => handleReceivedQuantityChange(item.id, e.target.value)}
+                              min="0"
+                              max={item.quantity}
+                              placeholder="0"
+                              className="w-24"
+                              disabled={!item.selected}
+                            />
+                            <span className="text-sm text-muted-foreground">{item.unit}</span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {hasPartialDelivery() && (
+                <Alert variant="warning" className="mt-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Partial Delivery</AlertTitle>
+                  <AlertDescription>You're recording a partial delivery for one or more items</AlertDescription>
+                </Alert>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -493,4 +507,3 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber }: GoodsRecei
     </Dialog>
   )
 }
-

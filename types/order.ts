@@ -10,7 +10,7 @@ export type ProductStatus =
   | "partially_delivered"
 
 // Order status types
-export type OrderStatus = "pending_approval" | "approved" | "ready" | "dispatched" | "delivered" | "partial_fulfillment" | "rejected"
+export type OrderStatus = "pending_approval" | "approved" | "ready" | "dispatched" | "delivered" | "partial_fulfillment" | "rejected" | 'cancelled'
 
 // Product item within an order
 export interface OrderProduct {

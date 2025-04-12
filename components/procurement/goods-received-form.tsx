@@ -401,4 +401,3 @@ export function GoodsReceivedForm({ poNumber }: GoodsReceivedFormProps) {
     </div>
   )
 }
-

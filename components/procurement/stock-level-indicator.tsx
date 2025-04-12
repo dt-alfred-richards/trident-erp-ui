@@ -23,4 +23,3 @@ export function StockLevelIndicator({ currentStock, reorderLevel, urgency }: Sto
     </div>
   )
 }
-

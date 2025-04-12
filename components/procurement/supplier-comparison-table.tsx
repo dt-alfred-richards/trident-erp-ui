@@ -173,4 +173,3 @@ export function SupplierComparisonTable() {
     </div>
   )
 }
-

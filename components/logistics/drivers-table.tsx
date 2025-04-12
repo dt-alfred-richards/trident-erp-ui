@@ -20,6 +20,7 @@ import { ConfirmationDialog } from "@/components/common/confirmation-dialog"
 import { useLogisticsData } from "@/hooks/use-logistics-data"
 import moment from "moment"
 import { DataByTableName } from "../utils/api"
+import { DataTablePagination } from "../ui/data-table-pagination"
 
 type Driver = {
   id: string,
@@ -123,6 +124,20 @@ export function DriversTable() {
     setIsEditDialogOpen(true)
   }
 
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 5
+
+  const currentItems = useMemo(() => {
+    const indexOfLastItem = currentPage * itemsPerPage
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage
+    return drivers.slice(indexOfFirstItem, indexOfLastItem)
+  }, [drivers, currentPage])
+
+  // Get unique SKUs for filter dropdown
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page)
+  }, [])
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -210,7 +225,7 @@ export function DriversTable() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {drivers.map((driver) => (
+            {currentItems.map((driver) => (
               <TableRow key={driver.id}>
                 <TableCell className="font-medium">{driver.id}</TableCell>
                 <TableCell>{driver.name}</TableCell>
@@ -237,6 +252,12 @@ export function DriversTable() {
           </TableBody>
         </Table>
       </div>
+      <DataTablePagination
+        totalItems={drivers.length}
+        itemsPerPage={itemsPerPage}
+        currentPage={currentPage}
+        onPageChange={handlePageChange}
+      />
 
       {/* Edit Driver Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

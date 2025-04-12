@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -15,12 +15,11 @@ import { CalendarIcon, Plus, Minus, DollarSign } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { PurchaseContextType, useProcurements } from "./procurement-context"
-import { DataByTableName } from "../utils/api"
 
 interface PurchaseOrderDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onCreateOrder: (order: any) => void
 }
 
 interface LineItem {
@@ -31,13 +30,23 @@ interface LineItem {
   price: string
 }
 
-export function PurchaseOrderDialog({ open, onOpenChange }: PurchaseOrderDialogProps) {
-  const { suppliers: _suppliers = {}, rawMaterials: _rawMaterials = {}, triggerRender } = useProcurements()
+const materials = [
+  { value: "plastic-resin", label: "Plastic Resin" },
+  { value: "bottle-caps", label: "Bottle Caps" },
+  { value: "label-adhesive", label: "Label Adhesive" },
+  { value: "cardboard-boxes", label: "Cardboard Boxes" },
+  { value: "labels", label: "Labels" },
+]
 
-  const suppliers = useMemo(() => Object.values(_suppliers).map(item => ({ value: item.supplierId, label: item.name })), [_suppliers])
+const suppliers = [
+  { value: "plasticorp", label: "PlastiCorp Inc." },
+  { value: "capmakers", label: "CapMakers Ltd." },
+  { value: "adhesive", label: "Adhesive Solutions" },
+  { value: "packaging", label: "Packaging Experts" },
+  { value: "labels", label: "Label Masters" },
+]
 
-  const materials = useMemo(() => Object.values(_rawMaterials).map(item => ({ value: item.materialId, label: item.name })), [_suppliers])
-
+export function PurchaseOrderDialog({ open, onOpenChange, onCreateOrder }: PurchaseOrderDialogProps) {
   const [supplier, setSupplier] = useState("")
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined)
   const [currency, setCurrency] = useState("USD")
@@ -66,27 +75,32 @@ export function PurchaseOrderDialog({ open, onOpenChange }: PurchaseOrderDialogP
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    const purchasePayload = lineItems.map(item => ({
-      expectedDeliveryDate: dueDate?.getTime() || 0,
-      materialId: item.material,
-      notes,
-      supplierId: supplier,
-      total: parseInt(item.price) * parseInt(item.quantity),
-      currency,
-      paymentTerms,
+    // Find the supplier and material names
+    const supplierObj = suppliers.find((s) => s.value === supplier)
+    const supplierName = supplierObj ? supplierObj.label : supplier
+
+    // Calculate the expected delivery date (2 weeks from now)
+    const today = new Date()
+    const expectedDelivery = dueDate
+      ? format(dueDate, "yyyy-MM-dd")
+      : format(new Date(today.setDate(today.getDate() + 14)), "yyyy-MM-dd")
+
+    // Create the new order object
+    const newOrder = {
+      supplier,
+      supplierName,
+      material: lineItems[0].material,
+      materialName: materials.find((m) => m.value === lineItems[0].material)?.label,
+      quantity: Number(lineItems[0].quantity),
+      unit: lineItems[0].unit,
+      expectedDelivery,
+      totalValue: calculateTotal(),
       priority,
-      quantity: item.quantity,
-      price: item.price
-    }))
+      notes,
+    }
 
-    const instance = new DataByTableName('purchase_orders');
-
-    instance.post(purchasePayload).then(_ => {
-      triggerRender()
-      onOpenChange(false)
-    }).catch(error => {
-      console.log({ error })
-    })
+    // Call the parent function to add the order
+    onCreateOrder(newOrder)
   }
 
   const calculateTotal = () => {
@@ -105,15 +119,11 @@ export function PurchaseOrderDialog({ open, onOpenChange }: PurchaseOrderDialogP
       (item) => item.material && item.quantity && Number(item.quantity) > 0 && item.price && Number(item.price) > 0,
     )
 
-  const availableUnits = useMemo(() => {
-    return Array.from(new Set(Object.values(_rawMaterials).map(item => item.units)))
-  }, [_rawMaterials])
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[900px] p-0">
         <DialogHeader className="px-8 pt-8 pb-0">
-          <DialogTitle className="text-2xl font-semibold">New Purchase Order</DialogTitle>
+          <DialogTitle className="text-2xl font-semibold">New Purchase Order -TB</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="flex flex-col h-full">
@@ -267,7 +277,7 @@ export function PurchaseOrderDialog({ open, onOpenChange }: PurchaseOrderDialogP
 
                 <ScrollArea className="h-[340px] pr-4">
                   <div className="space-y-4">
-                    {lineItems.map((item) => (
+                    {lineItems.map((item, index) => (
                       <div key={item.id} className="p-4 rounded-lg border bg-card">
                         <div className="flex items-center justify-between mb-3">
                           <Select
@@ -314,15 +324,17 @@ export function PurchaseOrderDialog({ open, onOpenChange }: PurchaseOrderDialogP
                                 className="flex-1"
                               />
                               <Select
-                                value={_rawMaterials[item.material]?.units}
-                                disabled
+                                value={item.unit}
                                 onValueChange={(value) => handleLineItemChange(item.id, "unit", value)}
                               >
                                 <SelectTrigger className="w-[80px]">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {availableUnits.map((item, index) => <SelectItem key={item + index} value={item}>{item}</SelectItem>)}
+                                  <SelectItem value="kg">kg</SelectItem>
+                                  <SelectItem value="liters">L</SelectItem>
+                                  <SelectItem value="pcs">pcs</SelectItem>
+                                  <SelectItem value="boxes">box</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
@@ -385,4 +397,3 @@ export function PurchaseOrderDialog({ open, onOpenChange }: PurchaseOrderDialogP
     </Dialog>
   )
 }
-

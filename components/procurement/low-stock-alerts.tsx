@@ -83,4 +83,3 @@ export function UrgencyBadge({ urgency }: UrgencyBadgeProps) {
       return <Badge variant="outline">Unknown</Badge>
   }
 }
-

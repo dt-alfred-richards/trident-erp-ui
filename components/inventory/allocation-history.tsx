@@ -15,6 +15,7 @@ import { format } from "date-fns"
 import { CalendarIcon, Download, Search } from "lucide-react"
 import moment from "moment"
 import { useCallback, useContext, useEffect, useMemo, useState } from "react"
+import { DataTablePagination } from "../ui/data-table-pagination"
 
 export function AllocationHistory() {
   const { orderDetails } = useFinished();
@@ -42,7 +43,9 @@ export function AllocationHistory() {
     }))
     setAllocations(_allocations)
   }, [orderDetails, clientInfo, productInfo])
-  
+
+
+
   // Filter history based on date range, SKU, status, and search query
   const filteredHistory = useMemo(() => allocations.filter((item) => {
     const itemDate = new Date(item.timestamp)
@@ -60,32 +63,22 @@ export function AllocationHistory() {
     return matchesDateRange && matchesSku && matchesStatus && matchesSearch
   }), [allocations, searchQuery, filterSku])
 
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 5
+
+  const currentItems = useMemo(() => {
+    const indexOfLastItem = currentPage * itemsPerPage
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage
+    return filteredHistory.slice(indexOfFirstItem, indexOfLastItem)
+  }, [filteredHistory, currentPage])
+
   // Get unique SKUs for filter dropdown
   const uniqueSkus = Array.from(new Set(allocations.map((item) => item.sku))).filter(item => item)
 
-  // Group allocations by order ID to show order-level status
-  const orderAllocations = useMemo(() => filteredHistory.reduce(
-    (acc, item) => {
-      if (!acc[item.orderId]) {
-        acc[item.orderId] = {
-          orderId: item.orderId,
-          customer: item.customer,
-          items: [],
-          timestamp: item.timestamp,
-        }
-      }
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page)
+  }, [])
 
-      acc[item.orderId].items.push(item)
-
-      // Use the most recent timestamp
-      if (new Date(item.timestamp) > new Date(acc[item.orderId].timestamp)) {
-        acc[item.orderId].timestamp = item.timestamp
-      }
-
-      return acc
-    },
-    {} as Record<string, { orderId: string; customer: string; items: typeof allocations; timestamp: string }>,
-  ), [filteredHistory])
 
   return (
     <div className="space-y-6">
@@ -189,7 +182,7 @@ export function AllocationHistory() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredHistory.map((item) => (
+            {currentItems.map((item) => (
               <TableRow key={item.id}>
                 <TableCell className="whitespace-nowrap">{moment(item.timestamp).format('DD-MM-YYYY')}</TableCell>
                 <TableCell>{item.user}</TableCell>
@@ -225,6 +218,12 @@ export function AllocationHistory() {
           </TableBody>
         </Table>
       </div>
+      <DataTablePagination
+        totalItems={filteredHistory.length}
+        itemsPerPage={itemsPerPage}
+        currentPage={currentPage}
+        onPageChange={handlePageChange}
+      />
     </div>
   )
 }

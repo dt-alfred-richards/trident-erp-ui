@@ -19,6 +19,7 @@ import { Edit, Plus, Trash2 } from "lucide-react"
 import { ConfirmationDialog } from "@/components/common/confirmation-dialog"
 import { useLogisticsData } from "@/hooks/use-logistics-data"
 import { DataByTableName } from "../utils/api"
+import { DataTablePagination } from "../ui/data-table-pagination"
 
 export function VehiclesTable() {
   const dimVehicleInstance = new DataByTableName("dim_vehicle");
@@ -114,6 +115,21 @@ export function VehiclesTable() {
     setIsEditDialogOpen(true)
   }
 
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 5
+
+  const currentItems = useMemo(() => {
+    const indexOfLastItem = currentPage * itemsPerPage
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage
+    return vehicles.slice(indexOfFirstItem, indexOfLastItem)
+  }, [vehicles, currentPage])
+
+  // Get unique SKUs for filter dropdown
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page)
+  }, [])
+
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -191,7 +207,7 @@ export function VehiclesTable() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {vehicles.map((vehicle) => (
+            {currentItems.map((vehicle) => (
               <TableRow key={vehicle.id}>
                 <TableCell className="font-medium">{vehicle.id}</TableCell>
                 <TableCell>{vehicle.type}</TableCell>
@@ -218,6 +234,13 @@ export function VehiclesTable() {
           </TableBody>
         </Table>
       </div>
+      <DataTablePagination
+        totalItems={vehicles.length}
+        itemsPerPage={itemsPerPage}
+        currentPage={currentPage}
+        onPageChange={handlePageChange}
+      />
+
 
       {/* Edit Vehicle Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

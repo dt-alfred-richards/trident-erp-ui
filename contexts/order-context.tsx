@@ -27,7 +27,7 @@ interface OrderContextType {
   clientAddress: Record<string, ClientAddress[]>,
   eventLogger: Record<string, EventLogger[]>,
   rejectOrder: (orderId: string) => Promise<any>,
-  cancelOrder: (orderId: string) => void
+  cancelOrder: (orderId: string) => Promise<any>
 }
 
 type EventLogger = {
@@ -134,6 +134,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     try {
       OrderActionService.approveOrder(orderId, currentUser).finally(() => {
         setRefetchData(p => !p)
+        fetchRef.current = true
       })
       console.log(`Order ${orderId} approved successfully`)
     } catch (error) {
@@ -267,6 +268,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     const instance = new DataByTableName("fact_sales_v2");
     return instance.patch({ key: "orderId", value: orderId }, { status: "rejected" as OrderStatus }).then(() => {
       setRefetchData(i => !i)
+      fetchRef.current = true
     }).catch(error => {
       console.log({ error })
     })
@@ -274,7 +276,13 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 
 
   const cancelOrder = (orderId: string) => {
-    rejectOrder(orderId);
+    const instance = new DataByTableName("fact_sales_v2");
+    return instance.patch({ key: "orderId", value: orderId }, { status: "rejected" as OrderStatus }).then(() => {
+      setRefetchData(i => !i)
+      fetchRef.current = true
+    }).catch(error => {
+      console.log({ error })
+    })
   }
 
   // Context value
