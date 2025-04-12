@@ -25,7 +25,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
-import type { Order } from "@/types/order"
+import type { Order, OrderProduct } from "@/types/order"
 import { useOrders } from "@/contexts/order-context"
 
 // Mock shipping addresses database
@@ -142,14 +142,14 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
     if (open && order.products) {
       const items: OrderItem[] = order.products.map((product) => ({
         id: product.id,
-        productId: product.sku,
+        productId: product.id,
         productName: product.name,
         cases: product.quantity,
         pricePerCase: product.price,
         taxRate: 18, // Default tax rate
         basePay: product.price * product.quantity,
         taxAmount: 0, // Will be calculated in useEffect
-        status: product.status,
+        status: product.status || "",
       }))
       setOrderItems(items)
     }
@@ -333,11 +333,10 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
     const updatedProducts = orderItems.map((item) => ({
       id: item.id,
       name: item.productName,
-      sku: item.productId,
       quantity: item.cases,
       price: item.pricePerCase,
-      status: item.status,
-    }))
+      status: item.status || "",
+    } as OrderProduct))
 
     // Create the updated order
     const updatedOrder: Partial<Order> = {
@@ -347,10 +346,10 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
       shippingAddressId: selectedShippingAddressId,
       shippingAddress: selectedAddress
         ? {
-            id: selectedAddress.id,
-            name: selectedAddress.name,
-            address: selectedAddress.address,
-          }
+          id: selectedAddress.id,
+          name: selectedAddress.name,
+          address: selectedAddress.address,
+        }
         : undefined,
       summary: {
         subtotal,
@@ -367,6 +366,8 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
     updateOrder(order.id, updatedOrder)
     onOpenChange(false)
   }
+
+  console.log({ order })
 
   // CSS to hide number input arrows
   const hideNumberInputArrows =

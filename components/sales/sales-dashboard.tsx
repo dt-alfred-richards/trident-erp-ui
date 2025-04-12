@@ -12,6 +12,7 @@ import { OrderProvider, useOrders } from "@/contexts/order-context"
 import { Order, OrderProduct, OrderStatus } from "@/types/order"
 import { createType } from "../utils/generic"
 import { useAccess } from "../Auth/auth-context"
+import { toast } from "../ui/use-toast"
 
 export type FactSales = {
   id: number,

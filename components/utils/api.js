@@ -11,7 +11,8 @@ const axiosInstance = axios.create({
 // Request Interceptor to Attach Token
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token"); // Get token from localStorage
+    const token =
+      localStorage.getItem("token") || sessionStorage.getItem("token"); // Get token from localStorage
     if (token) {
       config.headers["Authorization"] = `Bearer ${token}`;
     }
@@ -20,14 +21,36 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+axiosInstance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      console.warn("Super catch: Token missing or invalid");
+
+      // Clear any local/session storage
+      localStorage.removeItem("token");
+      localStorage.removeItem("role");
+      sessionStorage.removeItem("token");
+      sessionStorage.removeItem("role");
+
+      // Redirect to login page if token is invalid
+      if (typeof window !== "undefined") {
+        window.location.href = "/login"; // fallback if you can't use router.push
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
 export class DataByTableName {
   constructor(tableName) {
     this.tableName = tableName;
     this.backendUrl = `${backendUrl}/${tableName}`;
   }
 
-  async get() {
-    return await axiosInstance.get(this.backendUrl).then((res) => res.data);
+  get() {
+    return axiosInstance.get(this.backendUrl).then((res) => res.data);
   }
 
   async post(payload) {
@@ -49,6 +72,12 @@ export class DataByTableName {
   deleteById({ key, value }) {
     return axiosInstance
       .delete(`${this.backendUrl}/${key}/${value}`)
+      .then((res) => res.data);
+  }
+
+  login({ email, password }) {
+    return axiosInstance
+      .post(`${this.backendUrl}login`, { email, password })
       .then((res) => res.data);
   }
 }

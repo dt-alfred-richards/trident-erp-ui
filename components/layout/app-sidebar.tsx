@@ -148,6 +148,9 @@ export function AppSidebar() {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
 
+  if (pathname === "/login") {
+    return null;
+  }
   return (
     <div
       className={cn(

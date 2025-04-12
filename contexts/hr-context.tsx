@@ -1,6 +1,6 @@
 import { DataByTableName } from "@/components/utils/api"
 import { createType } from "@/components/utils/generic"
-import { createContext, Dispatch, ReactNode, SetStateAction, useCallback, useContext, useEffect, useMemo, useState } from "react"
+import { createContext, Dispatch, ReactNode, SetStateAction, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 
 type HrContextType = {
     employeeDetails: EmployeeRow[],
@@ -143,6 +143,7 @@ export function HrProvider({ children }: { children: ReactNode }) {
     const [roles, setRoles] = useState<string[]>([])
     const [empLeaves, setEmpLeaves] = useState<EmpLeaves[]>([])
     const [employeePayroll, setEmployeePayroll] = useState<EmployeePayroll[]>([])
+    const fetchRef = useRef(true);
 
     const refetchData = useCallback(() => {
         setRerender(i => !i)
@@ -239,6 +240,9 @@ export function HrProvider({ children }: { children: ReactNode }) {
     }, [rerender])
 
     useEffect(() => {
+        if (!fetchRef.current) return;
+
+        fetchRef.current = false;
         fetch();
     }, [rerender])
 

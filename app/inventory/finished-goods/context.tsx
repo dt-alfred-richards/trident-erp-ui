@@ -3,7 +3,7 @@
 import { OrderDetails } from "@/components/sales/sales-dashboard";
 import { DataByTableName } from "@/components/utils/api";
 import { createType } from "@/components/utils/generic";
-import { createContext, Dispatch, ReactNode, SetStateAction, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, Dispatch, ReactNode, SetStateAction, useCallback, useContext, useEffect, useRef, useState } from "react";
 
 interface OrderProduct {
     id: string
@@ -76,10 +76,13 @@ export const FinishProvider = ({ children }: { children: ReactNode }) => {
     const [orderDetails, setOrderDetails] = useState<OrderDetails[]>([]);
     const [fetchTrigger, setFetchTrigger] = useState(true); // Using a timestamp instead of a separate `rerender` state
     const [productionDetails, setProductionDetails] = useState<ProductionDetails[]>([])
-
+    const fetchRef = useRef(true);
     const triggerRerender = useCallback(() => setFetchTrigger(p => !p), []);
 
     useEffect(() => {
+        if (!fetchRef.current) return;
+
+        fetchRef.current = false;
         const orderDetailsInstance = new DataByTableName("order_details") as any;
         const finishedGoodsInstance = new DataByTableName("fact_fp_inventory_v2");
         const cummulativeInstance = new DataByTableName("cumulative_inventory");
@@ -96,7 +99,7 @@ export const FinishProvider = ({ children }: { children: ReactNode }) => {
             setCummlative(responses[2]?.value?.data?.data ?? []);
             setProductionDetails(responses[3]?.value?.data?.data ?? []);
         });
-    }, [fetchTrigger]); // Trigger fetch when `fetchTrigger` updates
+    }, [fetchTrigger, fetchRef]); // Trigger fetch when `fetchTrigger` updates
 
     return (
         <FinishedGoodsContext.Provider value={{ cummlative, finishedGoods, orderDetails, triggerRerender, productionDetails }}>

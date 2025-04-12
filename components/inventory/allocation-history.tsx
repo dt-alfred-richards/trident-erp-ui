@@ -42,7 +42,7 @@ export function AllocationHistory() {
     }))
     setAllocations(_allocations)
   }, [orderDetails, clientInfo, productInfo])
-
+  
   // Filter history based on date range, SKU, status, and search query
   const filteredHistory = useMemo(() => allocations.filter((item) => {
     const itemDate = new Date(item.timestamp)

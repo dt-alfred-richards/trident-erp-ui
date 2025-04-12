@@ -8,7 +8,8 @@ import { DataByTableName } from "../utils/api";
 // Define context type
 interface AccessContextProps {
     role: string | null;
-    roleMapping: Record<string, string[]>
+    roleMapping: Record<string, string[]>,
+    pathname: string
 }
 
 const AccessContext = createContext<AccessContextProps | null>(null);
@@ -22,7 +23,6 @@ export const AccessProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     useEffect(() => {
         const accessInstance = new DataByTableName("access_mapping");
-
         accessInstance.get().then(res => {
             const data = (res.data.data || []).reduce((acc: any, curr: any) => {
                 acc[curr.role] = curr.permissions;
@@ -39,16 +39,10 @@ export const AccessProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
     }, [pathname])
 
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+
     useEffect(() => {
-        const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzQzNjk2NTE2fQ.CkxY1xunRpY_4noaT1QxcBAgFjR8legJOIhi-gVhHyk"
-
-        localStorage.setItem("token", token);
-        // const token = localStorage.getItem("token");
-
-        if (Object.values(roleMapping).length === 0) {
-            return;
-        }
-
+        if (Object.values(roleMapping).length === 0) return;
         if (!token && pathname !== "/login") {
             redirectToLogin();
             return;
@@ -60,6 +54,9 @@ export const AccessProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             if (decoded.exp < currentTime) {
                 console.warn("Token expired. Redirecting to login...");
                 localStorage.removeItem("token");
+                sessionStorage.removeItem("token");
+                sessionStorage.removeItem("role");
+                localStorage.removeItem("role");
                 redirectToLogin();
                 return;
             }
@@ -73,10 +70,10 @@ export const AccessProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             console.log({ error })
             redirectToLogin();
         }
-    }, [router, roleMapping, pathname]);
+    }, [router, roleMapping, pathname, token]);
 
     const value = useMemo(() => ({
-        role, roleMapping
+        role, roleMapping, pathname
     }), [role, roleMapping])
 
     return <AccessContext.Provider value={value}>{children}</AccessContext.Provider>;
@@ -89,7 +86,7 @@ export const useAccess = (tableName: string) => {
         throw new Error("useAccess must be used within an AccessProvider");
     }
 
-    const { role, roleMapping } = context;
+    const { role, roleMapping, pathname } = context;
     const permissions = role ? roleMapping[role] || [] : [];
 
     return {
@@ -97,5 +94,6 @@ export const useAccess = (tableName: string) => {
         canWrite: permissions.includes(`${tableName}:write`),
         canDelete: permissions.includes(`${tableName}:delete`),
         canUpdate: permissions.includes(`${tableName}:update`),
+        pathname
     };
 };

@@ -64,10 +64,10 @@ export function StatusBadge({ status }: StatusBadgeProps) {
           Partially Ready
         </Badge>
       )
-    case "cancelled":
+    case "rejected":
       return (
         <Badge variant="outline" className="bg-amber-50 text-red-700 border-red-200">
-          Cancelled
+          Rejected
         </Badge>
       )
     case "partially_dispatched":

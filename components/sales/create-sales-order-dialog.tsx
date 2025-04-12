@@ -89,10 +89,9 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
   const [remarks, setRemarks] = useState("")
   const products = useMemo(() => {
     return Object.values(productInfo).map(product => ({
-      id: product.productId, name: product.brand, price: clientProposedPrice[product.productId]?.proposedPrice, taxRate: 0
+      id: product.productId, name: product.name, price: clientProposedPrice[product.productId]?.proposedPrice, taxRate: 0
     }))
   }, [productInfo])
-
 
   const clients = useMemo(() => {
     return Object.values(clientInfo).map(client => {
@@ -251,10 +250,12 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
     }
 
     const product = products.find((p) => p.id === selectedProductId)
+
     if (!product) return
 
+    const price = product.price || 0
     const quantity = Number(cases)
-    const basePay = product.price * quantity
+    const basePay = price * quantity
     // Calculate tax amount based on base pay and tax rate
     const taxAmount = (basePay * product.taxRate) / 100
 
@@ -263,7 +264,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
       productId: product.id,
       productName: `${product.name} (${selectedSizeSku})`,
       cases: quantity,
-      pricePerCase: product.price,
+      pricePerCase: price,
       taxRate: product.taxRate,
       basePay,
       taxAmount,
@@ -688,7 +689,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                           id="price"
                           value={
                             selectedProductId
-                              ? `₹${products.find((p) => p.id === selectedProductId)?.price.toFixed(2) || "0.00"}`
+                              ? `₹${products.find((p) => p.id === selectedProductId)?.price?.toFixed(2) || "0.00"}`
                               : ""
                           }
                           readOnly
