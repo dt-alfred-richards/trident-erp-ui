@@ -285,6 +285,10 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     })
   }
 
+  const refetch = useCallback(() => {
+    setRefetchData(p => !p);
+    fetchRef.current = true
+  }, [])
   // Context value
   const value = useMemo(() => ({
     orders,
@@ -301,7 +305,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     refetchData,
     nonSerializedData,
     updateNonSerilizedData,
-    setRefetchData,
+    setRefetchData: refetch,
     clientAddress,
     productInfo,
     eventLogger,
