@@ -111,15 +111,16 @@ export function LoginForm() {
         sessionStorage.setItem("token", token);
         sessionStorage.setItem("role", role);
       }
-    }).then(() => {
-      router.push("")
+      setTimeout(() => {
+        console.log("Redirecting to home....")
+        router.push("/");
+        setIsLoading(false);
+      }, 2000);
     }).catch(() => {
       setFormError("Authentication failed")
+      setIsLoading(false);
     })
-      .finally(() => {
-        setIsLoading(false);
-      })
-  }, [formData])
+  }, [formData, router])
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">

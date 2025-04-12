@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
 import { DataByTableName } from "../utils/api";
@@ -34,23 +34,15 @@ export const AccessProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }, [])
 
 
-    const redirectToLogin = useCallback(() => {
-        if (pathname !== '/login') {
-            router.push('/login')
-        }
-    }, [pathname])
-
     useEffect(() => {
         if (typeof window === undefined) return;
         const storedToken = localStorage.getItem("token") || sessionStorage.getItem("token") || '';
         setToken(storedToken)
     }, [])
 
-
     useEffect(() => {
         if (Object.values(roleMapping).length === 0) return;
         if (!token && pathname !== "/login") {
-            redirectToLogin();
             return;
         }
 
@@ -63,18 +55,15 @@ export const AccessProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 sessionStorage.removeItem("token");
                 sessionStorage.removeItem("role");
                 localStorage.removeItem("role");
-                redirectToLogin();
                 return;
             }
 
             if (!roleMapping[decoded.role]) {
-                redirectToLogin();
                 return;
             }
             setRole(decoded.role);
         } catch (error) {
             console.log({ error })
-            redirectToLogin();
         }
     }, [router, roleMapping, pathname, token]);
 
