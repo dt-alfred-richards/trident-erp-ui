@@ -1,6 +1,8 @@
 import type { Metadata } from "next"
 import { DashboardShell } from "@/components/dashboard-shell"
 import { SalesDashboard } from "@/components/sales/sales-dashboard"
+import { SalesProvider } from "@/components/context/Sales/sales-context"
+import { OrderProvider } from "@/contexts/order-context"
 
 export const metadata: Metadata = {
   title: "Order Book",
@@ -10,7 +12,9 @@ export const metadata: Metadata = {
 export default function OrderBookPage() {
   return (
     <DashboardShell>
-      <SalesDashboard />
+      <OrderProvider>
+        <SalesDashboard />
+      </OrderProvider>
     </DashboardShell>
   )
 }

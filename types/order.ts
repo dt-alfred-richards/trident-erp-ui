@@ -1,3 +1,5 @@
+import { number } from "zod"
+
 // Product status types
 export type ProductStatus =
   | "pending"
@@ -39,14 +41,16 @@ export interface OrderProduct {
   deliveredAt?: string
 }
 
+export type OrderPriority = "high" | "medium" | "low"
+
 // Complete order with products
 export interface Order {
   id: string
-  orderDate: string
+  orderDate: Date
   customer: string
   reference: string
-  deliveryDate: string
-  priority: "high" | "medium" | "low"
+  deliveryDate: Date
+  priority: OrderPriority
   status: OrderStatus
   trackingId?: string
   carrier?: string
@@ -55,14 +59,19 @@ export interface Order {
   createdBy: string
   createdAt: string
   approvedBy?: string
-  approvedAt?: string
+  approvedAt?: string,
+  poNumber?: string,
+  poId?: string,
+  poDate?: Date,
+  shippingAddress: Record<string, string>,
+  remarks: string
   // History of status changes for audit trail
   statusHistory: {
     timestamp: string
     status: OrderStatus
     user: string
     note?: string
-  }[]
+  }[],
 }
 
 // Valid status transitions for products
@@ -382,4 +391,37 @@ export const OrderActionService = {
 
     return updatedOrder
   },
+}
+
+
+export type ShippingAddress = {
+  id: number,
+  addressId: string,
+  name: string,
+  address: string,
+  isDefault: boolean,
+  clientId: string
+}
+
+
+export type Product = {
+  id: number,
+  productId: string,
+  name: string,
+  price: number,
+  taxRate: number
+}
+
+export type SalesOrderDetails = {
+  id: number,
+  orderId: string,
+  salesId: string,
+  productId: string,
+  selectedSku: string,
+  cases: number,
+  status: string
+}
+
+export type OrderSummary = {
+  subtotal: number, discountType: string, discount: number, taxesEnabled: boolean, taxType: string, taxTotal: number, total: number
 }
