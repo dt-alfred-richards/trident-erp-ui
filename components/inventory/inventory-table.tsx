@@ -6,93 +6,170 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Search, ArrowUpDown } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { DataByTableName } from "../utils/api"
-import { useOrders } from "@/contexts/order-context"
-import { Order } from "@/types/order"
-import { createType } from "../utils/generic"
-import { useFinished } from "@/app/inventory/finished-goods/context"
-import { OrderDetails } from "../sales/sales-dashboard"
-import { DataTablePagination } from "../ui/data-table-pagination"
-import { Item } from "@radix-ui/react-radio-group"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
+import { useRawMaterialsStore } from "@/hooks/use-raw-materials-store"
 
+// Update the interface to include inventoryData
 interface InventoryTableProps {
   onAllocate?: (sku: string) => void
+  inventoryData?: {
+    sku?: string
+    id?: string
+    name?: string
+    available?: number
+    quantity?: number
+    reserved?: number
+    inProduction?: number
+  }[]
 }
 
-type FinalProduction = {
-  date: string,
-  productId: string,
-  opening: number,
-  production: number,
-  outward: number,
-  closing: number
-}
-
-type Cummulative = {
-  date: string,
-  productId: string,
-  stock: number
-}
-
-
-type InventoryData = {
-  sku: string,
-  available: number,
-  reserved: number,
-  inProduction: number,
-  id: string
-}
-
-type Response = {
-  id: number,
-  productId: string,
-  opening: number,
-  production: number,
-  outward: number,
-  closing: number,
-  createdOn: number,
-  createdBy: object,
-  modifiedOn: number,
-  modifiedBy: object,
-  reserved: number
-}
-
-
-
-export function InventoryTable({ onAllocate }: InventoryTableProps) {
-  const { orderDetails, cummlative, finishedGoods } = useFinished();
+export function InventoryTable({ onAllocate, inventoryData: propInventoryData }: InventoryTableProps) {
   const [searchTerm, setSearchTerm] = useState("")
-  const { productInfo, refetchData } = useOrders();
   const [sortColumn, setSortColumn] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const { toast } = useToast()
-  const [inventoryData, setInventoryData] = useState<InventoryData[]>([])
+  const [displayData, setDisplayData] = useState<any[]>([])
+
+  // Get raw materials data from the store
+  const { rawMaterials } = useRawMaterialsStore()
+
+  // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
 
-  useEffect(() => {
-    const ordersMapper = Object.fromEntries(
-      orderDetails.map((item) => [item.productId, item])
-    );
-    const _inventoryData: InventoryData[] = Object.values(ordersMapper).map((item) => {
-      const reserved = orderDetails.filter(i => i.productId === item.productId).reduce((acc, curr) => {
-        acc += curr.casesReserved;
-        return acc;
-      }, 0);
+  // This would come from your API in a real application
+  const defaultInventoryData = [
+    {
+      sku: "500ml",
+      available: 250,
+      reserved: 1000,
+      inProduction: 2000,
+    },
+    {
+      sku: "750ml",
+      available: 1200,
+      reserved: 0,
+      inProduction: 1500,
+    },
+    {
+      sku: "1000ml",
+      available: 200,
+      reserved: 600,
+      inProduction: 1000,
+    },
+    {
+      sku: "2000ml",
+      available: 1000,
+      reserved: 500,
+      inProduction: 500,
+    },
+    {
+      sku: "Custom-A",
+      available: 0,
+      reserved: 0,
+      inProduction: 800,
+    },
+    {
+      sku: "Premium-500ml",
+      available: 350,
+      reserved: 800,
+      inProduction: 1500,
+    },
+    {
+      sku: "Premium-750ml",
+      available: 900,
+      reserved: 200,
+      inProduction: 1200,
+    },
+    {
+      sku: "Premium-1000ml",
+      available: 150,
+      reserved: 400,
+      inProduction: 800,
+    },
+    {
+      sku: "Limited-Edition",
+      available: 50,
+      reserved: 300,
+      inProduction: 200,
+    },
+    {
+      sku: "Gift-Pack",
+      available: 75,
+      reserved: 150,
+      inProduction: 300,
+    },
+  ]
 
-      return ({
-        available: cummlative.find(i => i.productId === item.productId)?.stock || 0,
-        id: item.orderId + '',
-        inProduction: finishedGoods.find(i => i.productId === item.productId)?.production || 0,
-        reserved: reserved,
-        sku: productInfo[item.productId]?.sku || ""
-      })
+  // Process the inventory data when it changes
+  useEffect(() => {
+    // Start with the default inventory data
+    const processedData = [...defaultInventoryData]
+
+    // Update available quantities based on raw materials data
+    // This is a simplified approach - in a real app, you'd have a more sophisticated mapping
+    processedData.forEach((item) => {
+      // For 500ml, use the quantity from the 500ml Standard label
+      if (item.sku === "500ml") {
+        const material = rawMaterials.find((m) => m.type === "500ml Standard" && m.category === "Labels")
+        if (material) {
+          item.available = material.quantity
+        }
+      }
+
+      // For 750ml, use the quantity from the 750ml Special label
+      else if (item.sku === "750ml") {
+        const material = rawMaterials.find((m) => m.type === "750ml Special" && m.category === "Labels")
+        if (material) {
+          item.available = material.quantity
+        }
+      }
+
+      // For 1000ml, use the quantity from the 1L Premium label
+      else if (item.sku === "1000ml") {
+        const material = rawMaterials.find((m) => m.type === "1L Premium" && m.category === "Labels")
+        if (material) {
+          item.available = material.quantity
+        }
+      }
+
+      // For 2000ml, use the quantity from the 2L Economy label
+      else if (item.sku === "2000ml") {
+        const material = rawMaterials.find((m) => m.type === "2L Economy" && m.category === "Labels")
+        if (material) {
+          item.available = material.quantity
+        }
+      }
     })
-    setInventoryData(_inventoryData.filter(item => item.sku))
-  }, [orderDetails, finishedGoods, cummlative, productInfo])
+
+    // If prop data is provided, use it to override the defaults
+    if (propInventoryData) {
+      propInventoryData.forEach((propItem) => {
+        if (!propItem.name && !propItem.id && !propItem.sku) return
+
+        const itemName = propItem.name || propItem.id || propItem.sku
+        const index = processedData.findIndex((item) => item.sku.toLowerCase() === String(itemName).toLowerCase())
+
+        if (index !== -1) {
+          processedData[index].available =
+            propItem.quantity !== undefined
+              ? propItem.quantity
+              : propItem.available !== undefined
+                ? propItem.available
+                : processedData[index].available
+
+          if (propItem.reserved !== undefined) {
+            processedData[index].reserved = propItem.reserved
+          }
+        }
+      })
+    }
+
+    setDisplayData(processedData)
+  }, [propInventoryData, rawMaterials])
 
   // Filter data based on search term
-  const filteredData = inventoryData.filter((item) => item.sku.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredData = displayData.filter((item) => item.sku.toLowerCase().includes(searchTerm.toLowerCase()))
 
   // Sort data if a sort column is selected
   const sortedData = [...filteredData].sort((a, b) => {
@@ -209,18 +286,21 @@ export function InventoryTable({ onAllocate }: InventoryTableProps) {
                 const total = item.available + item.reserved + item.inProduction
 
                 return (
-                  <TableRow key={`${item.id}-${item.sku}`}>
+                  <TableRow key={item.sku}>
                     <TableCell className="font-medium">{item.sku}</TableCell>
                     <TableCell className="text-right text-blue-600 font-medium">
                       {item.available.toLocaleString()}
                     </TableCell>
-                    <TableCell className="text-right text-gray-600">{item.reserved.toLocaleString()}</TableCell>
+                    <TableCell className="text-right text-gray-600 dark:text-gray-400">
+                      {item.reserved.toLocaleString()}
+                    </TableCell>
                     <TableCell className="text-right text-amber-600">{item.inProduction.toLocaleString()}</TableCell>
                     <TableCell className="text-right font-bold">{total.toLocaleString()}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         variant="outline"
                         size="sm"
+                        className="bg-[#43ced7] hover:bg-[#43ced7]/90 text-white"
                         onClick={() => handleAllocate(item.sku)}
                         disabled={item.available === 0}
                       >

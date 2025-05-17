@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -22,7 +22,6 @@ import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/components/ui/use-toast"
 import type { AttendanceData } from "./hr-dashboard"
-import { useHrContext } from "@/contexts/hr-context"
 
 // Sample employees data for the combobox
 const employees = [
@@ -41,15 +40,10 @@ const employees = [
 interface AddAttendanceDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onAddAttendance: (attendance: Omit<AttendanceData, "id">) => void
 }
 
-export function AddAttendanceDialog({ open, onOpenChange }: AddAttendanceDialogProps) {
-  const { employeeDetails, refetchData } = useHrContext();
-
-  const employees = useMemo(() => {
-    return employeeDetails.map(item => ({ label: `${item.id}-${item.firstName}`, value: item.id }))
-  }, [employeeDetails])
-
+export function AddAttendanceDialog({ open, onOpenChange, onAddAttendance }: AddAttendanceDialogProps) {
   const { toast } = useToast()
   const [openCombobox, setOpenCombobox] = useState(false)
   const [openDatePicker, setOpenDatePicker] = useState(false)
@@ -77,8 +71,6 @@ export function AddAttendanceDialog({ open, onOpenChange }: AddAttendanceDialogP
       })
     }
   }
-
-
 
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
@@ -186,7 +178,6 @@ export function AddAttendanceDialog({ open, onOpenChange }: AddAttendanceDialogP
     setSelectedDate(new Date())
     onOpenChange(false)
   }
-
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -316,10 +307,11 @@ export function AddAttendanceDialog({ open, onOpenChange }: AddAttendanceDialogP
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit}>Add Attendance</Button>
+          <Button onClick={handleSubmit} className="bg-[#1b84ff] hover:bg-[#0a6edf] text-white">
+            Add Attendance
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   )
 }
-

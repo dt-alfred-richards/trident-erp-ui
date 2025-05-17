@@ -1,8 +1,8 @@
 "use client"
 
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from "recharts"
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts"
 import { Progress } from "@/components/ui/progress"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { ChartContainer } from "@/components/ui/chart"
 
 interface ProductPerformanceProps {
   timeRange: string
@@ -79,7 +79,29 @@ export function ProductPerformance({ timeRange }: ProductPerformanceProps) {
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <ChartTooltip content={<ChartTooltipContent />} />
+              <Tooltip
+                content={({ active, payload, label }) => {
+                  if (active && payload && payload.length) {
+                    return (
+                      <div className="bg-background border border-border rounded-md shadow-md p-3 text-sm">
+                        <p className="font-medium">{label}</p>
+                        {payload.map((entry, index) => (
+                          <p key={index} className="text-muted-foreground">
+                            <span className="font-medium" style={{ color: entry.color }}>
+                              {entry.name}:{" "}
+                            </span>
+                            {entry.name.toLowerCase().includes("revenue")
+                              ? `₹${entry.value.toLocaleString()}`
+                              : entry.value.toLocaleString()}
+                          </p>
+                        ))}
+                      </div>
+                    )
+                  }
+                  return null
+                }}
+                wrapperStyle={{ outline: "none" }}
+              />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
@@ -110,4 +132,3 @@ export function ProductPerformance({ timeRange }: ProductPerformanceProps) {
     </div>
   )
 }
-

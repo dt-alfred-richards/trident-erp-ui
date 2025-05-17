@@ -1,15 +1,13 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Search, ArrowUpDown } from "lucide-react"
 import { useProductionStore } from "@/hooks/use-production-store"
 import { ProductionActionButton } from "@/components/production/production-action-button"
-import { useFinished } from "@/app/inventory/finished-goods/context"
-import { useOrders } from "@/contexts/order-context"
-import moment from "moment"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
 
 interface ProductionOverviewProps {
   onProduceClick: (sku: string, deficit: number) => void
@@ -17,80 +15,23 @@ interface ProductionOverviewProps {
   onViewDemand?: (sku: string) => void
 }
 
-interface ProductionData {
-  sku: string
-  pendingOrders: number
-  inProduction: number
-  availableStock: number
-  deficit: number
-  status: "deficit" | "sufficient",
-  id: number
-}
-
-type ProductionOrders = {
-  id: string,
-  sku: string,
-  quantity: number,
-  startDate: string,
-  deadline: string,
-  assignedTo: string,
-  progress: number,
-}
-
 export function ProductionOverview({ onProduceClick, onViewOrders, onViewDemand }: ProductionOverviewProps) {
-  const { cummlative, finishedGoods, productionDetails } = useFinished();
-  // const { productionData, productionOrders } = useProductionStore()
-  const { productInfo } = useOrders();
-  const [productionData, setProductionData] = useState<ProductionData[]>([])
-  const [productionOrders, setProductionOrders] = useState<ProductionOrders[]>([]);
+  const { productionData, productionOrders } = useProductionStore()
   const [searchQuery, setSearchQuery] = useState("")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
-  useEffect(() => {
-    if (!productInfo || !cummlative || !finishedGoods) return;
-
-    const _productionData = Object.values(productInfo).map(item => {
-      const availableStock = cummlative.find(({ productId }) => productId === item.productId)?.stock || 0;
-
-      const inProduction = finishedGoods
-        .filter(({ productId }) => productId === item.productId)
-        .reduce((acc, curr) => acc + (curr.production || 0), 0);
-
-      const pendingOrders = productionDetails.filter(({ productionId }) => productionId === item.productId).reduce((acc, curr) => {
-        acc += curr.numBottles
-        return acc;
-      }, 0)
-      return {
-        availableStock,
-        inProduction,
-        deficit: pendingOrders - (inProduction + availableStock),
-        pendingOrders,
-        sku: item.sku,
-        status: "sufficient",
-        id: item.id
-      } as ProductionData;
-    });
-
-    setProductionOrders(productionDetails.map(item => ({
-      assignedTo: "",
-      deadline: "",
-      id: item.productionId,
-      progress: 0,
-      quantity: item.numBottles,
-      sku: productInfo[item.productionId]?.sku || "",
-      startDate: moment(item.startTime).format('DD-MM-YYYY'),
-    }) as ProductionOrders))
-    setProductionData(_productionData);
-  }, [productInfo, cummlative, finishedGoods, productionDetails]);
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 5
 
   // Calculate active orders for each SKU
-  const activeOrdersBySku = useMemo(() => productionOrders.reduce(
+  const activeOrdersBySku = productionOrders.reduce(
     (acc, order) => {
-      acc[order.sku] = (acc[order?.sku] || 0) + 1
+      acc[order.sku] = (acc[order.sku] || 0) + 1
       return acc
     },
     {} as Record<string, number>,
-  ), [productionOrders])
+  )
 
   // Filter and sort the production data
   const filteredAndSortedData = useMemo(() => {
@@ -107,9 +48,48 @@ export function ProductionOverview({ onProduceClick, onViewOrders, onViewDemand 
     })
   }, [productionData, searchQuery, sortDirection])
 
+  // Add this function after the existing useMemo hooks
+  const getLatestProducedUnits = (sku: string) => {
+    // Find all production orders for this SKU
+    const skuOrders = productionOrders.filter((order) => order.sku === sku)
+
+    if (skuOrders.length === 0) return 0
+
+    // Get the latest production update for each order
+    let totalProduced = 0
+
+    skuOrders.forEach((order) => {
+      // Get progress history for this order
+      const progressHistory = useProductionStore.getState().getProgressHistory(order.id)
+
+      if (progressHistory && progressHistory.length > 0) {
+        // Sort by timestamp in descending order
+        const sortedHistory = [...progressHistory].sort(
+          (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+        )
+
+        // Get the latest update
+        const latestUpdate = sortedHistory[0]
+        totalProduced += latestUpdate.units
+      }
+    })
+
+    return totalProduced
+  }
+
+  // Get current items for pagination
+  const indexOfLastItem = currentPage * itemsPerPage
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage
+  const currentItems = filteredAndSortedData.slice(indexOfFirstItem, indexOfLastItem)
+
   // Toggle sort direction
   const toggleSort = () => {
     setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))
+  }
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
   }
 
   return (
@@ -127,9 +107,9 @@ export function ProductionOverview({ onProduceClick, onViewOrders, onViewDemand 
         </div>
       </div>
 
-      <div className="w-full overflow-auto">
+      <div className="w-full overflow-auto border rounded-md">
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 bg-background z-10">
             <TableRow>
               <TableHead className="cursor-pointer" onClick={toggleSort}>
                 <div className="flex items-center">
@@ -139,6 +119,7 @@ export function ProductionOverview({ onProduceClick, onViewOrders, onViewDemand 
               </TableHead>
               <TableHead className="text-right">Pending Orders</TableHead>
               <TableHead className="text-right">In Production</TableHead>
+              <TableHead className="text-right">Produced</TableHead>
               <TableHead className="text-right">Available Stock</TableHead>
               <TableHead className="text-right">Deficit</TableHead>
               <TableHead className="text-right">Active Orders</TableHead>
@@ -146,41 +127,58 @@ export function ProductionOverview({ onProduceClick, onViewOrders, onViewDemand 
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredAndSortedData.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell className="font-medium" style={{ display: 'none' }}>{item.id}</TableCell>
-                <TableCell className="font-medium">{item.sku}</TableCell>
-                <TableCell className="text-right">{item.pendingOrders.toLocaleString()}</TableCell>
-                <TableCell className="text-right">{item.inProduction.toLocaleString()}</TableCell>
-                <TableCell className="text-right">{item.availableStock.toLocaleString()}</TableCell>
-                <TableCell className={`text-right font-medium ${item.deficit > 0 ? "text-red-500" : "text-green-500"}`}>
-                  {item.deficit > 0 ? item.deficit.toLocaleString() : "Sufficient"}
-                </TableCell>
-                <TableCell className="text-right">
-                  {activeOrdersBySku[item.sku] ? (
-                    <Badge variant="outline" className="ml-auto">
-                      {activeOrdersBySku[item.sku]} orders
-                    </Badge>
-                  ) : (
-                    <span className="text-muted-foreground">None</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <ProductionActionButton
-                      type="produce"
-                      sku={item.sku}
-                      deficit={item.deficit}
-                      onClick={onProduceClick}
-                    />
-                  </div>
+            {currentItems.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="h-24 text-center">
+                  No SKUs found.
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              currentItems.map((item) => (
+                <TableRow key={item.sku}>
+                  <TableCell className="font-medium">{item.sku}</TableCell>
+                  <TableCell className="text-right">{item.pendingOrders.toLocaleString()}</TableCell>
+                  <TableCell className="text-right">{item.inProduction.toLocaleString()}</TableCell>
+                  <TableCell className="text-right">{getLatestProducedUnits(item.sku).toLocaleString()}</TableCell>
+                  <TableCell className="text-right">{item.availableStock.toLocaleString()}</TableCell>
+                  <TableCell
+                    className={`text-right font-medium ${item.deficit > 0 ? "text-red-500" : "text-green-500"}`}
+                  >
+                    {item.deficit > 0 ? item.deficit.toLocaleString() : "Sufficient"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {activeOrdersBySku[item.sku] ? (
+                      <Badge variant="outline" className="ml-auto">
+                        {activeOrdersBySku[item.sku]} orders
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground">None</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end">
+                      <ProductionActionButton
+                        type="produce"
+                        sku={item.sku}
+                        deficit={item.deficit}
+                        onClick={onProduceClick}
+                      />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
+
+      {/* Pagination */}
+      <DataTablePagination
+        totalItems={filteredAndSortedData.length}
+        itemsPerPage={itemsPerPage}
+        currentPage={currentPage}
+        onPageChange={handlePageChange}
+      />
     </div>
   )
 }
-

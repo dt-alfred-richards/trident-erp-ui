@@ -15,7 +15,7 @@ import { SalesPerformance } from "@/components/sales/analytics/sales-performance
 import { RegionalBreakdown } from "@/components/sales/analytics/regional-breakdown"
 import { CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { Pie, PieChart } from "recharts"
+import { Pie, PieChart, Cell } from "recharts"
 
 export function SalesAnalyticsDashboard() {
   const [timeRange, setTimeRange] = useState("month")
@@ -61,16 +61,28 @@ export function SalesAnalyticsDashboard() {
         <div className="flex flex-wrap items-center gap-2">
           <Tabs value={timeRange} onValueChange={handleTimeRangeChange} className="w-auto">
             <TabsList className="h-9 bg-muted/50">
-              <TabsTrigger value="week" className="text-xs px-3">
+              <TabsTrigger
+                value="week"
+                className="text-xs px-3 data-[state=active]:text-[#1b84ff] data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff]"
+              >
                 Week
               </TabsTrigger>
-              <TabsTrigger value="month" className="text-xs px-3">
+              <TabsTrigger
+                value="month"
+                className="text-xs px-3 data-[state=active]:text-[#1b84ff] data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff]"
+              >
                 Month
               </TabsTrigger>
-              <TabsTrigger value="quarter" className="text-xs px-3">
+              <TabsTrigger
+                value="quarter"
+                className="text-xs px-3 data-[state=active]:text-[#1b84ff] data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff]"
+              >
                 Quarter
               </TabsTrigger>
-              <TabsTrigger value="custom" className="text-xs px-3">
+              <TabsTrigger
+                value="custom"
+                className="text-xs px-3 data-[state=active]:text-[#1b84ff] data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff]"
+              >
                 Custom
               </TabsTrigger>
             </TabsList>
@@ -155,23 +167,23 @@ export function SalesAnalyticsDashboard() {
                 },
                 "500ml": {
                   label: "500ml",
-                  color: "hsl(var(--chart-1))",
+                  color: "#7db1f5",
                 },
                 "750ml": {
                   label: "750ml",
-                  color: "hsl(var(--chart-2))",
+                  color: "#c3d3db",
                 },
                 "1000ml": {
                   label: "1000ml",
-                  color: "hsl(var(--chart-3))",
+                  color: "#77878f",
                 },
                 "2000ml": {
                   label: "2000ml",
-                  color: "hsl(var(--chart-4))",
+                  color: "#3284f0",
                 },
                 "Custom-A": {
                   label: "Custom-A",
-                  color: "hsl(var(--chart-5))",
+                  color: "#9ad9ca",
                 },
               }}
               className="mx-auto aspect-square max-h-[250px] pb-0 [&_.recharts-pie-label-text]:fill-foreground"
@@ -244,7 +256,11 @@ export function SalesAnalyticsDashboard() {
                   cx="50%"
                   cy="50%"
                   outerRadius={80}
-                />
+                >
+                  {["#7db1f5", "#c3d3db", "#77878f", "#3284f0", "#9ad9ca"].map((color, index) => (
+                    <Cell key={`cell-${index}`} fill={color} />
+                  ))}
+                </Pie>
               </PieChart>
             </ChartContainer>
           </CardContent>
@@ -308,4 +324,3 @@ export function SalesAnalyticsDashboard() {
     </div>
   )
 }
-

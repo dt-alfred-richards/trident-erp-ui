@@ -23,6 +23,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import type { DateRange } from "react-day-picker"
 import { format, isWithinInterval } from "date-fns"
 import { cn } from "@/lib/utils"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
 
 interface ProductionOrdersTableProps {
   orders: ProductionOrder[]
@@ -44,6 +45,10 @@ export function ProductionOrdersTable({ orders, onUpdateProgress, onViewDetails 
   const [statusFilter, setStatusFilter] = useState<OrderStatus>("all")
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
   const [filteredOrders, setFilteredOrders] = useState<ProductionOrder[]>(orders)
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1)
+  const [ordersPerPage] = useState(10)
 
   const selectedOrder = orders.find((order) => order.id === selectedOrderId)
 
@@ -101,6 +106,7 @@ export function ProductionOrdersTable({ orders, onUpdateProgress, onViewDetails 
     }
 
     setFilteredOrders(result)
+    setCurrentPage(1) // Reset to first page when filters change
   }, [orders, searchQuery, statusFilter, dateRange])
 
   useEffect(() => {
@@ -112,6 +118,11 @@ export function ProductionOrdersTable({ orders, onUpdateProgress, onViewDetails 
       setError(null)
     }
   }, [selectedOrder])
+
+  // Calculate pagination
+  const indexOfLastOrder = currentPage * ordersPerPage
+  const indexOfFirstOrder = indexOfLastOrder - ordersPerPage
+  const paginatedOrders = filteredOrders.slice(indexOfFirstOrder, indexOfLastOrder)
 
   const handleOpenUpdateDialog = (order: ProductionOrder) => {
     setSelectedOrderId(order.id)
@@ -351,7 +362,7 @@ export function ProductionOrdersTable({ orders, onUpdateProgress, onViewDetails 
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredOrders.map((order) => (
+              {paginatedOrders.map((order) => (
                 <TableRow key={order.id}>
                   <TableCell className="font-medium">{order.sku}</TableCell>
                   <TableCell>{order.quantity.toLocaleString()}</TableCell>
@@ -388,6 +399,14 @@ export function ProductionOrdersTable({ orders, onUpdateProgress, onViewDetails 
           </Table>
         </div>
       )}
+
+      {/* Pagination */}
+      <DataTablePagination
+        totalItems={filteredOrders.length}
+        itemsPerPage={ordersPerPage}
+        currentPage={currentPage}
+        onPageChange={setCurrentPage}
+      />
 
       {/* Progress Update Dialog */}
       <Dialog open={updateDialogOpen} onOpenChange={setUpdateDialogOpen}>
@@ -475,4 +494,3 @@ export function ProductionOrdersTable({ orders, onUpdateProgress, onViewDetails 
     </div>
   )
 }
-

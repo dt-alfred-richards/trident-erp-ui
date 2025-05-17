@@ -25,7 +25,10 @@ export function FinanceDashboard() {
         <div className="flex items-center justify-between p-4 border-b">
           <h1 className="text-xl font-semibold">Finance Management</h1>
           {activeTab === "overview" && (
-            <Button onClick={() => setIsJournalEntryFormOpen(true)}>
+            <Button
+              onClick={() => setIsJournalEntryFormOpen(true)}
+              className="bg-[#725af2] hover:bg-[#6247d9] text-white"
+            >
               <Plus className="h-4 w-4 mr-2" />
               Create Journal Entry
             </Button>
@@ -37,49 +40,49 @@ export function FinanceDashboard() {
             <TabsList className="w-full justify-start rounded-none h-12 bg-transparent p-0 border-b-0">
               <TabsTrigger
                 value="overview"
-                className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-12 px-4 font-medium text-muted-foreground data-[state=active]:text-primary"
+                className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff] data-[state=active]:shadow-none h-12 px-4 font-medium text-muted-foreground data-[state=active]:text-[#1b84ff] data-[state=active]:bg-white dark:data-[state=active]:bg-[#0f1729]"
               >
                 Overview
               </TabsTrigger>
               <TabsTrigger
                 value="general-ledger"
-                className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-12 px-4 font-medium text-muted-foreground data-[state=active]:text-primary"
+                className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff] data-[state=active]:shadow-none h-12 px-4 font-medium text-muted-foreground data-[state=active]:text-[#1b84ff] data-[state=active]:bg-white dark:data-[state=active]:bg-[#0f1729]"
               >
                 General Ledger
               </TabsTrigger>
               <TabsTrigger
                 value="accounts-receivable"
-                className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-12 px-4 font-medium text-muted-foreground data-[state=active]:text-primary"
+                className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff] data-[state=active]:shadow-none h-12 px-4 font-medium text-muted-foreground data-[state=active]:text-[#1b84ff] data-[state=active]:bg-white dark:data-[state=active]:bg-[#0f1729]"
               >
                 Accounts Receivable
               </TabsTrigger>
               <TabsTrigger
                 value="accounts-payable"
-                className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-12 px-4 font-medium text-muted-foreground data-[state=active]:text-primary"
+                className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff] data-[state=active]:shadow-none h-12 px-4 font-medium text-muted-foreground data-[state=active]:text-[#1b84ff] data-[state=active]:bg-white dark:data-[state=active]:bg-[#0f1729]"
               >
                 Accounts Payable
               </TabsTrigger>
               <TabsTrigger
                 value="banking-cash"
-                className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-12 px-4 font-medium text-muted-foreground data-[state=active]:text-primary"
+                className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff] data-[state=active]:shadow-none h-12 px-4 font-medium text-muted-foreground data-[state=active]:text-[#1b84ff] data-[state=active]:bg-white dark:data-[state=active]:bg-[#0f1729]"
               >
                 Banking & Cash
               </TabsTrigger>
               <TabsTrigger
                 value="fixed-assets"
-                className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-12 px-4 font-medium text-muted-foreground data-[state=active]:text-primary"
+                className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff] data-[state=active]:shadow-none h-12 px-4 font-medium text-muted-foreground data-[state=active]:text-[#1b84ff] data-[state=active]:bg-white dark:data-[state=active]:bg-[#0f1729]"
               >
                 Fixed Assets
               </TabsTrigger>
               <TabsTrigger
                 value="cost-accounting"
-                className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-12 px-4 font-medium text-muted-foreground data-[state=active]:text-primary"
+                className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff] data-[state=active]:shadow-none h-12 px-4 font-medium text-muted-foreground data-[state=active]:text-[#1b84ff] data-[state=active]:bg-white dark:data-[state=active]:bg-[#0f1729]"
               >
                 Cost Accounting
               </TabsTrigger>
               <TabsTrigger
                 value="taxation"
-                className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-12 px-4 font-medium text-muted-foreground data-[state=active]:text-primary"
+                className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff] data-[state=active]:shadow-none h-12 px-4 font-medium text-muted-foreground data-[state=active]:text-[#1b84ff] data-[state=active]:bg-white dark:data-[state=active]:bg-[#0f1729]"
               >
                 Taxation & Compliance
               </TabsTrigger>
@@ -118,4 +121,3 @@ export function FinanceDashboard() {
     </FinanceProvider>
   )
 }
-

@@ -1,18 +1,11 @@
 "use client"
 
-import { lodashGet } from "@/components/common/generic"
-import { ProductInfo } from "@/components/sales/sales-dashboard"
-import { DataByTableName } from "@/components/utils/api"
-import { createType } from "@/components/utils/generic"
-import { getMapper } from "@/contexts/order-context"
-import { OrderStatus, ProductStatus } from "@/types/order"
-import moment from "moment"
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
+import type React from "react"
 
-export interface LogisticsOrder {
-  id: string,
-  shipmentId: string,
-  orderId: string,
+import { useState, useEffect, createContext, useContext } from "react"
+
+interface LogisticsOrder {
+  id: string
   customer: string
   sku: string
   quantity: number
@@ -20,164 +13,102 @@ export interface LogisticsOrder {
   date: string
   trackingId?: string
   carrier?: string
-  deliveryDate?: string,
-}
-
-type Fact_logistics = {
-  id: number,
-  orderId: string,
-  status: string,
-  orderDate: number,
-  deliveryDate: number,
-  customer: string,
-  carrier: string,
-  trackingId: string,
-  shippingAddress: string,
-  shippingId: string,
-  createdOn: number,
-  modifiedOn: number,
-  createdBy: string,
-  modifiedBy: string,
-  productId: string,
-  quantity: number,
-  vehicleId: string,
-  driverName: string,
-  contactNumber: bigint,
-  deliveryAddress: string,
-  deliveryNote: string;
+  deliveryDate?: string
+  vehicleId?: string
+  driverName?: string
+  contactNumber?: string
 }
 
 // Create a context to share state between components
 interface LogisticsContextType {
   orders: LogisticsOrder[]
-  updateOrderStatus: (orderId: string, updatedOrder: Partial<LogisticsOrder>) => void,
-  triggerRender: VoidFunction,
-  filteredOrders: LogisticsOrder[],
-  productInfo: Record<string, ProductInfo>,
-  vehicles: Record<string, Vehicle>,
-  drivers: Record<string, Driver>
+  updateOrderStatus: (orderId: string, updatedOrder: Partial<LogisticsOrder>) => void
 }
 
-export const LogisticsContext = createContext<LogisticsContextType>({
+const LogisticsContext = createContext<LogisticsContextType>({
   orders: [],
-  updateOrderStatus: () => { },
-  triggerRender: () => { },
-  filteredOrders: [],
-  productInfo: {},
-  vehicles: {},
-  drivers: {}
+  updateOrderStatus: () => {},
 })
 
-type Vehicle = {
-  id: number,
-  vehicleId: string,
-  type: string,
-  model: string,
-  loadCapacity: number,
-  loadUnits: string,
-  maxLoad: string,
-  registrationNumber: string,
-  createdOn: number,
-  modifiedOn: number,
-  createdBy: string,
-  modifiedBy: string
-}
-
-type Driver = {
-  id: number,
-  driverId: string,
-  name: string,
-  phoneNumber: number,
-  drivingLicense: string,
-  email: string,
-  vehicleIds: object,
-  address: string,
-  joiningDate: string,
-  isActive: boolean,
-  createdOn: number,
-  modifiedOn: number,
-  createdBy: string,
-  modifiedBy: string
-}
-
 export const LogisticsProvider = ({ children }: { children: React.ReactNode }) => {
-  const [orders, setOrders] = useState<LogisticsOrder[]>([])
-  const [filteredOrders, setFilteredOrders] = useState<LogisticsOrder[]>([])
-  const [rerender, setRerender] = useState(false);
-  const [productInfo, setProductInfo] = useState<Record<string, ProductInfo>>({})
-  const [vehicles, setVehicles] = useState<Record<string, Vehicle>>({})
-  const [drivers, setDrivers] = useState<Record<string, Driver>>({})
+  const [orders, setOrders] = useState<LogisticsOrder[]>([
+    {
+      id: "SO-0995",
+      customer: "Health Foods",
+      sku: "500ml",
+      quantity: 1000,
+      status: "ready",
+      date: "2023-06-01",
+    },
+    {
+      id: "SO-0996",
+      customer: "Wellness Store",
+      sku: "750ml",
+      quantity: 500,
+      status: "ready",
+      date: "2023-06-02",
+    },
+    {
+      id: "SO-0997",
+      customer: "Fitness Center",
+      sku: "1000ml",
+      quantity: 300,
+      status: "dispatched",
+      trackingId: "TRK-12345",
+      carrier: "FedEx",
+      date: "2023-06-03",
+      vehicleId: "VEH001",
+      driverName: "John Smith",
+      contactNumber: "+91 98765 43210",
+    },
+    {
+      id: "SO-0998",
+      customer: "Organic Life",
+      sku: "2000ml",
+      quantity: 200,
+      status: "delivered",
+      trackingId: "TRK-12346",
+      carrier: "UPS",
+      date: "2023-06-04",
+      deliveryDate: "2023-06-07",
+      vehicleId: "VEH002",
+      driverName: "Maria Garcia",
+      contactNumber: "+91 87654 32109",
+    },
+    {
+      id: "SO-0999",
+      customer: "Green Grocers",
+      sku: "750ml",
+      quantity: 350,
+      status: "delivered",
+      trackingId: "TRK-12347",
+      carrier: "DHL",
+      date: "2023-06-05",
+      deliveryDate: "2023-06-08",
+      vehicleId: "VEH003",
+      driverName: "David Chen",
+      contactNumber: "+91 76543 21098",
+    },
+  ])
 
   const updateOrderStatus = (orderId: string, updatedOrder: Partial<LogisticsOrder>) => {
     setOrders((prevOrders) => prevOrders.map((order) => (order.id === orderId ? { ...order, ...updatedOrder } : order)))
   }
 
-  const triggerRender = useCallback(() => {
-    setRerender(r => !r)
-  }, [setRerender])
-
-  useEffect(() => {
-    const logisticsInstance = new DataByTableName("fact_logistics");
-    const dimProduct = new DataByTableName("dim_product");
-    const dimVehicle = new DataByTableName("dim_vehicle");
-    const dimDrivers = new DataByTableName("dim_drivers");
-
-    Promise.allSettled([
-      logisticsInstance.get(),
-      dimProduct.get(),
-      dimVehicle.get(),
-      dimDrivers.get()
-    ]).then(responses => {
-      const data = lodashGet({ data: responses, path: '0.value.data.data' }) || [];
-      const products = lodashGet({ data: responses, path: '1.value.data.data' }) || [];
-      const _vehicles = (lodashGet({ data: responses, path: '2.value.data.data' }) || []).sort((a: any, b: any) => b.id - a.id);
-      const _drivers = (lodashGet({ data: responses, path: '3.value.data.data' }) || []).sort((a: any, b: any) => b.id - a.id);
-
-      const productsMapper = getMapper(products, "productId");
-      const vehicleMapper = getMapper(_vehicles, "vehicleId");
-      const driverMapper = getMapper(_drivers, "driverId");
-
-      const _orders = data.map((item: Fact_logistics) => ({
-        id: item.orderId + "",
-        orderId: item.id + "",
-        customer: item.customer,
-        status: item.status as OrderStatus | ProductStatus,
-        date: moment(item.orderDate).format('YYYY-MM-DD'),
-        trackingId: item.trackingId,
-        carrier: item.carrier,
-        deliveryDate: moment(item.deliveryDate).format('YYYY-MM-DD'),
-        sku: productsMapper[item.productId]?.sku || "",
-        quantity: item?.quantity || 0
-      } as LogisticsOrder))
-
-      setOrders(_orders)
-      setProductInfo(productsMapper)
-      // Filter orders based on selected tab
-      const filtered = [..._orders]
-
-      setFilteredOrders(filtered)
-      setVehicles(vehicleMapper)
-      setDrivers(driverMapper)
-    }).catch(error => {
-      console.log({ error })
-    })
-  }, [rerender])
-
-  const value = useMemo(() => ({ orders, filteredOrders, triggerRender, updateOrderStatus, productInfo, vehicles, drivers }), [orders, filteredOrders])
-
-  return <LogisticsContext.Provider value={value}>{children}</LogisticsContext.Provider>
+  return <LogisticsContext.Provider value={{ orders, updateOrderStatus }}>{children}</LogisticsContext.Provider>
 }
 
 export const useLogisticsContext = () => useContext(LogisticsContext)
 
-export function useLogisticsData() {
-  const context = useContext(LogisticsContext)
+export function useLogisticsData(status: "all" | "ready" | "dispatched" | "delivered") {
+  const { orders, updateOrderStatus } = useLogisticsContext()
+  const [filteredOrders, setFilteredOrders] = useState<LogisticsOrder[]>([])
 
-  if (context === undefined) {
-    throw new Error("useOrders must be used within an OrderProvider")
-  }
+  useEffect(() => {
+    // Filter orders based on selected tab
+    const filtered = status === "all" ? orders : orders.filter((order) => order.status === status)
+    setFilteredOrders(filtered)
+  }, [status, orders])
 
-  return context
+  return { orders, filteredOrders, updateOrderStatus }
 }
-
-

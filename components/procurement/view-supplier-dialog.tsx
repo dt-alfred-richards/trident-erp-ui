@@ -384,6 +384,10 @@ export function ViewSupplierDialog({ supplier, open, onOpenChange }: ViewSupplie
                   <p className="text-sm text-muted-foreground">Phone</p>
                   <p className="font-medium">{supplier.phone || "Not specified"}</p>
                 </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Address</p>
+                  <p className="font-medium">{supplier.address || "Not specified"}</p>
+                </div>
               </div>
             </div>
 

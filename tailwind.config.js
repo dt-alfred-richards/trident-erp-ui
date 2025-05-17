@@ -1,3 +1,6 @@
+/** @type {import('tailwindcss').Config} */
+const { fontFamily } = require("tailwindcss/defaultTheme")
+
 module.exports = {
   darkMode: ["class"],
   content: [
@@ -16,6 +19,10 @@ module.exports = {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ["var(--font-poppins)", ...fontFamily.sans],
+        poppins: ["var(--font-poppins)", ...fontFamily.sans],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -51,12 +58,19 @@ module.exports = {
           foreground: "hsl(var(--card-foreground))",
         },
         sidebar: {
-          DEFAULT: "hsl(var(--sidebar-background))",
+          DEFAULT: "#ffffff",
           foreground: "hsl(var(--sidebar-foreground))",
           border: "hsl(var(--sidebar-border))",
           accent: "hsl(var(--sidebar-accent))",
           "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
           ring: "hsl(var(--sidebar-ring))",
+        },
+        chart: {
+          1: "hsl(215, 90%, 50%)", // Blue
+          2: "hsl(150, 60%, 50%)", // Green
+          3: "hsl(40, 90%, 50%)", // Yellow
+          4: "hsl(0, 90%, 60%)", // Red
+          5: "hsl(270, 60%, 60%)", // Purple
         },
       },
       borderRadius: {
@@ -82,4 +96,3 @@ module.exports = {
   },
   plugins: [require("tailwindcss-animate")],
 }
-

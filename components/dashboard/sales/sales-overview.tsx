@@ -146,4 +146,3 @@ export function SalesOverview({ timeRange }: SalesOverviewProps) {
     </div>
   )
 }
-

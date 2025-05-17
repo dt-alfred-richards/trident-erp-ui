@@ -29,4 +29,3 @@ const AllocationDetailsDialog = () => {
 }
 
 export default AllocationDetailsDialog
-

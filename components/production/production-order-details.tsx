@@ -15,6 +15,8 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useProductionStore } from "@/hooks/use-production-store"
+import { progressHistoryStore } from "./update-progress-dialog"
+import { Clock } from "lucide-react"
 
 interface ProductionOrderDetailsProps {
   open: boolean
@@ -134,67 +136,40 @@ export function ProductionOrderDetails({ open, onOpenChange, orderId }: Producti
                   <div key={index} className="border rounded-md p-3">
                     <div className="text-sm font-medium">{product.name}</div>
                     <div className="text-sm text-muted-foreground">Quantity: {product.quantity}</div>
-                    <Badge variant={product.status === "Low Stock" ? "destructive" : "outline"} className="mt-2">
-                      {product.status}
-                    </Badge>
                   </div>
                 ))}
               </div>
             </CardContent>
           </Card>
 
-          {/* Production History Section */}
+          {/* Progress History Section */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Production History</CardTitle>
+              <CardTitle className="text-lg">Progress History</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="w-1 h-full bg-primary rounded-full"></div>
-                  <div>
-                    <div className="text-sm font-medium">Order Created</div>
-                    <div className="text-xs text-muted-foreground">{new Date(order.startDate).toLocaleString()}</div>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-1 h-full bg-primary rounded-full"></div>
-                  <div>
-                    <div className="text-sm font-medium">Materials Allocated</div>
-                    <div className="text-xs text-muted-foreground">
-                      {new Date(new Date(order.startDate).getTime() + 86400000).toLocaleString()}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-1 h-full bg-primary rounded-full"></div>
-                  <div>
-                    <div className="text-sm font-medium">Production Started</div>
-                    <div className="text-xs text-muted-foreground">
-                      {new Date(new Date(order.startDate).getTime() + 172800000).toLocaleString()}
-                    </div>
-                  </div>
-                </div>
-                {order.progress >= 50 && (
-                  <div className="flex items-start gap-3">
-                    <div className="w-1 h-full bg-primary rounded-full"></div>
-                    <div>
-                      <div className="text-sm font-medium">50% Complete</div>
-                      <div className="text-xs text-muted-foreground">
-                        {new Date(new Date(order.startDate).getTime() + 345600000).toLocaleString()}
+              <div className="h-[180px] rounded-md border overflow-y-auto">
+                {!progressHistoryStore[orderId] || progressHistoryStore[orderId].length === 0 ? (
+                  <div className="p-4 text-center text-sm text-muted-foreground">No progress history available</div>
+                ) : (
+                  <div className="p-4 space-y-4">
+                    {progressHistoryStore[orderId].map((entry, index) => (
+                      <div key={index} className="space-y-1 pb-3 border-b last:border-0">
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center text-sm font-medium">
+                            <Clock className="h-3 w-3 mr-1 text-muted-foreground" />
+                            {new Date(entry.timestamp).toLocaleDateString()} at{" "}
+                            {new Date(entry.timestamp).toLocaleTimeString()}
+                          </div>
+                          <div className="text-sm font-semibold">{entry.progressPercentage}%</div>
+                        </div>
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Units:</span> {entry.completedUnits} of{" "}
+                          {entry.totalUnits}
+                        </div>
+                        <Progress value={entry.progressPercentage} className="h-1.5 mt-1" />
                       </div>
-                    </div>
-                  </div>
-                )}
-                {order.progress === 100 && (
-                  <div className="flex items-start gap-3">
-                    <div className="w-1 h-full bg-primary rounded-full"></div>
-                    <div>
-                      <div className="text-sm font-medium">Production Completed</div>
-                      <div className="text-xs text-muted-foreground">
-                        {new Date(new Date(order.startDate).getTime() + 518400000).toLocaleString()}
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -211,4 +186,3 @@ export function ProductionOrderDetails({ open, onOpenChange, orderId }: Producti
     </Dialog>
   )
 }
-

@@ -1,8 +1,19 @@
 "use client"
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer, Bar, BarChart } from "recharts"
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Bar,
+  BarChart,
+  Tooltip,
+} from "recharts"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { ChartContainer } from "@/components/ui/chart"
 
 interface SalesTrendsChartProps {
   timeRange: string
@@ -55,6 +66,25 @@ export function SalesTrendsChart({ timeRange }: SalesTrendsChartProps) {
     return `₹${value}`
   }
 
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-background border border-border rounded-md shadow-md p-3 text-sm">
+          <p className="font-medium">{label}</p>
+          {payload.map((entry, index) => (
+            <p key={index} className="text-muted-foreground">
+              <span className="font-medium" style={{ color: entry.color }}>
+                {entry.name}:{" "}
+              </span>
+              {entry.dataKey === "revenue" ? formatRevenue(entry.value) : entry.value.toLocaleString()}
+            </p>
+          ))}
+        </div>
+      )
+    }
+    return null
+  }
+
   return (
     <div className="space-y-4">
       <Tabs defaultValue="revenue">
@@ -70,7 +100,7 @@ export function SalesTrendsChart({ timeRange }: SalesTrendsChartProps) {
               config={{
                 revenue: {
                   label: "Revenue",
-                  color: "hsl(var(--chart-1))",
+                  color: "#4882d9",
                 },
               }}
             >
@@ -79,12 +109,32 @@ export function SalesTrendsChart({ timeRange }: SalesTrendsChartProps) {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
                   <YAxis tickFormatter={formatRevenue} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Tooltip
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-background border border-border rounded-md shadow-md p-3 text-sm">
+                            <p className="font-medium">{label}</p>
+                            {payload.map((entry, index) => (
+                              <p key={index} className="text-muted-foreground">
+                                <span className="font-medium" style={{ color: entry.color }}>
+                                  {entry.name}:
+                                </span>{" "}
+                                ₹{entry.value.toLocaleString()}
+                              </p>
+                            ))}
+                          </div>
+                        )
+                      }
+                      return null
+                    }}
+                    wrapperStyle={{ outline: "none" }}
+                  />
                   <Legend />
                   <Line
                     type="monotone"
                     dataKey="revenue"
-                    stroke="var(--color-revenue)"
+                    stroke="#4882d9"
                     strokeWidth={2}
                     dot={{ r: 4 }}
                     activeDot={{ r: 6 }}
@@ -101,7 +151,7 @@ export function SalesTrendsChart({ timeRange }: SalesTrendsChartProps) {
               config={{
                 orders: {
                   label: "Orders",
-                  color: "hsl(var(--chart-2))",
+                  color: "#4882d9",
                 },
               }}
             >
@@ -110,9 +160,9 @@ export function SalesTrendsChart({ timeRange }: SalesTrendsChartProps) {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
                   <YAxis />
-                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Tooltip content={CustomTooltip} wrapperStyle={{ outline: "none" }} />
                   <Legend />
-                  <Bar dataKey="orders" fill="var(--color-orders)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="orders" fill="#4882d9" radius={[4, 4, 0, 0]} barSize={12} />
                 </BarChart>
               </ResponsiveContainer>
             </ChartContainer>
@@ -125,11 +175,11 @@ export function SalesTrendsChart({ timeRange }: SalesTrendsChartProps) {
               config={{
                 revenue: {
                   label: "Revenue",
-                  color: "hsl(var(--chart-1))",
+                  color: "#4882d9",
                 },
                 orders: {
                   label: "Orders",
-                  color: "hsl(var(--chart-2))",
+                  color: "#c2d6f3",
                 },
               }}
             >
@@ -139,13 +189,13 @@ export function SalesTrendsChart({ timeRange }: SalesTrendsChartProps) {
                   <XAxis dataKey="name" />
                   <YAxis yAxisId="left" tickFormatter={formatRevenue} />
                   <YAxis yAxisId="right" orientation="right" />
-                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Tooltip content={CustomTooltip} wrapperStyle={{ outline: "none" }} />
                   <Legend />
                   <Line
                     yAxisId="left"
                     type="monotone"
                     dataKey="revenue"
-                    stroke="var(--color-revenue)"
+                    stroke="#4882d9"
                     strokeWidth={2}
                     dot={{ r: 4 }}
                   />
@@ -153,7 +203,7 @@ export function SalesTrendsChart({ timeRange }: SalesTrendsChartProps) {
                     yAxisId="right"
                     type="monotone"
                     dataKey="orders"
-                    stroke="var(--color-orders)"
+                    stroke="#c2d6f3"
                     strokeWidth={2}
                     dot={{ r: 4 }}
                   />
@@ -166,4 +216,3 @@ export function SalesTrendsChart({ timeRange }: SalesTrendsChartProps) {
     </div>
   )
 }
-

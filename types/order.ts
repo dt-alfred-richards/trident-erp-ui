@@ -1,5 +1,4 @@
-import { DataByTableName } from "@/components/utils/api"
-
+// Product status types
 export type ProductStatus =
   | "pending"
   | "ready"
@@ -8,9 +7,17 @@ export type ProductStatus =
   | "partially_dispatched"
   | "delivered"
   | "partially_delivered"
+  | "cancelled"
 
 // Order status types
-export type OrderStatus = "pending_approval" | "approved" | "ready" | "dispatched" | "delivered" | "partial_fulfillment" | "rejected" | 'cancelled'
+export type OrderStatus =
+  | "pending_approval"
+  | "approved"
+  | "ready"
+  | "dispatched"
+  | "delivered"
+  | "partial_fulfillment"
+  | "cancelled"
 
 // Product item within an order
 export interface OrderProduct {
@@ -18,9 +25,8 @@ export interface OrderProduct {
   name: string
   sku: string
   quantity: number
-  price: number,
-  units: string,
-  status?: ProductStatus
+  price: number
+  status: ProductStatus
   allocated?: number
   dispatched?: number
   delivered?: number
@@ -33,52 +39,11 @@ export interface OrderProduct {
   deliveredAt?: string
 }
 
-export type ClientProposedPrice = {
-  clientId: string,
-  id: number,
-  paymentTimePeriod: number,
-  productId: string,
-  proposedPrice: number,
-}
-
-export type ClientAddress = {
-  clientId: string,
-  addressId: string,
-  addressLine_1: string,
-  addressLine_2: string,
-  cityDistrictState: string,
-  pincode: number
-}
-
-export type ClientInfo = {
-  clientId: string,
-  name: string,
-  contactNumber: number
-  email: string,
-  address: string,
-  reference: string,
-  type: string,
-  gst: string,
-  pan: string,
-  contactPerson: string
-}
-
-export type StatusHistory = {
-  timestamp: string
-  status: OrderStatus
-  user: string
-  note?: string
-}
-
 // Complete order with products
 export interface Order {
   id: string
-  orderDate: number,
-  customer: string,
-  customerEmail: string,
-  customerNumber: number,
-  billingAddress: string,
-  shippingAddress: string,
+  orderDate: string
+  customer: string
   reference: string
   deliveryDate: string
   priority: "high" | "medium" | "low"
@@ -88,23 +53,28 @@ export interface Order {
   products: OrderProduct[]
   // Audit information
   createdBy: string
-  createdAt?: string
+  createdAt: string
   approvedBy?: string
-  approvedAt?: any
+  approvedAt?: string
   // History of status changes for audit trail
-  statusHistory: StatusHistory[],
-  subtotal: number
+  statusHistory: {
+    timestamp: string
+    status: OrderStatus
+    user: string
+    note?: string
+  }[]
 }
 
 // Valid status transitions for products
 export const VALID_PRODUCT_TRANSITIONS: Record<ProductStatus, ProductStatus[]> = {
-  pending: ["ready", "partially_ready"],
-  ready: ["dispatched"],
-  partially_ready: ["ready", "partially_dispatched"],
-  dispatched: ["delivered"],
-  partially_dispatched: ["dispatched", "partially_delivered"],
+  pending: ["ready", "partially_ready", "cancelled"],
+  ready: ["dispatched", "cancelled"],
+  partially_ready: ["ready", "partially_dispatched", "cancelled"],
+  dispatched: ["delivered", "cancelled"],
+  partially_dispatched: ["dispatched", "partially_delivered", "cancelled"],
   delivered: [],
-  partially_delivered: ["delivered"],
+  partially_delivered: ["delivered", "cancelled"],
+  cancelled: [],
 }
 
 // Verify if a product status transition is valid
@@ -121,7 +91,9 @@ export function calculateOrderStatus(products: OrderProduct[]): OrderStatus {
   const allReady = products.every((p) => p.status === "ready")
   const allDispatched = products.every((p) => p.status === "dispatched")
   const allDelivered = products.every((p) => p.status === "delivered")
+  const allCancelled = products.every((p) => p.status === "cancelled")
 
+  if (allCancelled) return "cancelled"
   if (allPending) return "pending_approval"
   if (allReady) return "ready"
   if (allDispatched) return "dispatched"
@@ -144,12 +116,60 @@ export function calculateOrderStatus(products: OrderProduct[]): OrderStatus {
 // Order Action Service
 export const OrderActionService = {
   // Approve an order
-  async approveOrder(orderId: string, user: string) {
-    const factSalesInstance = new DataByTableName("fact_sales_v2");
-    return await factSalesInstance.patch({
-      key: "orderId",
-      value: orderId
-    }, { status: "approved" })
+  approveOrder(order: Order, user: string): Order {
+    // Validate current status
+    if (order.status !== "pending_approval") {
+      throw new Error("Only pending orders can be approved")
+    }
+
+    const updatedOrder = {
+      ...order,
+      status: "approved" as OrderStatus,
+      approvedBy: user,
+      approvedAt: new Date().toISOString(),
+      statusHistory: [
+        ...order.statusHistory,
+        {
+          timestamp: new Date().toISOString(),
+          status: "approved",
+          user,
+          note: "Order approved",
+        },
+      ],
+    }
+
+    return updatedOrder
+  },
+
+  // Reject an order
+  rejectOrder(order: Order, user: string): Order {
+    // Validate current status
+    if (order.status !== "pending_approval") {
+      throw new Error("Only pending orders can be rejected")
+    }
+
+    // Update all products to cancelled status
+    const updatedProducts = order.products.map((product) => ({
+      ...product,
+      status: "cancelled" as ProductStatus,
+    }))
+
+    const updatedOrder = {
+      ...order,
+      status: "cancelled" as OrderStatus,
+      products: updatedProducts,
+      statusHistory: [
+        ...order.statusHistory,
+        {
+          timestamp: new Date().toISOString(),
+          status: "cancelled",
+          user,
+          note: "Order rejected",
+        },
+      ],
+    }
+
+    return updatedOrder
   },
 
   // Allocate inventory to products in an order
@@ -363,4 +383,3 @@ export const OrderActionService = {
     return updatedOrder
   },
 }
-

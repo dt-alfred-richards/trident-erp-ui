@@ -99,12 +99,12 @@ export function TrackOrderDialog({ open, onOpenChange, order }: TrackOrderDialog
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px]">
+      <DialogContent className="sm:max-w-[700px] max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-xl">Track Order {order.id}</DialogTitle>
         </DialogHeader>
 
-        <div className="mt-4 space-y-6">
+        <div className="mt-4 space-y-6 overflow-y-auto pr-1 flex-1">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-medium">Tracking Information</h3>
@@ -183,16 +183,15 @@ export function TrackOrderDialog({ open, onOpenChange, order }: TrackOrderDialog
           </div>
 
           <Separator />
+        </div>
 
-          <div className="flex justify-between">
-            <p className="text-sm text-muted-foreground">
-              Expected Delivery:{" "}
-              <span className="font-medium">{new Date(order.deliveryDate).toLocaleDateString()}</span>
-            </p>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Close
-            </Button>
-          </div>
+        <div className="flex justify-between mt-4 pt-4 border-t">
+          <p className="text-sm text-muted-foreground">
+            Expected Delivery: <span className="font-medium">{new Date(order.deliveryDate).toLocaleDateString()}</span>
+          </p>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

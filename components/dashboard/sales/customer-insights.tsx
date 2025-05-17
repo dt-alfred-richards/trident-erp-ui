@@ -99,4 +99,3 @@ export function CustomerInsights({ timeRange }: CustomerInsightsProps) {
     </div>
   )
 }
-

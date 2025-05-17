@@ -1,5 +1,4 @@
 import { create } from "zustand"
-import { v4 as uuidv4 } from "uuid"
 import type { ProductionOrder } from "@/types/production"
 
 interface ProgressHistoryEntry {
@@ -193,40 +192,60 @@ export const useProductionStore = create<ProductionStore>((set, get) => ({
 
   createProductionOrder: (order) => {
     const newOrder: ProductionOrder = {
-      ...order,
-      id: uuidv4(),
+      id: Math.random().toString(36).substring(2, 9),
       startDate: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      status: "pending",
+      completedQuantity: 0,
       progress: 0,
+      bomId: order.bomId,
+      ...order,
     }
 
     set((state) => {
-      // Create initial progress history entry
-      const initialHistoryEntry: ProgressHistoryEntry = {
+      // Add the new order to productionOrders
+      const updatedOrders = [...state.productionOrders, newOrder]
+
+      // Update the inProduction value for the corresponding SKU
+      const updatedProductionData = state.productionData.map((item) => {
+        if (item.sku === order.sku) {
+          // Add the new quantity to inProduction
+          const newInProduction = item.inProduction + order.quantity
+
+          // Recalculate deficit based on the new inProduction value
+          const newDeficit = Math.max(0, item.pendingOrders - newInProduction - item.availableStock)
+
+          // Update status based on the new deficit
+          const newStatus = newDeficit > 0 ? "deficit" : "sufficient"
+
+          return {
+            ...item,
+            inProduction: newInProduction,
+            deficit: newDeficit,
+            status: newStatus,
+          }
+        }
+        return item
+      })
+
+      // Create a new history entry for the order
+      const historyEntry: ProgressHistoryEntry = {
         timestamp: new Date().toISOString(),
         units: 0,
         totalUnits: order.quantity,
         progressPercentage: 0,
       }
 
+      // Add the history entry to progressHistory
+      const updatedProgressHistory = {
+        ...state.progressHistory,
+        [newOrder.id]: [historyEntry],
+      }
+
       return {
-        productionOrders: [...state.productionOrders, newOrder],
-        // Update the production data to reflect the new order
-        productionData: state.productionData.map((item) => {
-          if (item.sku === order.sku) {
-            return {
-              ...item,
-              inProduction: item.inProduction + order.quantity,
-              deficit: Math.max(0, item.deficit - order.quantity),
-              status: item.deficit - order.quantity <= 0 ? "sufficient" : "deficit",
-            }
-          }
-          return item
-        }),
-        // Add initial progress history entry
-        progressHistory: {
-          ...state.progressHistory,
-          [newOrder.id]: [initialHistoryEntry],
-        },
+        productionOrders: updatedOrders,
+        productionData: updatedProductionData,
+        progressHistory: updatedProgressHistory,
       }
     })
   },
@@ -273,7 +292,7 @@ export const useProductionStore = create<ProductionStore>((set, get) => ({
     set((state) => ({
       productionOrders: state.productionOrders.map((order) => {
         if (order.id === orderId) {
-          return { ...order, progress }
+          return { ...order, status, progress }
         }
         return order
       }),
@@ -288,4 +307,3 @@ export const useProductionStore = create<ProductionStore>((set, get) => ({
     return get().progressHistory[orderId] || []
   },
 }))
-

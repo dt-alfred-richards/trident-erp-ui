@@ -1,58 +1,41 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
 import { DashboardShell } from "@/components/dashboard-shell"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
-import { Search, Package, Layers, Box, AlertCircle, Clock } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Search, Package, Layers, Box, AlertCircle, Clock, RefreshCw, AlertTriangle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
-import { DataByTableName } from "@/components/utils/api"
-import { textCapitalize } from "@/contexts/hr-context"
+import { UpdateInventoryDialog } from "@/components/inventory/update-inventory-dialog"
+import { useToast } from "@/hooks/use-toast"
+import { useRawMaterialsStore } from "@/hooks/use-raw-materials-store"
+import { RawMaterialsWastageDialog, type WastageData } from "@/components/inventory/raw-materials-wastage-dialog"
 
-// Define the raw material interface
-interface RawMaterial {
-  category: string
-  type: string
-  quantity: string,
-  unit: string
-}
-
-type Response = {
-  materialId: string
+interface WastageUpdate {
+  id: string
   name: string
-  size: string
-  type: string
-  unitMeasure: string
-  value: number
+  wastage: number
 }
 
 export default function RawMaterialsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
-  const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>([])
+  const [showUpdateDialog, setShowUpdateDialog] = useState(false)
+  const [showWastageDialog, setShowWastageDialog] = useState(false)
+  const { toast } = useToast()
 
-  const fetchData = useCallback(async () => {
-    try {
-      const instance = new DataByTableName("dim_raw_materials");
-      const response = await instance.get();
-      const data: Response[] = response.data?.data ?? []
+  // Use the raw materials store
+  const { rawMaterials, updateRawMaterialQuantity } = useRawMaterialsStore()
 
-      const _rawMaterials: RawMaterial[] = data.map(item => ({ category: textCapitalize(item.type), type: item.name, quantity: item.size, unit: item.unitMeasure }))
-      setRawMaterials(_rawMaterials)
-    } catch (error) {
-      console.log({ error })
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchData();
-  }, [])
+  // State for tracking wastage data
+  const [wastageData, setWastageData] = useState<WastageData[]>([])
 
   // Get unique categories and sort them in the specified order
-  const categoryOrder = ["Labels", "Pre-Form", "Shrink", "Caps", "Consumables"]
+  const categoryOrder = ["Labels", "Pre-Form", "Shrink", "Caps and Handles", "Consumables"]
   const categories = Array.from(new Set(rawMaterials.map((item) => item.category))).sort(
     (a, b) => categoryOrder.indexOf(a) - categoryOrder.indexOf(b),
   )
@@ -62,7 +45,20 @@ export default function RawMaterialsPage() {
     if (!activeCategory && categories.length > 0) {
       setActiveCategory(categories[0])
     }
-  }, [categories, activeCategory])
+
+    // Initialize wastage data if empty
+    if (wastageData.length === 0) {
+      const initialWastageData = rawMaterials.map((material) => ({
+        id: material.id,
+        material: material.type,
+        category: material.category,
+        wastage: 0,
+        wastagePercentage: 0,
+        lastUpdated: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000), // Random date within last 30 days
+      }))
+      setWastageData(initialWastageData)
+    }
+  }, [categories, activeCategory, rawMaterials, wastageData.length])
 
   // Filter raw materials based on search term and active category
   const filteredMaterials = rawMaterials.filter(
@@ -74,12 +70,22 @@ export default function RawMaterialsPage() {
 
   // Calculate summary metrics
   const totalMaterials = rawMaterials.length
-  const lowStockCount = rawMaterials.filter(
-    (material) =>
-      (parseInt(material.quantity) < 30 && material.unit === "Boxes") ||
-      (parseInt(material.quantity) < 10000 && material.unit === "Pieces") ||
-      (parseInt(material.quantity) < 20 && material.unit === "Rolls"),
-  ).length
+  const lowStockCount = rawMaterials.filter((material) => {
+    switch (material.category) {
+      case "Labels":
+        return material.quantity < 100
+      case "Pre-Form":
+        return material.quantity < 100
+      case "Shrink":
+        return material.quantity < 50
+      case "Caps and Handles":
+        return material.quantity < 10000
+      case "Consumables":
+        return material.quantity < 20
+      default:
+        return false
+    }
+  }).length
   const pendingOrdersCount = 12 // Mock data for pending orders
 
   // Get category icon
@@ -91,18 +97,111 @@ export default function RawMaterialsPage() {
         return <Box className="h-4 w-4" />
       case "Shrink":
         return <Package className="h-4 w-4" />
-      case "Caps":
+      case "Caps and Handles":
         return <Package className="h-4 w-4" />
       case "Consumables":
-        return <Package className="h-4 w-4" />
+        return <Box className="h-4 w-4" />
       default:
         return <Package className="h-4 w-4" />
+    }
+  }
+
+  // Get category unit
+  const getCategoryUnit = (category: string) => {
+    switch (category) {
+      case "Labels":
+        return "KGs"
+      case "Pre-Form":
+        return "KGs"
+      case "Shrink":
+        return "KGs"
+      case "Caps and Handles":
+        return "Pieces"
+      case "Consumables":
+        return "Pcs"
+      default:
+        return ""
     }
   }
 
   // Handle tab change
   const handleTabChange = (value: string) => {
     setActiveCategory(value)
+  }
+
+  // Format raw materials for the update dialog
+  const formatRawMaterialsForUpdate = () => {
+    return rawMaterials.map((material) => ({
+      id: material.id,
+      name: material.type,
+      quantity: material.quantity,
+      type: "raw",
+      category: material.category,
+    }))
+  }
+
+  const handleUpdateInventory = (updatedItems: any[], wastageUpdates: WastageUpdate[]) => {
+    // Update the raw materials quantities using the store's update method
+    updatedItems.forEach((updatedItem) => {
+      const material = rawMaterials.find((m) => m.id === updatedItem.id)
+      if (material) {
+        updateRawMaterialQuantity(material.category, material.type, updatedItem.quantity)
+      }
+    })
+
+    // Update wastage data
+    if (wastageUpdates.length > 0) {
+      const now = new Date()
+
+      setWastageData((prevWastageData) => {
+        const newWastageData = [...prevWastageData]
+
+        wastageUpdates.forEach((update) => {
+          // Find the material to get its current quantity for percentage calculation
+          const material = rawMaterials.find((m) => m.id === update.id)
+          if (!material) return
+
+          // Calculate wastage percentage based on original quantity + wastage
+          const totalQuantity = material.quantity + update.wastage
+          const wastagePercentage = totalQuantity > 0 ? (update.wastage / totalQuantity) * 100 : 0
+
+          // Find existing wastage data entry
+          const existingIndex = newWastageData.findIndex((item) => item.id === update.id)
+
+          if (existingIndex >= 0) {
+            // Update existing entry
+            const existingEntry = newWastageData[existingIndex]
+            newWastageData[existingIndex] = {
+              ...existingEntry,
+              wastage: existingEntry.wastage + update.wastage,
+              wastagePercentage: wastagePercentage,
+              lastUpdated: now,
+            }
+          } else {
+            // Create new entry
+            const material = rawMaterials.find((m) => m.id === update.id)
+            if (material) {
+              newWastageData.push({
+                id: update.id,
+                material: material.type,
+                category: material.category,
+                wastage: update.wastage,
+                wastagePercentage: wastagePercentage,
+                lastUpdated: now,
+              })
+            }
+          }
+        })
+
+        return newWastageData
+      })
+    }
+
+    // Show a success toast
+    toast({
+      title: "Inventory updated",
+      description: `Updated ${updatedItems.length} item(s) in raw materials inventory`,
+    })
   }
 
   return (
@@ -117,6 +216,20 @@ export default function RawMaterialsPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            <Button
+              onClick={() => setShowWastageDialog(true)}
+              className="mr-2 bg-[#f8285a] hover:bg-[#f8285a]/90 text-white border-[#f8285a]"
+            >
+              <AlertTriangle className="mr-2 h-4 w-4" />
+              Wastage
+            </Button>
+            <Button
+              onClick={() => setShowUpdateDialog(true)}
+              className="mr-2 bg-[#725af2] hover:bg-[#725af2]/90 text-white border-[#725af2]"
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Update Inventory
+            </Button>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -197,7 +310,7 @@ export default function RawMaterialsPage() {
                   <TabsTrigger
                     key={category}
                     value={category}
-                    className="px-3 py-1.5 h-auto text-sm rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm flex items-center gap-1.5"
+                    className="px-3 py-1.5 h-auto text-sm rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-[#1b84ff] data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff] flex items-center gap-1.5"
                   >
                     {getCategoryIcon(category)}
                     {category}
@@ -214,18 +327,31 @@ export default function RawMaterialsPage() {
                   <TableHeader className="bg-muted/10">
                     <TableRow>
                       <TableHead className="w-[40%]">Material Type</TableHead>
-                      <TableHead className="text-right">Quantity</TableHead>
-                      <TableHead className="text-right">Unit</TableHead>
+                      <TableHead className="text-right">
+                        Quantity ({activeCategory ? getCategoryUnit(activeCategory) : ""})
+                      </TableHead>
                       <TableHead className="text-right">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredMaterials.map((material, index) => {
-                      // Determine status based on quantity
-                      const isLowStock =
-                        (material.quantity < 30 && material.unit === "Boxes") ||
-                        (material.quantity < 10000 && material.unit === "Pieces") ||
-                        (material.quantity < 20 && material.unit === "Rolls")
+                      // Determine status based on quantity and category
+                      const isLowStock = (() => {
+                        switch (material.category) {
+                          case "Labels":
+                            return material.quantity < 100
+                          case "Pre-Form":
+                            return material.quantity < 100
+                          case "Shrink":
+                            return material.quantity < 50
+                          case "Caps and Handles":
+                            return material.quantity < 10000
+                          case "Consumables":
+                            return material.quantity < 20
+                          default:
+                            return false
+                        }
+                      })()
 
                       return (
                         <TableRow
@@ -234,7 +360,6 @@ export default function RawMaterialsPage() {
                         >
                           <TableCell className="font-medium">{material.type}</TableCell>
                           <TableCell className="text-right font-medium">{material.quantity.toLocaleString()}</TableCell>
-                          <TableCell className="text-right text-muted-foreground">{material.unit}</TableCell>
                           <TableCell className="text-right">
                             <Badge
                               variant={isLowStock ? "destructive" : "outline"}
@@ -270,7 +395,19 @@ export default function RawMaterialsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <UpdateInventoryDialog
+        open={showUpdateDialog}
+        onOpenChange={setShowUpdateDialog}
+        inventoryType="raw"
+        items={formatRawMaterialsForUpdate()}
+        onUpdateInventory={handleUpdateInventory}
+      />
+      <RawMaterialsWastageDialog
+        open={showWastageDialog}
+        onOpenChange={setShowWastageDialog}
+        wastageData={wastageData}
+      />
     </DashboardShell>
   )
 }
-

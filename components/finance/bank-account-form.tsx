@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useFinance, type BankAccount } from "@/contexts/finance-context"
+import { useEffect } from "react"
 
 // Define the form schema
 const formSchema = z.object({
@@ -52,7 +53,24 @@ export function BankAccountForm({ open, onOpenChange, initialValues, accountId }
   const form = useForm<BankAccountFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues,
+    values: initialValues as BankAccountFormValues, // Add this line to ensure form values are updated when initialValues change
   })
+
+  // Add this useEffect after the form initialization
+  useEffect(() => {
+    if (initialValues && isEditing) {
+      form.reset(initialValues as BankAccountFormValues)
+    } else if (!isEditing) {
+      // Reset to empty values when adding a new account
+      form.reset({
+        name: "",
+        bank: "",
+        accountNumber: "",
+        balance: 0,
+        type: "Current",
+      })
+    }
+  }, [form, initialValues, isEditing])
 
   // Handle form submission
   const onSubmit = (values: BankAccountFormValues) => {
@@ -63,7 +81,15 @@ export function BankAccountForm({ open, onOpenChange, initialValues, accountId }
     }
 
     onOpenChange(false)
-    form.reset(defaultValues)
+
+    // Reset form to default empty values
+    form.reset({
+      name: "",
+      bank: "",
+      accountNumber: "",
+      balance: 0,
+      type: "Current",
+    })
   }
 
   return (
@@ -166,4 +192,3 @@ export function BankAccountForm({ open, onOpenChange, initialValues, accountId }
     </Dialog>
   )
 }
-

@@ -5,11 +5,11 @@ import { SalesMetrics } from "@/components/dashboard/sales/sales-metrics"
 import { RevenueChart } from "@/components/dashboard/sales/revenue-chart"
 import { ProductDistribution } from "@/components/dashboard/sales/product-distribution"
 import { CustomerInsights } from "@/components/dashboard/sales/customer-insights"
-import { RegionalBreakdown } from "@/components/dashboard/sales/regional-breakdown"
 import { SalesPerformance } from "@/components/dashboard/sales/sales-performance"
 import { DashboardHeader } from "@/components/dashboard/common/dashboard-header"
 import { ChartCard } from "@/components/dashboard/common/chart-card"
 import { useTimeRange } from "@/components/dashboard/common/use-time-range"
+import { CustomerTypeBreakdown } from "@/components/dashboard/sales/customer-type-breakdown"
 
 export function SalesAnalyticsTab() {
   const { timeRange, startDate, endDate, handleTimeRangeChange, setStartDate, setEndDate } = useTimeRange("month")
@@ -50,9 +50,9 @@ export function SalesAnalyticsTab() {
           <CustomerInsights timeRange={timeRange} />
         </ChartCard>
 
-        {/* Regional breakdown */}
-        <ChartCard title="Regional Breakdown" description="Sales distribution by region">
-          <RegionalBreakdown timeRange={timeRange} />
+        {/* Customer Type Breakdown */}
+        <ChartCard title="Customer Type Breakdown" description="Sales distribution by customer type">
+          <CustomerTypeBreakdown timeRange={timeRange} />
         </ChartCard>
       </div>
 
@@ -63,4 +63,3 @@ export function SalesAnalyticsTab() {
     </div>
   )
 }
-

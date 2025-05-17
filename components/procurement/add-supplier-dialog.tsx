@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -13,8 +13,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
-import { DataByTableName } from "../utils/api"
-import { useProcurement } from "./procurement-context"
 
 interface AddSupplierDialogProps {
   open: boolean
@@ -24,13 +22,13 @@ interface AddSupplierDialogProps {
 }
 
 export function AddSupplierDialog({ open, onOpenChange, onAdd, existingIds }: AddSupplierDialogProps) {
-  const { triggerRender } = useProcurement();
   const [formData, setFormData] = useState({
     id: "",
     name: "",
     contactPerson: "",
     email: "",
     phone: "",
+    address: "",
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -46,6 +44,13 @@ export function AddSupplierDialog({ open, onOpenChange, onAdd, existingIds }: Ad
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
+
+    // Validate supplier ID
+    if (!formData.id.trim()) {
+      newErrors.id = "Supplier ID is required"
+    } else if (existingIds.includes(formData.id)) {
+      newErrors.id = "This Supplier ID already exists"
+    }
 
     // Validate supplier name
     if (!formData.name.trim()) {
@@ -66,41 +71,46 @@ export function AddSupplierDialog({ open, onOpenChange, onAdd, existingIds }: Ad
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = () => {
     if (validateForm()) {
       // Create new supplier object
       const newSupplier = {
+        id: formData.id,
         name: formData.name,
         contactPerson: formData.contactPerson,
         email: formData.email,
         phone: formData.phone,
+        address: formData.address,
+        // Keep these fields in the data model but they won't be displayed in the table
+        materialName: "",
+        materialType: "",
+        price: 0,
+        unit: "",
       }
 
-      const instance = new DataByTableName("dim_supplies");
+      // Call onAdd with new supplier
+      onAdd(newSupplier)
 
-      instance.post(newSupplier).then(() => {
-        setFormData({
-          id: "",
-          name: "",
-          contactPerson: "",
-          email: "",
-          phone: "",
-        })
+      // Reset form
+      setFormData({
+        id: "",
+        name: "",
+        contactPerson: "",
+        email: "",
+        phone: "",
+        address: "",
+      })
 
-        // Close dialog
-        onOpenChange(false)
+      // Close dialog
+      onOpenChange(false)
 
-        // Show success toast
-        toast({
-          title: "Supplier added",
-          description: `${newSupplier.name} has been added to the supplier list.`,
-        })
-        triggerRender();
-      }).catch(error => {
-        console.log({ error })
+      // Show success toast
+      toast({
+        title: "Supplier added",
+        description: `${newSupplier.name} has been added to the supplier list.`,
       })
     }
-  }, [formData])
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -110,7 +120,7 @@ export function AddSupplierDialog({ open, onOpenChange, onAdd, existingIds }: Ad
           <DialogDescription>Enter supplier details to add a new supplier to the system.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          {/* <div className="grid grid-cols-4 items-center gap-4">
+          <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="supplier-id" className="text-right">
               Supplier ID*
             </Label>
@@ -119,12 +129,11 @@ export function AddSupplierDialog({ open, onOpenChange, onAdd, existingIds }: Ad
                 id="supplier-id"
                 value={formData.id}
                 onChange={(e) => handleChange("id", e.target.value)}
-                placeholder="e.g., SUP001"
                 className={errors.id ? "border-destructive" : ""}
               />
               {errors.id && <p className="text-sm text-destructive">{errors.id}</p>}
             </div>
-          </div> */}
+          </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="supplier-name" className="text-right">
               Supplier Name*
@@ -134,7 +143,6 @@ export function AddSupplierDialog({ open, onOpenChange, onAdd, existingIds }: Ad
                 id="supplier-name"
                 value={formData.name}
                 onChange={(e) => handleChange("name", e.target.value)}
-                placeholder="e.g., ABC Suppliers"
                 className={errors.name ? "border-destructive" : ""}
               />
               {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
@@ -149,7 +157,6 @@ export function AddSupplierDialog({ open, onOpenChange, onAdd, existingIds }: Ad
                 id="contact-person"
                 value={formData.contactPerson}
                 onChange={(e) => handleChange("contactPerson", e.target.value)}
-                placeholder="e.g., John Doe"
               />
             </div>
           </div>
@@ -163,7 +170,6 @@ export function AddSupplierDialog({ open, onOpenChange, onAdd, existingIds }: Ad
                 type="email"
                 value={formData.email}
                 onChange={(e) => handleChange("email", e.target.value)}
-                placeholder="e.g., contact@supplier.com"
                 className={errors.email ? "border-destructive" : ""}
               />
               {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
@@ -176,13 +182,19 @@ export function AddSupplierDialog({ open, onOpenChange, onAdd, existingIds }: Ad
             <div className="col-span-3 space-y-1">
               <Input
                 id="phone"
-                type="number"
                 value={formData.phone}
                 onChange={(e) => handleChange("phone", e.target.value)}
-                placeholder="e.g., +1-555-123-4567"
                 className={errors.phone ? "border-destructive" : ""}
               />
               {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
+            </div>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="address" className="text-right">
+              Address
+            </Label>
+            <div className="col-span-3 space-y-1">
+              <Input id="address" value={formData.address} onChange={(e) => handleChange("address", e.target.value)} />
             </div>
           </div>
         </div>
@@ -190,7 +202,9 @@ export function AddSupplierDialog({ open, onOpenChange, onAdd, existingIds }: Ad
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit}>Add Supplier</Button>
+          <Button onClick={handleSubmit} className="bg-[#725af2] hover:bg-[#5e48d0] text-white">
+            Add Supplier
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

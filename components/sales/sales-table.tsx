@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -35,6 +35,7 @@ import { ConfirmationDialog } from "@/components/common/confirmation-dialog"
 export function SalesTable() {
   // Use order context
   const { orders, approveOrder, rejectOrder, getOrderById, cancelOrder } = useOrders()
+
   // Filter states
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined)
   const [clientFilter, setClientFilter] = useState("")
@@ -59,7 +60,7 @@ export function SalesTable() {
   const [ordersPerPage] = useState(10) // Reduced to 10 to make pagination more visible
 
   // Apply filters to orders
-  const filtered = useMemo(() => orders.filter((order) => {
+  const filtered = orders.filter((order) => {
     // Status filter
     if (statusFilter !== "all" && order.status !== statusFilter) {
       return false
@@ -108,12 +109,12 @@ export function SalesTable() {
     }
 
     return true
-  }), [orders])
+  })
 
   // Calculate pagination
   const indexOfLastOrder = currentPage * ordersPerPage
   const indexOfFirstOrder = indexOfLastOrder - ordersPerPage
-  const paginatedOrders = useMemo(() => filtered.slice(indexOfFirstOrder, indexOfLastOrder), [filtered])
+  const paginatedOrders = filtered.slice(indexOfFirstOrder, indexOfLastOrder)
   const totalPages = Math.ceil(filtered.length / ordersPerPage)
 
   // Reset to first page when filters change
@@ -197,7 +198,7 @@ export function SalesTable() {
   const selectedOrder = selectedOrderId ? getOrderById(selectedOrderId) : null
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 bg-white dark:bg-[#0f1729] rounded-lg p-4 shadow-sm dark:text-gray-100">
       {/* Search bar */}
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">

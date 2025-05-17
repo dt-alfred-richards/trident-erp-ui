@@ -19,4 +19,3 @@ export function TrackingInfo({ trackingId, carrier, deliveryDate }: TrackingInfo
     </div>
   )
 }
-

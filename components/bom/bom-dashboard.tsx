@@ -18,7 +18,7 @@ export function BomDashboard() {
           <h2 className="text-2xl font-bold tracking-tight">Bill of Materials</h2>
           <p className="text-muted-foreground">Manage product BOMs and component requirements</p>
         </div>
-        <Button onClick={() => setCreateDialogOpen(true)}>
+        <Button onClick={() => setCreateDialogOpen(true)} className="bg-[#1b84ff] hover:bg-[#1b84ff]/90 text-white">
           <PlusCircle className="mr-2 h-4 w-4" />
           Create New BOM
         </Button>
@@ -32,4 +32,3 @@ export function BomDashboard() {
     </div>
   )
 }
-

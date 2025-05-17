@@ -1,4 +1,4 @@
-"use client"
+"\"use client"
 
 import { useState, useEffect } from "react"
 
@@ -12,12 +12,36 @@ interface LowStockItem {
   urgency: string
 }
 
+// Pending Requisitions Data
+interface PendingRequisition {
+  id: string
+  material: string
+  quantity: number
+  unit: string
+  requestedBy: string
+  date: string
+  urgency: string
+}
+
+// Open Purchase Orders Data
+interface OpenPurchaseOrder {
+  id: string
+  supplier: string
+  material: string
+  quantity: number
+  unit: string
+  orderDate: string
+  expectedDelivery: string
+  status: string
+  received?: number
+}
+
 export function useLowStockData() {
   const [lowStockItems, setLowStockItems] = useState<LowStockItem[]>([])
 
   useEffect(() => {
     // This would come from your API in a real application
-    const items: LowStockItem[] = [
+    const lowStockItemsData: LowStockItem[] = [
       {
         id: "mat-001",
         name: "Plastic Resin",
@@ -51,22 +75,10 @@ export function useLowStockData() {
         urgency: "low",
       },
     ]
-
-    setLowStockItems(items)
+    setLowStockItems(lowStockItemsData)
   }, [])
 
   return { lowStockItems }
-}
-
-// Pending Requisitions Data
-interface PendingRequisition {
-  id: string
-  material: string
-  quantity: number
-  unit: string
-  requestedBy: string
-  date: string
-  urgency: string
 }
 
 export function usePendingRequisitionsData() {
@@ -74,7 +86,7 @@ export function usePendingRequisitionsData() {
 
   useEffect(() => {
     // This would come from your API in a real application
-    const requisitions: PendingRequisition[] = [
+    const pendingRequisitionsData: PendingRequisition[] = [
       {
         id: "REQ-001",
         material: "Plastic Resin",
@@ -103,24 +115,10 @@ export function usePendingRequisitionsData() {
         urgency: "low",
       },
     ]
-
-    setPendingRequisitions(requisitions)
+    setPendingRequisitions(pendingRequisitionsData)
   }, [])
 
   return { pendingRequisitions }
-}
-
-// Open Purchase Orders Data
-interface OpenPurchaseOrder {
-  id: string
-  supplier: string
-  material: string
-  quantity: number
-  unit: string
-  orderDate: string
-  expectedDelivery: string
-  status: string
-  received?: number
 }
 
 export function useOpenPurchaseOrdersData() {
@@ -128,7 +126,7 @@ export function useOpenPurchaseOrdersData() {
 
   useEffect(() => {
     // This would come from your API in a real application
-    const orders: OpenPurchaseOrder[] = [
+    const openPurchaseOrdersData: OpenPurchaseOrder[] = [
       {
         id: "PO-001",
         supplier: "PlastiCorp Inc.",
@@ -161,10 +159,15 @@ export function useOpenPurchaseOrdersData() {
         status: "sent",
       },
     ]
-
-    setOpenPOs(orders)
+    setOpenPOs(openPurchaseOrdersData)
   }, [])
 
   return { openPOs }
 }
 
+export function useProcurementData() {
+  const { lowStockItems } = useLowStockData()
+  const { pendingRequisitions } = usePendingRequisitionsData()
+  const { openPOs } = useOpenPurchaseOrdersData()
+  return { lowStockItems, pendingRequisitions, openPOs }
+}

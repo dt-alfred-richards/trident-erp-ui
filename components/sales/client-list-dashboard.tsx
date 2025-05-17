@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -12,165 +12,140 @@ import { AddClientDialog } from "@/components/sales/add-client-dialog"
 import { ConfirmationDialog } from "@/components/common/confirmation-dialog"
 import { useToast } from "@/hooks/use-toast"
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
-import { useOrders } from "@/contexts/order-context"
-import { createType } from "../utils/generic"
-import { DataByTableName } from "../utils/api"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 // Sample client data with removed fields
-// const initialClients = [
-//   {
-//     id: "CL-001",
-//     name: "Acme Corporation",
-//     contactPerson: "John Doe",
-//     email: "john.doe@acme.com",
-//     phone: "+1 (555) 123-4567",
-//     address: "123 Business Ave, New York, NY 10001",
-//     status: "Active",
-//     lastOrder: "2023-04-15",
-//     totalOrders: 24,
-//     totalValue: "$145,780",
-//   },
-//   {
-//     id: "CL-002",
-//     name: "TechNova Solutions",
-//     contactPerson: "Jane Smith",
-//     email: "jane.smith@technova.com",
-//     phone: "+1 (555) 987-6543",
-//     address: "456 Innovation Blvd, San Francisco, CA 94105",
-//     status: "Active",
-//     lastOrder: "2023-04-02",
-//     totalOrders: 18,
-//     totalValue: "$98,450",
-//   },
-//   {
-//     id: "CL-003",
-//     name: "Global Industries",
-//     contactPerson: "Robert Johnson",
-//     email: "robert@globalind.com",
-//     phone: "+1 (555) 456-7890",
-//     address: "789 Enterprise St, Chicago, IL 60601",
-//     status: "Inactive",
-//     lastOrder: "2023-01-20",
-//     totalOrders: 7,
-//     totalValue: "$42,300",
-//   },
-//   {
-//     id: "CL-004",
-//     name: "Sunrise Manufacturing",
-//     contactPerson: "Emily Chen",
-//     email: "emily.chen@sunrise.com",
-//     phone: "+1 (555) 234-5678",
-//     address: "101 Factory Lane, Detroit, MI 48201",
-//     status: "Active",
-//     lastOrder: "2023-03-28",
-//     totalOrders: 15,
-//     totalValue: "$87,620",
-//   },
-//   {
-//     id: "CL-005",
-//     name: "Quantum Enterprises",
-//     contactPerson: "Michael Brown",
-//     email: "michael@quantum.com",
-//     phone: "+1 (555) 876-5432",
-//     address: "202 Quantum Drive, Austin, TX 78701",
-//     status: "Active",
-//     lastOrder: "2023-04-10",
-//     totalOrders: 12,
-//     totalValue: "$65,890",
-//   },
-//   {
-//     id: "CL-006",
-//     name: "Pinnacle Systems",
-//     contactPerson: "Sarah Wilson",
-//     email: "sarah@pinnacle.com",
-//     phone: "+1 (555) 222-3333",
-//     address: "303 Summit Road, Boston, MA 02108",
-//     status: "Active",
-//     lastOrder: "2023-04-05",
-//     totalOrders: 9,
-//     totalValue: "$54,320",
-//   },
-//   {
-//     id: "CL-007",
-//     name: "Horizon Distributors",
-//     contactPerson: "David Lee",
-//     email: "david@horizon.com",
-//     phone: "+1 (555) 444-5555",
-//     address: "404 Skyline Ave, Seattle, WA 98101",
-//     status: "Inactive",
-//     lastOrder: "2023-02-15",
-//     totalOrders: 5,
-//     totalValue: "$28,750",
-//   },
-//   {
-//     id: "CL-008",
-//     name: "Elite Innovations",
-//     contactPerson: "Jennifer Taylor",
-//     email: "jennifer@elite.com",
-//     phone: "+1 (555) 666-7777",
-//     address: "505 Tech Parkway, Denver, CO 80202",
-//     status: "Active",
-//     lastOrder: "2023-03-22",
-//     totalOrders: 14,
-//     totalValue: "$76,430",
-//   },
-// ]
-
-// type ClientType = {
-//   id: string,
-//   name: string,
-//   contactPerson: string,
-//   email: string,
-//   phone: string,
-//   address: string,
-//   status: string,
-//   lastOrder: string,Client Proposed Price
-
-//   totalOrders: number,
-//   totalValue: string
-// }
+const initialClients = [
+  {
+    id: "CL-001",
+    name: "Acme Corporation",
+    contactPerson: "John Doe",
+    email: "john.doe@acme.com",
+    phone: "+1 (555) 123-4567",
+    address: "123 Business Ave, New York, NY 10001",
+    status: "Active",
+    lastOrder: "2023-04-15",
+    totalOrders: 24,
+    totalValue: "$145,780",
+    clientType: "Corporate",
+  },
+  {
+    id: "CL-002",
+    name: "TechNova Solutions",
+    contactPerson: "Jane Smith",
+    email: "jane.smith@technova.com",
+    phone: "+1 (555) 987-6543",
+    address: "456 Innovation Blvd, San Francisco, CA 94105",
+    status: "Active",
+    lastOrder: "2023-04-02",
+    totalOrders: 18,
+    totalValue: "$98,450",
+    clientType: "Corporate",
+  },
+  {
+    id: "CL-003",
+    name: "Global Industries",
+    contactPerson: "Robert Johnson",
+    email: "robert@globalind.com",
+    phone: "+1 (555) 456-7890",
+    address: "789 Enterprise St, Chicago, IL 60601",
+    status: "Inactive",
+    lastOrder: "2023-01-20",
+    totalOrders: 7,
+    totalValue: "$42,300",
+    clientType: "Distributor",
+  },
+  {
+    id: "CL-004",
+    name: "Sunrise Manufacturing",
+    contactPerson: "Emily Chen",
+    email: "emily.chen@sunrise.com",
+    phone: "+1 (555) 234-5678",
+    address: "101 Factory Lane, Detroit, MI 48201",
+    status: "Active",
+    lastOrder: "2023-03-28",
+    totalOrders: 15,
+    totalValue: "$87,620",
+    clientType: "Wholeseller",
+  },
+  {
+    id: "CL-005",
+    name: "Quantum Enterprises",
+    contactPerson: "Michael Brown",
+    email: "michael@quantum.com",
+    phone: "+1 (555) 876-5432",
+    address: "202 Quantum Drive, Austin, TX 78701",
+    status: "Active",
+    lastOrder: "2023-04-10",
+    totalOrders: 12,
+    totalValue: "$65,890",
+    clientType: "Corporate",
+  },
+  {
+    id: "CL-006",
+    name: "Pinnacle Systems",
+    contactPerson: "Sarah Wilson",
+    email: "sarah@pinnacle.com",
+    phone: "+1 (555) 222-3333",
+    address: "303 Summit Road, Boston, MA 02108",
+    status: "Active",
+    lastOrder: "2023-04-05",
+    totalOrders: 9,
+    totalValue: "$54,320",
+    clientType: "Hotels&Restaurants",
+  },
+  {
+    id: "CL-007",
+    name: "Horizon Distributors",
+    contactPerson: "David Lee",
+    email: "david@horizon.com",
+    phone: "+1 (555) 444-5555",
+    address: "404 Skyline Ave, Seattle, WA 98101",
+    status: "Inactive",
+    lastOrder: "2023-02-15",
+    totalOrders: 5,
+    totalValue: "$28,750",
+    clientType: "Distributor",
+  },
+  {
+    id: "CL-008",
+    name: "Elite Innovations",
+    contactPerson: "Jennifer Taylor",
+    email: "jennifer@elite.com",
+    phone: "+1 (555) 666-7777",
+    address: "505 Tech Parkway, Denver, CO 80202",
+    status: "Active",
+    lastOrder: "2023-03-22",
+    totalOrders: 14,
+    totalValue: "$76,430",
+    clientType: "Wholeseller",
+  },
+]
 
 export function ClientListDashboard() {
-  const { clientInfo, clientProposedPrice, setRefetchData } = useOrders();
-
-  const initialClients = useMemo(() => {
-    return Object.values(clientInfo).map(client => ({
-      id: client.clientId,
-      name: client.name,
-      contactPerson: client.reference,
-      email: client.email,
-      phone: client.contactNumber,
-      address: client.address,
-      status: "",
-      lastOrder: "",
-      totalOrders: 0,
-      totalValue: 0,
-    }))
-  }, [clientInfo, clientProposedPrice])
-
-  const [clients, setClients] = useState<any[]>([])
-  useEffect(() => {
-    setClients(initialClients);
-  }, [initialClients])
+  const [clients, setClients] = useState(initialClients)
   const [searchQuery, setSearchQuery] = useState("")
+  const [clientTypeFilter, setClientTypeFilter] = useState("All")
   const [selectedClient, setSelectedClient] = useState(null)
   const [viewClient, setViewClient] = useState(null)
   const [showDetailsDialog, setShowDetailsDialog] = useState(false)
   const [showViewDialog, setShowViewDialog] = useState(false)
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [clientToDelete, setClientToDelete] = useState<any>(null)
+  const [clientToDelete, setClientToDelete] = useState(null)
   const { toast } = useToast()
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 5
 
   const filteredClients = clients.filter(
     (client) =>
-      client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      client.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      client.contactPerson.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      client.email.toLowerCase().includes(searchQuery.toLowerCase()),
+      (client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        client.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        client.contactPerson.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        client.email.toLowerCase().includes(searchQuery.toLowerCase())) &&
+      (clientTypeFilter === "All" || client.clientType === clientTypeFilter),
   )
 
   // Get current clients for pagination
@@ -218,22 +193,16 @@ export function ClientListDashboard() {
     setShowDeleteDialog(true)
   }
 
-  const handleDeleteClient = useCallback(() => {
+  const handleDeleteClient = () => {
     if (!clientToDelete) return
 
-    const instance = new DataByTableName("dim_client_v2");
-
-    instance.deleteById({ key: "clientId", value: clientToDelete?.id || "" }).then(() => {
-      toast({
-        title: "Client Removed",
-        description: `${clientToDelete?.name || ""} has been removed successfully.`,
-      })
-      setClientToDelete(null)
-      setRefetchData(p => !p)
-    }).catch(error => {
-      console.log({ error })
+    setClients(clients.filter((client) => client.id !== clientToDelete.id))
+    toast({
+      title: "Client Removed",
+      description: `${clientToDelete.name} has been removed successfully.`,
     })
-  }, [clientToDelete])
+    setClientToDelete(null)
+  }
 
   // Handle page change
   const handlePageChange = (page) => {
@@ -244,7 +213,7 @@ export function ClientListDashboard() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Client List</h2>
-        <Button onClick={() => setShowAddDialog(true)}>
+        <Button onClick={() => setShowAddDialog(true)} className="bg-[#1b84ff] hover:bg-[#1b84ff]/90 text-white">
           <UserPlus className="mr-2 h-4 w-4" />
           Add Client
         </Button>
@@ -254,16 +223,30 @@ export function ClientListDashboard() {
         <CardHeader>
           <CardTitle>Clients</CardTitle>
           <CardDescription>Manage your client relationships and information.</CardDescription>
-          <div className="flex w-full max-w-sm items-center space-x-2 mt-4">
-            <Input
-              placeholder="Search clients..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full"
-            />
-            <Button type="submit" size="icon" variant="ghost">
-              <Search className="h-4 w-4" />
-            </Button>
+          <div className="flex w-full items-center space-x-2 mt-4">
+            <div className="flex-1 flex items-center space-x-2">
+              <Input
+                placeholder="Search clients..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full"
+              />
+              <Button type="submit" size="icon" variant="ghost">
+                <Search className="h-4 w-4" />
+              </Button>
+            </div>
+            <Select value={clientTypeFilter} onValueChange={setClientTypeFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All Types</SelectItem>
+                <SelectItem value="Corporate">Corporate</SelectItem>
+                <SelectItem value="Distributor">Distributor</SelectItem>
+                <SelectItem value="Wholeseller">Wholeseller</SelectItem>
+                <SelectItem value="Hotels&Restaurants">Hotels & Restaurants</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
         <CardContent>
@@ -272,6 +255,7 @@ export function ClientListDashboard() {
               <TableRow>
                 <TableHead>Client ID</TableHead>
                 <TableHead>Name</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead>Contact Person</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Phone</TableHead>
@@ -281,7 +265,7 @@ export function ClientListDashboard() {
             <TableBody>
               {currentClients.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
+                  <TableCell colSpan={7} className="h-24 text-center">
                     No clients found.
                   </TableCell>
                 </TableRow>
@@ -290,6 +274,7 @@ export function ClientListDashboard() {
                   <TableRow key={client.id}>
                     <TableCell className="font-medium">{client.id}</TableCell>
                     <TableCell>{client.name}</TableCell>
+                    <TableCell>{client.clientType}</TableCell>
                     <TableCell>{client.contactPerson}</TableCell>
                     <TableCell>{client.email}</TableCell>
                     <TableCell>{client.phone}</TableCell>

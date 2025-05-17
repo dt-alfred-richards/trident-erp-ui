@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { Search, Edit, Eye, FileText, ExternalLink } from "lucide-react"
+import { Search, Edit, Eye, FileText, ExternalLink, Trash2 } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -17,40 +17,50 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
 import { EditEmployeeDialog } from "./edit-employee-dialog"
-import { Pagination } from "@/components/ui/pagination"
-import { EmployeeRow, useHrContext } from "@/contexts/hr-context"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 
-export function EmployeeManagement() {
-  const { employeeDetails = [] } = useHrContext();
+export function EmployeeManagement({ employees, setEmployees }) {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedEmployeeType, setSelectedEmployeeType] = useState("all")
   const [selectedDepartment, setSelectedDepartment] = useState("all")
   const [selectedRole, setSelectedRole] = useState("all")
-  const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null)
+  const [selectedEmployee, setSelectedEmployee] = useState(null)
   const [showEmployeeDetails, setShowEmployeeDetails] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
-  const [employeeData, setEmployeeData] = useState<EmployeeRow[]>([])
   const [showAadharImage, setShowAadharImage] = useState(false)
-
-  useEffect(() => {
-    setEmployeeData(employeeDetails);
-  }, [employeeDetails])
+  const [newEmployeeId, setNewEmployeeId] = useState(null)
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
 
+  // Helper function to get badge styling for employee type
+  const getEmployeeTypeBadgeClass = (type) => {
+    switch (type) {
+      case "Full-time":
+        return "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-400"
+      case "Part-time":
+        return "border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-800 dark:bg-purple-950/30 dark:text-purple-400"
+      case "Contract":
+        return "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-400"
+      case "Intern":
+        return "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-400"
+      default:
+        return "border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-800 dark:bg-gray-950/30 dark:text-gray-400"
+    }
+  }
+
   // Filter employees based on search query and selected filters
   const filteredEmployees = useMemo(
     () =>
-      employeeData.filter((employee) => {
+      employees.filter((employee) => {
         const matchesSearch =
           employee.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
           employee.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
           employee.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          employee.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          employee.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          employee.department.toLowerCase().includes(searchQuery.toLowerCase())
+          (employee.email && employee.email.toLowerCase().includes(searchQuery.toLowerCase()))
 
         const matchesEmployeeType = selectedEmployeeType === "all" || employee.employeeType === selectedEmployeeType
 
@@ -60,7 +70,7 @@ export function EmployeeManagement() {
 
         return matchesSearch && matchesEmployeeType && matchesDepartment && matchesRole
       }),
-    [employeeData, searchQuery, selectedEmployeeType, selectedDepartment, selectedRole, employeeDetails],
+    [employees, searchQuery, selectedEmployeeType, selectedDepartment, selectedRole],
   )
 
   // Calculate paginated data
@@ -74,21 +84,32 @@ export function EmployeeManagement() {
     setCurrentPage(1)
   }, [searchQuery, selectedEmployeeType, selectedDepartment, selectedRole])
 
-  const handleViewDetails = (id: string) => {
+  // Highlight new employee
+  useEffect(() => {
+    if (newEmployeeId) {
+      // Clear the highlight after 5 seconds
+      const timer = setTimeout(() => {
+        setNewEmployeeId(null)
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [newEmployeeId])
+
+  const handleViewDetails = (id) => {
     setSelectedEmployee(id)
     setShowEmployeeDetails(true)
   }
 
-  const handleEditEmployee = (id: string) => {
+  const handleEditEmployee = (id) => {
     setSelectedEmployee(id)
     setShowEditDialog(true)
   }
 
-  const handleSaveEmployee = (updatedEmployee: any) => {
-    setEmployeeData(employeeData.map((emp) => (emp.id === updatedEmployee.id ? updatedEmployee : emp)))
+  const handleSaveEmployee = (updatedEmployee) => {
+    setEmployees(employees.map((emp) => (emp.id === updatedEmployee.id ? updatedEmployee : emp)))
   }
 
-  const employee = selectedEmployee ? employeeData.find((e) => e.id === selectedEmployee) : null
+  const employee = selectedEmployee ? employees.find((e) => e.id === selectedEmployee) : null
 
   // Check if any filters are active
   const hasActiveFilters =
@@ -101,6 +122,19 @@ export function EmployeeManagement() {
     setSelectedDepartment("all")
     setSelectedRole("all")
     setCurrentPage(1)
+  }
+
+  const handleDeleteEmployee = (id) => {
+    setSelectedEmployee(id)
+    setShowDeleteConfirmation(true)
+  }
+
+  const confirmDeleteEmployee = () => {
+    if (selectedEmployee) {
+      setEmployees(employees.filter((emp) => emp.id !== selectedEmployee))
+      setShowDeleteConfirmation(false)
+      setSelectedEmployee(null)
+    }
   }
 
   return (
@@ -193,22 +227,25 @@ export function EmployeeManagement() {
             <TableBody>
               {paginatedEmployees.length > 0 ? (
                 paginatedEmployees.map((employee) => (
-                  <TableRow key={employee.id}>
-                    <TableCell>{employee.id}</TableCell>
+                  <TableRow key={employee.id} className={employee.id === newEmployeeId ? "bg-green-50" : ""}>
+                    <TableCell>
+                      {employee.id}
+                      {employee.id === newEmployeeId && <Badge className="ml-2 bg-green-500">New</Badge>}
+                    </TableCell>
                     <TableCell className="font-medium">
                       {employee.firstName} {employee.lastName}
                     </TableCell>
                     <TableCell>{employee.role}</TableCell>
                     <TableCell>{employee.department}</TableCell>
                     <TableCell>
-                      <Badge variant={employee.employeeType === "Full-time" ? "default" : "secondary"}>
+                      <Badge variant="outline" className={getEmployeeTypeBadgeClass(employee.employeeType)}>
                         {employee.employeeType}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       {employee.employeeType === "Full-time"
-                        ? `₹${employee.salary.toLocaleString()}/month`
-                        : `₹${employee.salary.toLocaleString()}/hour`}
+                        ? `₹${Number.parseInt(employee.salary).toLocaleString()}/month`
+                        : `₹${Number.parseInt(employee.salary).toLocaleString()}/hour`}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end space-x-2">
@@ -217,6 +254,14 @@ export function EmployeeManagement() {
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => handleEditEmployee(employee.id)}>
                           <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteEmployee(employee.id)}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -234,12 +279,11 @@ export function EmployeeManagement() {
 
           {filteredEmployees.length > 0 && (
             <div className="p-4">
-              <Pagination
+              <DataTablePagination
                 totalItems={filteredEmployees.length}
                 itemsPerPage={itemsPerPage}
                 currentPage={currentPage}
                 onPageChange={setCurrentPage}
-                onItemsPerPageChange={setItemsPerPage}
               />
             </div>
           )}
@@ -272,7 +316,7 @@ export function EmployeeManagement() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h4 className="text-sm font-medium mb-1">Email</h4>
-                  <p>{employee.email}</p>
+                  <p>{employee.email || employee.personalEmail || "Not provided"}</p>
                 </div>
                 <div>
                   <h4 className="text-sm font-medium mb-1">Contact Number</h4>
@@ -294,7 +338,7 @@ export function EmployeeManagement() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h4 className="text-sm font-medium mb-1">Employee Type</h4>
-                  <Badge variant={employee.employeeType === "Full-time" ? "default" : "secondary"}>
+                  <Badge variant="outline" className={getEmployeeTypeBadgeClass(employee.employeeType)}>
                     {employee.employeeType}
                   </Badge>
                 </div>
@@ -309,8 +353,8 @@ export function EmployeeManagement() {
                   <h4 className="text-sm font-medium mb-1">Salary</h4>
                   <p>
                     {employee.employeeType === "Full-time"
-                      ? `₹${employee.salary.toLocaleString()}/month`
-                      : `₹${employee.salary.toLocaleString()}/hour`}
+                      ? `₹${Number.parseInt(employee.salary).toLocaleString()}/month`
+                      : `₹${Number.parseInt(employee.salary).toLocaleString()}/hour`}
                   </p>
                 </div>
                 <div>
@@ -390,7 +434,18 @@ export function EmployeeManagement() {
         employee={employee}
         onSave={handleSaveEmployee}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        open={showDeleteConfirmation}
+        onOpenChange={setShowDeleteConfirmation}
+        title="Delete Employee"
+        description={`Are you sure you want to delete ${employee ? `${employee.firstName} ${employee.lastName}` : "this employee"}? This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={confirmDeleteEmployee}
+        variant="destructive"
+      />
     </div>
   )
 }
-

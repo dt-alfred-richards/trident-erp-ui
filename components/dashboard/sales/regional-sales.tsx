@@ -59,11 +59,11 @@ export function RegionalSales({ timeRange }: RegionalSalesProps) {
         config={{
           value: {
             label: "Revenue",
-            color: "hsl(var(--chart-1))",
+            color: "#4882d9",
           },
           growth: {
             label: "Growth %",
-            color: "hsl(var(--chart-2))",
+            color: "#c2d6f3",
           },
         }}
       >
@@ -75,12 +75,11 @@ export function RegionalSales({ timeRange }: RegionalSalesProps) {
             <YAxis yAxisId="right" orientation="right" unit="%" />
             <ChartTooltip content={<ChartTooltipContent />} />
             <Legend />
-            <Bar yAxisId="left" dataKey="value" fill="var(--color-value)" radius={[4, 4, 0, 0]} />
-            <Bar yAxisId="right" dataKey="growth" fill="var(--color-growth)" radius={[4, 4, 0, 0]} />
+            <Bar yAxisId="left" dataKey="value" fill="#4882d9" radius={[4, 4, 0, 0]} barSize={12} />
+            <Bar yAxisId="right" dataKey="growth" fill="#c2d6f3" radius={[4, 4, 0, 0]} barSize={12} />
           </ComposedChart>
         </ResponsiveContainer>
       </ChartContainer>
     </div>
   )
 }
-

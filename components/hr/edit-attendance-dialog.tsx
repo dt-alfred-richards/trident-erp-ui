@@ -141,4 +141,3 @@ export function EditAttendanceDialog({ open, onOpenChange, attendance, onUpdate 
     </Dialog>
   )
 }
-

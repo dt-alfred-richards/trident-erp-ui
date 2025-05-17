@@ -1,7 +1,7 @@
 "use client"
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer, Tooltip } from "recharts"
+import { ChartContainer } from "@/components/ui/chart"
 import { Card, CardContent } from "@/components/ui/card"
 import { ArrowUpRight } from "lucide-react"
 
@@ -116,7 +116,27 @@ export function SalesForecast({ timeRange }: SalesForecastProps) {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis tickFormatter={formatRevenue} />
-              <ChartTooltip content={<ChartTooltipContent />} />
+              <Tooltip
+                content={({ active, payload, label }) => {
+                  if (active && payload && payload.length) {
+                    return (
+                      <div className="bg-background border border-border rounded-md shadow-md p-3 text-sm">
+                        <p className="font-medium">{label}</p>
+                        {payload.map((entry, index) => (
+                          <p key={index} className="text-muted-foreground">
+                            <span className="font-medium" style={{ color: entry.color }}>
+                              {entry.name}:
+                            </span>{" "}
+                            ₹{entry.value.toLocaleString()}
+                          </p>
+                        ))}
+                      </div>
+                    )
+                  }
+                  return null
+                }}
+                wrapperStyle={{ outline: "none" }}
+              />
               <Legend />
               <Line
                 type="monotone"
@@ -141,4 +161,3 @@ export function SalesForecast({ timeRange }: SalesForecastProps) {
     </div>
   )
 }
-

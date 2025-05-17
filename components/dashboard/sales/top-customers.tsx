@@ -78,4 +78,3 @@ export function TopCustomers({ timeRange }: TopCustomersProps) {
     </div>
   )
 }
-

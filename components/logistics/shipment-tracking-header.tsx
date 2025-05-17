@@ -12,4 +12,3 @@ export function ShipmentTrackingHeader({ children }: ShipmentTrackingHeaderProps
     </div>
   )
 }
-

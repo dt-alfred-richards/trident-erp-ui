@@ -27,16 +27,28 @@ export function TimeRangeSelector({
     <div className="flex flex-wrap items-center gap-2">
       <Tabs value={timeRange} onValueChange={onTimeRangeChange} className="w-auto">
         <TabsList className="h-9 bg-muted/50">
-          <TabsTrigger value="week" className="text-xs px-3">
+          <TabsTrigger
+            value="week"
+            className="text-xs px-3 data-[state=active]:text-[#1b84ff] data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff]"
+          >
             Week
           </TabsTrigger>
-          <TabsTrigger value="month" className="text-xs px-3">
+          <TabsTrigger
+            value="month"
+            className="text-xs px-3 data-[state=active]:text-[#1b84ff] data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff]"
+          >
             Month
           </TabsTrigger>
-          <TabsTrigger value="quarter" className="text-xs px-3">
+          <TabsTrigger
+            value="quarter"
+            className="text-xs px-3 data-[state=active]:text-[#1b84ff] data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff]"
+          >
             Quarter
           </TabsTrigger>
-          <TabsTrigger value="custom" className="text-xs px-3">
+          <TabsTrigger
+            value="custom"
+            className="text-xs px-3 data-[state=active]:text-[#1b84ff] data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff]"
+          >
             Custom
           </TabsTrigger>
         </TabsList>
@@ -89,4 +101,3 @@ export function TimeRangeSelector({
     </div>
   )
 }
-

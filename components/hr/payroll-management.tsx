@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect, useCallback } from "react"
-import { Search, Download, Printer, Eye, CheckCircle } from "lucide-react"
+import { Search, Download, Printer, Eye, CheckCircle, ChevronLeft, ChevronRight } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,13 +11,164 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Pagination } from "@/components/ui/pagination"
-import { createType } from "../utils/generic"
-import { useHrContext } from "@/contexts/hr-context"
-import moment from "moment"
+import { cn } from "@/lib/utils"
 
 // Sample payroll data
 const payrollData = [
+  {
+    id: "EMP001",
+    name: "Rajesh Kumar",
+    department: "Production",
+    role: "Production Manager",
+    salary: 65000,
+    attendance: 22,
+    overtime: 5,
+    bonus: 2000,
+    deductions: 1500,
+    netPay: 67500,
+    status: "Pending",
+    month: "2025-03",
+  },
+  {
+    id: "EMP002",
+    name: "Priya Sharma",
+    department: "Production",
+    role: "Line Supervisor",
+    salary: 45000,
+    attendance: 21,
+    overtime: 8,
+    bonus: 1500,
+    deductions: 1000,
+    netPay: 47500,
+    status: "Processed",
+    month: "2025-03",
+  },
+  {
+    id: "EMP003",
+    name: "Amit Patel",
+    department: "Production",
+    role: "Line Worker",
+    salary: 30000,
+    attendance: 20,
+    overtime: 10,
+    bonus: 1000,
+    deductions: 800,
+    netPay: 31700,
+    status: "Pending",
+    month: "2025-03",
+  },
+  {
+    id: "EMP004",
+    name: "Sneha Gupta",
+    department: "Production",
+    role: "Line Worker",
+    salary: 28000,
+    attendance: 22,
+    overtime: 6,
+    bonus: 800,
+    deductions: 700,
+    netPay: 29100,
+    status: "Pending",
+    month: "2025-02",
+  },
+  {
+    id: "EMP005",
+    name: "Vikram Singh",
+    department: "Production",
+    role: "Quality Control",
+    salary: 40000,
+    attendance: 21,
+    overtime: 4,
+    bonus: 1200,
+    deductions: 900,
+    netPay: 41300,
+    status: "Processed",
+    month: "2025-02",
+  },
+  {
+    id: "EMP006",
+    name: "Neha Verma",
+    department: "HR",
+    role: "HR Executive",
+    salary: 50000,
+    attendance: 22,
+    overtime: 2,
+    bonus: 1500,
+    deductions: 1200,
+    netPay: 51300,
+    status: "Processed",
+    month: "2025-01",
+  },
+  {
+    id: "EMP007",
+    name: "Rahul Mehta",
+    department: "Finance",
+    role: "Finance Manager",
+    salary: 60000,
+    attendance: 21,
+    overtime: 3,
+    bonus: 2000,
+    deductions: 1500,
+    netPay: 62000,
+    status: "Processed",
+    month: "2025-03",
+  },
+  {
+    id: "EMP008",
+    name: "Sonia Gupta",
+    department: "Finance",
+    role: "Accountant",
+    salary: 45000,
+    attendance: 22,
+    overtime: 4,
+    bonus: 1200,
+    deductions: 1000,
+    netPay: 46200,
+    status: "Pending",
+    month: "2025-03",
+  },
+  {
+    id: "EMP009",
+    name: "Rohit Srivastava",
+    department: "Sales",
+    role: "Sales Manager",
+    salary: 55000,
+    attendance: 20,
+    overtime: 6,
+    bonus: 2500,
+    deductions: 1400,
+    netPay: 57600,
+    status: "Pending",
+    month: "2025-03",
+  },
+  {
+    id: "EMP010",
+    name: "Ananya Joshi",
+    department: "Marketing",
+    role: "Marketing Executive",
+    salary: 42000,
+    attendance: 21,
+    overtime: 5,
+    bonus: 1000,
+    deductions: 900,
+    netPay: 43100,
+    status: "Processed",
+    month: "2025-02",
+  },
+  {
+    id: "EMP011",
+    name: "Suresh Reddy",
+    department: "IT",
+    role: "IT Manager",
+    salary: 70000,
+    attendance: 22,
+    overtime: 3,
+    bonus: 2000,
+    deductions: 1800,
+    netPay: 71700,
+    status: "Processed",
+    month: "2025-03",
+  },
   {
     id: "EMP012",
     name: "Divya Rao",
@@ -57,50 +208,37 @@ const getAvailableMonths = () => {
       months.add(employee.month)
     }
   })
-  return Array.from(months).sort().reverse()
+  return Array.from(months).sort().reverse() // Sort in descending order
 }
 
-type Payroll = {
-  id: string,
-  name: string,
-  department: string,
-  role: string,
-  salary: number,
-  attendance: number,
-  overtime: number,
-  bonus: number,
-  deductions: number,
-  netPay: number,
-  status: string,
-  month: string
+// Get the most recent month from available months
+const getMaxMonth = () => {
+  const months = getAvailableMonths()
+  return months.length > 0 ? months[0] : getCurrentMonth()
+}
+
+// Helper function to get badge classes based on status
+const getPayrollStatusBadgeClass = (status: string) => {
+  switch (status) {
+    case "Processed":
+      return "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-400"
+    case "Pending":
+      return "border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-400"
+    default:
+      return ""
+  }
 }
 
 export function PayrollManagement() {
-  const { employeePayroll } = useHrContext()
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("all")
-  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth())
+  const [selectedMonth, setSelectedMonth] = useState(getMaxMonth())
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([])
   const [viewPayslip, setViewPayslip] = useState<(typeof payrollData)[0] | null>(null)
-  const [payrollData, setPayrollData] = useState<Payroll[]>([])
-
-  useEffect(() => {
-    if (employeePayroll.length === 0) return
-    setPayrollData(employeePayroll.map(item => ({
-      attendance: item.attendance,
-      bonus: 0,
-      deductions: 0,
-      department: "",
-      id: item.id + "",
-      month: moment().format('YYYY-MM'),
-      name: item.name,
-      netPay: item.netPay,
-      overtime: item.overtimeHours,
-      role: item.role,
-      salary: 0,
-      status: item.status
-    })))
-  }, [employeePayroll])
+  // Add a state to track payroll updates
+  const [payrollUpdateCounter, setPayrollUpdateCounter] = useState(0)
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false)
+  const [processingEmployeeId, setProcessingEmployeeId] = useState<string | undefined>(undefined)
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -109,20 +247,20 @@ export function PayrollManagement() {
   // Filter payroll data based on search query, selected filters, and month
   const filteredPayroll = useMemo(
     () =>
-      searchQuery ?
-        payrollData.filter((employee) => {
-          const matchesSearch =
-            employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            employee.id.toLowerCase().includes(searchQuery.toLowerCase())
+      payrollData.filter((employee) => {
+        const matchesSearch =
+          employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          employee.id.toLowerCase().includes(searchQuery.toLowerCase())
 
-          const matchesStatus = selectedStatus === "all" || employee.status === selectedStatus
+        const matchesStatus = selectedStatus === "all" || employee.status === selectedStatus
 
-          const matchesMonth = employee.month === selectedMonth
+        const matchesMonth = employee.month === selectedMonth
 
-          return matchesSearch && matchesStatus && matchesMonth
-        }) : payrollData,
-    [searchQuery, selectedStatus, selectedMonth, payrollData, employeePayroll]
+        return matchesSearch && matchesStatus && matchesMonth
+      }),
+    [searchQuery, selectedStatus, selectedMonth, payrollUpdateCounter],
   )
+
   // Calculate paginated data
   const paginatedPayroll = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage
@@ -136,15 +274,26 @@ export function PayrollManagement() {
 
   // Handle select all checkbox
   const handleSelectAll = () => {
-    if (selectedEmployees.length === paginatedPayroll.length) {
+    // Get only the non-processed employees
+    const selectableEmployees = paginatedPayroll.filter((emp) => emp.status !== "Processed")
+
+    if (selectedEmployees.length === selectableEmployees.length && selectableEmployees.length > 0) {
       setSelectedEmployees([])
     } else {
-      setSelectedEmployees(paginatedPayroll.map((employee) => employee.id))
+      setSelectedEmployees(selectableEmployees.map((employee) => employee.id))
     }
   }
 
   // Handle individual checkbox selection
   const handleSelectEmployee = (id: string) => {
+    // Find the employee to check if it's processed
+    const employee = payrollData.find((emp) => emp.id === id)
+
+    // If the employee is processed, don't allow selection
+    if (employee?.status === "Processed") {
+      return
+    }
+
     if (selectedEmployees.includes(id)) {
       setSelectedEmployees(selectedEmployees.filter((empId) => empId !== id))
     } else {
@@ -152,14 +301,41 @@ export function PayrollManagement() {
     }
   }
 
-  // Process selected payrolls
-  const handleProcessPayroll = (id?: string) => {
-    if (id) {
-      alert(`Processing payroll for employee ${id}`)
+  // Open confirmation dialog before processing
+  const confirmProcessPayroll = (id?: string) => {
+    setProcessingEmployeeId(id)
+    setIsConfirmDialogOpen(true)
+  }
+
+  // Actually process payroll after confirmation
+  const handleProcessPayroll = () => {
+    if (processingEmployeeId) {
+      // Process a single employee
+      const employeeIndex = payrollData.findIndex((emp) => emp.id === processingEmployeeId)
+      if (employeeIndex !== -1) {
+        payrollData[employeeIndex].status = "Processed"
+        // Update the UI
+        setSelectedEmployees((prev) => prev.filter((empId) => empId !== processingEmployeeId))
+        alert(`Payroll for employee ${processingEmployeeId} has been processed successfully.`)
+      }
     } else {
-      alert(`Processing payroll for ${selectedEmployees.length} employees`)
+      // Process multiple employees
+      selectedEmployees.forEach((empId) => {
+        const employeeIndex = payrollData.findIndex((emp) => emp.id === empId)
+        if (employeeIndex !== -1) {
+          payrollData[employeeIndex].status = "Processed"
+        }
+      })
+      alert(`Payroll for ${selectedEmployees.length} employees has been processed successfully.`)
+      setSelectedEmployees([])
     }
-    // In a real application, you would call an API to process the payroll
+
+    // Close the dialog and reset the processing employee ID
+    setIsConfirmDialogOpen(false)
+    setProcessingEmployeeId(undefined)
+
+    // Force a re-render by incrementing the counter
+    setPayrollUpdateCounter((prev) => prev + 1)
   }
 
   // View payslip
@@ -234,8 +410,8 @@ export function PayrollManagement() {
             <div class="row total">
               <span>Total Earnings</span>
               <span>₹${(
-        viewPayslip.salary + viewPayslip.bonus + viewPayslip.overtime * (viewPayslip.salary / 176)
-      ).toLocaleString()}</span>
+                viewPayslip.salary + viewPayslip.bonus + viewPayslip.overtime * (viewPayslip.salary / 176)
+              ).toLocaleString()}</span>
             </div>
           </div>
           
@@ -329,8 +505,8 @@ export function PayrollManagement() {
           </thead>
           <tbody>
             ${filteredPayroll
-        .map(
-          (employee) => `
+              .map(
+                (employee) => `
               <tr>
                 <td>${employee.id}</td>
                 <td>${employee.name}</td>
@@ -342,8 +518,8 @@ export function PayrollManagement() {
                 <td>${employee.status}</td>
               </tr>
             `,
-        )
-        .join("")}
+              )
+              .join("")}
           </tbody>
         </table>
         <div class="footer">
@@ -470,7 +646,7 @@ export function PayrollManagement() {
       {selectedEmployees.length > 0 && (
         <div className="flex items-center gap-2 bg-muted p-2 rounded-md">
           <span className="text-sm font-medium">{selectedEmployees.length} employees selected</span>
-          <Button size="sm" onClick={() => handleProcessPayroll()}>
+          <Button size="sm" onClick={() => confirmProcessPayroll()}>
             Process Payroll
           </Button>
           <Button size="sm" variant="outline" onClick={() => setSelectedEmployees([])}>
@@ -486,7 +662,10 @@ export function PayrollManagement() {
               <TableRow>
                 <TableHead className="w-[50px]">
                   <Checkbox
-                    checked={paginatedPayroll.length > 0 && selectedEmployees.length === paginatedPayroll.length}
+                    checked={
+                      paginatedPayroll.filter((emp) => emp.status !== "Processed").length > 0 &&
+                      selectedEmployees.length === paginatedPayroll.filter((emp) => emp.status !== "Processed").length
+                    }
                     onCheckedChange={handleSelectAll}
                     aria-label="Select all"
                   />
@@ -510,6 +689,7 @@ export function PayrollManagement() {
                         checked={selectedEmployees.includes(employee.id)}
                         onCheckedChange={() => handleSelectEmployee(employee.id)}
                         aria-label={`Select ${employee.name}`}
+                        disabled={employee.status === "Processed"}
                       />
                     </TableCell>
                     <TableCell>{employee.id}</TableCell>
@@ -519,7 +699,9 @@ export function PayrollManagement() {
                     <TableCell>{employee.overtime} hrs</TableCell>
                     <TableCell className="font-medium">₹{employee.netPay.toLocaleString()}</TableCell>
                     <TableCell>
-                      <Badge variant={employee.status === "Processed" ? "success" : "outline"}>{employee.status}</Badge>
+                      <Badge variant="outline" className={cn(getPayrollStatusBadgeClass(employee.status))}>
+                        {employee.status}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
@@ -543,7 +725,7 @@ export function PayrollManagement() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => handleProcessPayroll(employee.id)}
+                                onClick={() => confirmProcessPayroll(employee.id)}
                                 disabled={employee.status === "Processed"}
                               >
                                 <CheckCircle className="h-4 w-4" />
@@ -571,13 +753,83 @@ export function PayrollManagement() {
 
           {filteredPayroll.length > 0 && (
             <div className="p-4">
-              <Pagination
-                totalItems={filteredPayroll.length}
-                itemsPerPage={itemsPerPage}
-                currentPage={currentPage}
-                onPageChange={setCurrentPage}
-                onItemsPerPageChange={setItemsPerPage}
-              />
+              <div className="flex items-center justify-between mt-4">
+                <div className="text-sm text-muted-foreground">
+                  Showing {filteredPayroll.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to{" "}
+                  {Math.min(currentPage * itemsPerPage, filteredPayroll.length)} of {filteredPayroll.length} records
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                    disabled={currentPage === 1 || filteredPayroll.length === 0}
+                    className="h-8 w-8 p-0"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span className="sr-only">Previous page</span>
+                  </Button>
+                  {Array.from(
+                    { length: Math.min(5, Math.ceil(filteredPayroll.length / itemsPerPage) || 1) },
+                    (_, i) => {
+                      // Show pages around current page
+                      let pageNum = 1
+                      const totalPages = Math.ceil(filteredPayroll.length / itemsPerPage)
+                      if (totalPages <= 5) {
+                        pageNum = i + 1
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i
+                      } else {
+                        pageNum = currentPage - 2 + i
+                      }
+
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={currentPage === pageNum ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCurrentPage(pageNum)}
+                          disabled={filteredPayroll.length === 0}
+                          className="h-8 w-8 p-0"
+                        >
+                          {pageNum}
+                        </Button>
+                      )
+                    },
+                  )}
+                  {Math.ceil(filteredPayroll.length / itemsPerPage) > 5 &&
+                    currentPage < Math.ceil(filteredPayroll.length / itemsPerPage) - 2 && (
+                      <>
+                        {currentPage < Math.ceil(filteredPayroll.length / itemsPerPage) - 3 && (
+                          <span className="px-2 text-muted-foreground">...</span>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(Math.ceil(filteredPayroll.length / itemsPerPage))}
+                          disabled={filteredPayroll.length === 0}
+                          className="h-8 w-8 p-0"
+                        >
+                          {Math.ceil(filteredPayroll.length / itemsPerPage)}
+                        </Button>
+                      </>
+                    )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                    disabled={
+                      currentPage === Math.ceil(filteredPayroll.length / itemsPerPage) || filteredPayroll.length === 0
+                    }
+                    className="h-8 w-8 p-0"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                    <span className="sr-only">Next page</span>
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </CardContent>
@@ -701,7 +953,25 @@ export function PayrollManagement() {
           )}
         </DialogContent>
       </Dialog>
+      {/* Confirmation Dialog */}
+      <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Confirm Payroll Processing</DialogTitle>
+            <DialogDescription>
+              {processingEmployeeId
+                ? `Are you sure you want to process payroll for employee ${processingEmployeeId}?`
+                : `Are you sure you want to process payroll for ${selectedEmployees.length} selected employees?`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button variant="outline" onClick={() => setIsConfirmDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleProcessPayroll}>Confirm Processing</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
-

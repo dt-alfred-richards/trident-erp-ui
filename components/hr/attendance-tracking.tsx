@@ -1,7 +1,7 @@
 "use client"
 
 import { type Dispatch, type SetStateAction, useCallback, useMemo, useState, useEffect } from "react"
-import { CalendarIcon, Filter, Download, Search, Plus, Eye, Calendar } from "lucide-react"
+import { CalendarIcon, Filter, Download, Search, Eye, Calendar, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -17,26 +17,145 @@ import { AddAttendanceDialog } from "./add-attendance-dialog"
 import { EditAttendanceDialog } from "./edit-attendance-dialog"
 import { AttendanceCalendar } from "./attendance-calendar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { AttendanceData, useHrContext } from "@/contexts/hr-context"
-import { Pagination } from "../ui/pagination"
-import moment from "moment"
+import type { AttendanceData } from "./hr-dashboard"
 
-type Leavebalance = {
-  id: number,
-  employeeId: string,
-  employeeName: string,
-  earnedLeave: number,
-  usedLeave: number,
-  remainingLeave: number
+// Sample leave balance data
+const leaveBalanceData = [
+  {
+    id: 1,
+    employeeId: "EMP001",
+    employeeName: "Rajesh Kumar",
+    earnedLeave: 20,
+    usedLeave: 10,
+    remainingLeave: 10,
+  },
+  {
+    id: 2,
+    employeeId: "EMP002",
+    employeeName: "Priya Sharma",
+    earnedLeave: 20,
+    usedLeave: 6,
+    remainingLeave: 14,
+  },
+  {
+    id: 3,
+    employeeId: "EMP003",
+    employeeName: "Amit Patel",
+    earnedLeave: 20,
+    usedLeave: 12,
+    remainingLeave: 8,
+  },
+  {
+    id: 4,
+    employeeId: "EMP004",
+    employeeName: "Sneha Gupta",
+    earnedLeave: 20,
+    usedLeave: 4,
+    remainingLeave: 16,
+  },
+  {
+    id: 5,
+    employeeId: "EMP005",
+    employeeName: "Vikram Singh",
+    earnedLeave: 20,
+    usedLeave: 18,
+    remainingLeave: 2,
+  },
+  {
+    id: 6,
+    employeeId: "EMP006",
+    employeeName: "Neha Verma",
+    earnedLeave: 20,
+    usedLeave: 8,
+    remainingLeave: 12,
+  },
+  {
+    id: 7,
+    employeeId: "EMP007",
+    employeeName: "Rahul Mehta",
+    earnedLeave: 20,
+    usedLeave: 5,
+    remainingLeave: 15,
+  },
+  {
+    id: 8,
+    employeeId: "EMP008",
+    employeeName: "Sonia Gupta",
+    earnedLeave: 20,
+    usedLeave: 7,
+    remainingLeave: 13,
+  },
+  {
+    id: 9,
+    employeeId: "EMP009",
+    employeeName: "Rohit Srivastava",
+    earnedLeave: 20,
+    usedLeave: 9,
+    remainingLeave: 11,
+  },
+  {
+    id: 10,
+    employeeId: "EMP010",
+    employeeName: "Ananya Joshi",
+    earnedLeave: 20,
+    usedLeave: 2,
+    remainingLeave: 18,
+  },
+  {
+    id: 11,
+    employeeId: "EMP011",
+    employeeName: "Suresh Reddy",
+    earnedLeave: 20,
+    usedLeave: 15,
+    remainingLeave: 5,
+  },
+  {
+    id: 12,
+    employeeId: "EMP012",
+    employeeName: "Divya Rao",
+    earnedLeave: 20,
+    usedLeave: 3,
+    remainingLeave: 17,
+  },
+]
+
+// Sample past leaves data
+const pastLeavesData = {
+  EMP001: [
+    { date: "2023-09-15", reason: "Personal" },
+    { date: "2023-08-22", reason: "Sick" },
+    { date: "2023-07-10", reason: "Family Function" },
+  ],
+  EMP002: [
+    { date: "2023-09-05", reason: "Medical Emergency" },
+    { date: "2023-08-18", reason: "Personal" },
+  ],
+  EMP003: [
+    { date: "2023-09-25", reason: "Sick" },
+    { date: "2023-09-10", reason: "Family Emergency" },
+    { date: "2023-08-05", reason: "Personal" },
+    { date: "2023-07-15", reason: "Vacation" },
+  ],
+  EMP004: [{ date: "2023-08-30", reason: "Personal" }],
+  EMP005: [
+    { date: "2023-09-28", reason: "Sick" },
+    { date: "2023-09-20", reason: "Sick" },
+    { date: "2023-09-05", reason: "Personal" },
+    { date: "2023-08-15", reason: "Family Function" },
+    { date: "2023-08-01", reason: "Vacation" },
+    { date: "2023-07-20", reason: "Personal" },
+  ],
+  EMP006: [
+    { date: "2023-09-12", reason: "Personal" },
+    { date: "2023-08-08", reason: "Sick" },
+    { date: "2023-07-05", reason: "Family Function" },
+  ],
 }
 
-type PastleavesData = Record<string, {
-  date: string, reason: string
-}[]>
-
-
-export function AttendanceTracking() {
-  const { attendanceDetails, refetchData, employeeDetails, empLeaves } = useHrContext();
+export function AttendanceTracking({
+  attendanceData,
+  setAttendanceRecords,
+}: { attendanceData: AttendanceData[]; setAttendanceRecords: Dispatch<SetStateAction<AttendanceData[]>> }) {
   const [date, setDate] = useState<Date | undefined>(new Date())
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("all")
@@ -47,53 +166,18 @@ export function AttendanceTracking() {
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null)
   const [selectedAttendance, setSelectedAttendance] = useState<any | null>(null)
   const [showEditAttendanceDialog, setShowEditAttendanceDialog] = useState(false)
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceData[]>([])
   const [showCalendarDialog, setShowCalendarDialog] = useState(false)
   const [calendarEmployee, setCalendarEmployee] = useState<{ id: string; name: string } | null>(null)
-  const [leaveBalanceData, setLeaveBalanceData] = useState<Leavebalance[]>([])
-  const [pastLeavesData, setPastLeavesData] = useState<PastleavesData>({})
 
-  const employees = useMemo(() => Object.fromEntries(employeeDetails.map(item => [item.id, item])), [employeeDetails])
-
-  useEffect(() => {
-    if (employeeDetails.length === 0) return
-    const _leaveBalanceData = employeeDetails.map((item, index) => ({
-      id: index,
-      employeeId: item.id,
-      employeeName: [item.firstName, item.lastName].filter(item => item).join(""),
-      earnedLeave: item.earnedLeaves,
-      usedLeave: item.usedLeaves,
-      remainingLeave: Math.abs(item.earnedLeaves - item.usedLeaves) || 0,
-    }) as Leavebalance)
-    setPastLeavesData(
-      empLeaves.reduce((a, c) => {
-        if (!a[c.employeeId]) {
-          a[c.employeeId] = [];
-        }
-        a[c.employeeId].push({
-          date: moment(c.date).format('DD-MM-YYYY'),
-          reason: c.reason
-        })
-        return a;
-      }, {} as PastleavesData)
-    )
-    setLeaveBalanceData(_leaveBalanceData)
-  }, [employeeDetails])
   // Pagination state
   const [attendanceCurrentPage, setAttendanceCurrentPage] = useState(1)
   const [leaveCurrentPage, setLeaveCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
 
-  useEffect(() => {
-    if (attendanceRecords.length == 0) {
-      setAttendanceRecords([...attendanceDetails].map(item => ({ ...item, employeeName: employees[item.id]?.firstName || "" })))
-    }
-  }, [attendanceDetails, employees])
-
   // Filter attendance data based on search query and selected status
   const filteredAttendance = useMemo(
     () =>
-      attendanceRecords.filter((record) => {
+      attendanceData.filter((record) => {
         const matchesSearch =
           record.employeeId.toLowerCase().includes(searchQuery.toLowerCase()) ||
           record.employeeName.toLowerCase().includes(searchQuery.toLowerCase())
@@ -102,7 +186,7 @@ export function AttendanceTracking() {
 
         return matchesSearch && matchesStatus
       }),
-    [attendanceRecords, searchQuery, selectedStatus],
+    [attendanceData, searchQuery, selectedStatus],
   )
 
   // Filter leave balance data based on search query
@@ -114,7 +198,7 @@ export function AttendanceTracking() {
           record.employeeName.toLowerCase().includes(leaveSearchQuery.toLowerCase())
         )
       }),
-    [leaveSearchQuery, leaveBalanceData],
+    [leaveSearchQuery],
   )
 
   // Calculate paginated data for both tables
@@ -158,10 +242,10 @@ export function AttendanceTracking() {
   // Handle update attendance
   const handleUpdateAttendance = useCallback(
     (updatedRecord: any) => {
-      setAttendanceRecords(attendanceRecords.map((record) => (record.id === updatedRecord.id ? updatedRecord : record)))
+      setAttendanceRecords(attendanceData.map((record) => (record.id === updatedRecord.id ? updatedRecord : record)))
       setShowEditAttendanceDialog(false)
     },
-    [attendanceRecords, setAttendanceRecords],
+    [attendanceData, setAttendanceRecords],
   )
 
   // Calculate total hours
@@ -189,10 +273,6 @@ export function AttendanceTracking() {
             <p className="text-sm text-muted-foreground mt-1">Manage and monitor employee attendance records</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button onClick={() => setShowAddAttendanceDialog(true)} variant="default">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Attendance
-            </Button>
             <Button variant="outline" onClick={() => setShowBulkImportDialog(true)}>
               <Download className="mr-2 h-4 w-4" />
               Bulk Import
@@ -270,9 +350,19 @@ export function AttendanceTracking() {
                       <TableCell>{record.totalHours || "-"}</TableCell>
                       <TableCell>
                         {record.status === "present" ? (
-                          <Badge className="bg-green-500">Present</Badge>
+                          <Badge
+                            variant="outline"
+                            className="border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-400"
+                          >
+                            Present
+                          </Badge>
                         ) : (
-                          <Badge variant="destructive">Absent</Badge>
+                          <Badge
+                            variant="outline"
+                            className="border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400"
+                          >
+                            Absent
+                          </Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
@@ -313,13 +403,85 @@ export function AttendanceTracking() {
           </div>
 
           {filteredAttendance.length > 0 && (
-            <Pagination
-              totalItems={filteredAttendance.length}
-              itemsPerPage={itemsPerPage}
-              currentPage={attendanceCurrentPage}
-              onPageChange={setAttendanceCurrentPage}
-              onItemsPerPageChange={setItemsPerPage}
-            />
+            <div className="flex items-center justify-between mt-4 px-4 pb-4">
+              <div className="text-sm text-muted-foreground">
+                Showing {filteredAttendance.length > 0 ? (attendanceCurrentPage - 1) * itemsPerPage + 1 : 0} to{" "}
+                {Math.min(attendanceCurrentPage * itemsPerPage, filteredAttendance.length)} of{" "}
+                {filteredAttendance.length} records
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAttendanceCurrentPage(attendanceCurrentPage - 1)}
+                  disabled={attendanceCurrentPage === 1 || filteredAttendance.length === 0}
+                  className="h-8 w-8 p-0"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span className="sr-only">Previous page</span>
+                </Button>
+                {Array.from(
+                  { length: Math.min(5, Math.ceil(filteredAttendance.length / itemsPerPage) || 1) },
+                  (_, i) => {
+                    // Show pages around current page
+                    let pageNum = 1
+                    const totalPages = Math.ceil(filteredAttendance.length / itemsPerPage)
+                    if (totalPages <= 5) {
+                      pageNum = i + 1
+                    } else if (attendanceCurrentPage <= 3) {
+                      pageNum = i + 1
+                    } else if (attendanceCurrentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i
+                    } else {
+                      pageNum = attendanceCurrentPage - 2 + i
+                    }
+
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={attendanceCurrentPage === pageNum ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setAttendanceCurrentPage(pageNum)}
+                        disabled={filteredAttendance.length === 0}
+                        className="h-8 w-8 p-0"
+                      >
+                        {pageNum}
+                      </Button>
+                    )
+                  },
+                )}
+                {Math.ceil(filteredAttendance.length / itemsPerPage) > 5 &&
+                  attendanceCurrentPage < Math.ceil(filteredAttendance.length / itemsPerPage) - 2 && (
+                    <>
+                      {attendanceCurrentPage < Math.ceil(filteredAttendance.length / itemsPerPage) - 3 && (
+                        <span className="px-2 text-muted-foreground">...</span>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setAttendanceCurrentPage(Math.ceil(filteredAttendance.length / itemsPerPage))}
+                        disabled={filteredAttendance.length === 0}
+                        className="h-8 w-8 p-0"
+                      >
+                        {Math.ceil(filteredAttendance.length / itemsPerPage)}
+                      </Button>
+                    </>
+                  )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAttendanceCurrentPage(attendanceCurrentPage + 1)}
+                  disabled={
+                    attendanceCurrentPage === Math.ceil(filteredAttendance.length / itemsPerPage) ||
+                    filteredAttendance.length === 0
+                  }
+                  className="h-8 w-8 p-0"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                  <span className="sr-only">Next page</span>
+                </Button>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -360,9 +522,28 @@ export function AttendanceTracking() {
                       <TableCell>{record.earnedLeave}</TableCell>
                       <TableCell>{record.usedLeave}</TableCell>
                       <TableCell>
-                        <Badge className={record.remainingLeave > 5 ? "bg-green-500" : "bg-amber-500"}>
-                          {record.remainingLeave}
-                        </Badge>
+                        {record.remainingLeave > 10 ? (
+                          <Badge
+                            variant="outline"
+                            className="border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-400"
+                          >
+                            {record.remainingLeave}
+                          </Badge>
+                        ) : record.remainingLeave > 5 ? (
+                          <Badge
+                            variant="outline"
+                            className="border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400"
+                          >
+                            {record.remainingLeave}
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400"
+                          >
+                            {record.remainingLeave}
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
@@ -388,13 +569,85 @@ export function AttendanceTracking() {
           </div>
 
           {filteredLeaveBalance.length > 0 && (
-            <Pagination
-              totalItems={filteredLeaveBalance.length}
-              itemsPerPage={itemsPerPage}
-              currentPage={leaveCurrentPage}
-              onPageChange={setLeaveCurrentPage}
-              onItemsPerPageChange={setItemsPerPage}
-            />
+            <div className="flex items-center justify-between mt-4 px-4 pb-4">
+              <div className="text-sm text-muted-foreground">
+                Showing {filteredLeaveBalance.length > 0 ? (leaveCurrentPage - 1) * itemsPerPage + 1 : 0} to{" "}
+                {Math.min(leaveCurrentPage * itemsPerPage, filteredLeaveBalance.length)} of{" "}
+                {filteredLeaveBalance.length} records
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setLeaveCurrentPage(leaveCurrentPage - 1)}
+                  disabled={leaveCurrentPage === 1 || filteredLeaveBalance.length === 0}
+                  className="h-8 w-8 p-0"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span className="sr-only">Previous page</span>
+                </Button>
+                {Array.from(
+                  { length: Math.min(5, Math.ceil(filteredLeaveBalance.length / itemsPerPage) || 1) },
+                  (_, i) => {
+                    // Show pages around current page
+                    let pageNum = 1
+                    const totalPages = Math.ceil(filteredLeaveBalance.length / itemsPerPage)
+                    if (totalPages <= 5) {
+                      pageNum = i + 1
+                    } else if (leaveCurrentPage <= 3) {
+                      pageNum = i + 1
+                    } else if (leaveCurrentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i
+                    } else {
+                      pageNum = leaveCurrentPage - 2 + i
+                    }
+
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={leaveCurrentPage === pageNum ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setLeaveCurrentPage(pageNum)}
+                        disabled={filteredLeaveBalance.length === 0}
+                        className="h-8 w-8 p-0"
+                      >
+                        {pageNum}
+                      </Button>
+                    )
+                  },
+                )}
+                {Math.ceil(filteredLeaveBalance.length / itemsPerPage) > 5 &&
+                  leaveCurrentPage < Math.ceil(filteredLeaveBalance.length / itemsPerPage) - 2 && (
+                    <>
+                      {leaveCurrentPage < Math.ceil(filteredLeaveBalance.length / itemsPerPage) - 3 && (
+                        <span className="px-2 text-muted-foreground">...</span>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setLeaveCurrentPage(Math.ceil(filteredLeaveBalance.length / itemsPerPage))}
+                        disabled={filteredLeaveBalance.length === 0}
+                        className="h-8 w-8 p-0"
+                      >
+                        {Math.ceil(filteredLeaveBalance.length / itemsPerPage)}
+                      </Button>
+                    </>
+                  )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setLeaveCurrentPage(leaveCurrentPage + 1)}
+                  disabled={
+                    leaveCurrentPage === Math.ceil(filteredLeaveBalance.length / itemsPerPage) ||
+                    filteredLeaveBalance.length === 0
+                  }
+                  className="h-8 w-8 p-0"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                  <span className="sr-only">Next page</span>
+                </Button>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -496,7 +749,7 @@ export function AttendanceTracking() {
                   {selectedEmployee &&
                     pastLeavesData[selectedEmployee]?.map((leave, index) => (
                       <TableRow key={index}>
-                        <TableCell>{leave.date}</TableCell>
+                        <TableCell>{new Date(leave.date).toLocaleDateString()}</TableCell>
                         <TableCell>{leave.reason}</TableCell>
                       </TableRow>
                     ))}
@@ -521,4 +774,3 @@ export function AttendanceTracking() {
     </div>
   )
 }
-

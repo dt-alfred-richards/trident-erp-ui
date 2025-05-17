@@ -8,7 +8,6 @@ import { PurchaseOrderDialog } from "@/components/procurement/purchase-order-dia
 import { Button } from "@/components/ui/button"
 import { PlusCircle } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
-import { ProcurementProvider } from "./procurement-context"
 
 // Define the PurchaseOrder type
 export interface PurchaseOrder {
@@ -135,44 +134,42 @@ export function ProcurementDashboard() {
   }
 
   return (
-    <ProcurementProvider>
-      <div className="space-y-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-3xl font-bold tracking-tight">Procurement</h2>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-3xl font-bold tracking-tight">Procurement</h2>
 
-          {activeTab === "purchase-order" && (
-            <div className="flex items-center gap-2">
-              <Button onClick={handleNewOrder} className="gap-1">
-                <PlusCircle className="h-4 w-4" />
-                <span className="hidden sm:inline">New Order</span>
-              </Button>
-            </div>
-          )}
-        </div>
-
-        <Tabs defaultValue="purchase-order" onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="purchase-order">Purchase Order-TB</TabsTrigger>
-            <TabsTrigger value="supplier-list">Supplier List</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="purchase-order" className="mt-0">
-            <PurchaseOrderTab purchaseOrders={purchaseOrders} setPurchaseOrders={setPurchaseOrders} />
-          </TabsContent>
-
-          <TabsContent value="supplier-list" className="mt-0">
-            <SupplierListTab />
-          </TabsContent>
-        </Tabs>
-
-        {isOrderDialogOpen && (
-          <PurchaseOrderDialog
-            open={isOrderDialogOpen}
-            onOpenChange={setIsOrderDialogOpen}
-            onCreateOrder={addPurchaseOrder}
-          />
+        {activeTab === "purchase-order" && (
+          <div className="flex items-center gap-2">
+            <Button onClick={handleNewOrder} className="gap-1">
+              <PlusCircle className="h-4 w-4" />
+              <span className="hidden sm:inline">New Order</span>
+            </Button>
+          </div>
         )}
       </div>
-    </ProcurementProvider>
+
+      <Tabs defaultValue="purchase-order" onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-4">
+          <TabsTrigger value="purchase-order">Purchase Order-TB</TabsTrigger>
+          <TabsTrigger value="supplier-list">Supplier List</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="purchase-order" className="mt-0">
+          <PurchaseOrderTab purchaseOrders={purchaseOrders} setPurchaseOrders={setPurchaseOrders} />
+        </TabsContent>
+
+        <TabsContent value="supplier-list" className="mt-0">
+          <SupplierListTab />
+        </TabsContent>
+      </Tabs>
+
+      {isOrderDialogOpen && (
+        <PurchaseOrderDialog
+          open={isOrderDialogOpen}
+          onOpenChange={setIsOrderDialogOpen}
+          onCreateOrder={addPurchaseOrder}
+        />
+      )}
+    </div>
   )
 }

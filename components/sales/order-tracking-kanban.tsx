@@ -76,19 +76,20 @@ export function OrderTrackingKanban() {
               </Badge>
             </div>
 
-            <div className="flex-1 space-y-3 bg-muted/30 p-3 rounded-lg min-h-[500px] overflow-y-auto">
+            <div className="flex-1 space-y-3 bg-[#f1f5f8] dark:bg-[#192838] p-3 rounded-lg min-h-[500px] overflow-y-auto shadow-sm">
               {groupedOrders[status].length === 0 ? (
                 <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">No orders</div>
               ) : (
                 groupedOrders[status].map((order) => (
                   <Card
                     key={order.id}
-                    className={`border-l-4 ${order.priority === "high"
+                    className={`border-l-4 ${
+                      order.priority === "high"
                         ? "border-l-red-500"
                         : order.priority === "medium"
                           ? "border-l-amber-500"
                           : "border-l-green-500"
-                      } hover:shadow-md transition-shadow cursor-pointer`}
+                    } hover:shadow-md transition-shadow cursor-pointer`}
                     onClick={() => handleViewOrder(order.id)}
                   >
                     <CardHeader className="p-3 pb-0">

@@ -4,13 +4,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { StatusBadge } from "@/components/common/status-badge"
 import { Separator } from "@/components/ui/separator"
-import { Clock, MapPin, Package, Truck, User } from "lucide-react"
-import { LogisticsOrder } from "@/hooks/use-logistics-data"
+import { Clock, MapPin, Package, Phone, Truck, User } from "lucide-react"
 
 interface ShipmentDetailsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  order: LogisticsOrder
+  order: any
 }
 
 export function ShipmentDetailsDialog({ open, onOpenChange, order }: ShipmentDetailsDialogProps) {
@@ -18,7 +17,7 @@ export function ShipmentDetailsDialog({ open, onOpenChange, order }: ShipmentDet
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl">Shipment Details</DialogTitle>
         </DialogHeader>
@@ -63,6 +62,8 @@ export function ShipmentDetailsDialog({ open, onOpenChange, order }: ShipmentDet
                 <TableRow>
                   <TableHead>SKU</TableHead>
                   <TableHead className="text-right">Quantity</TableHead>
+                  <TableHead className="text-right">Price Per Unit</TableHead>
+                  <TableHead className="text-right">Total Amount</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -73,7 +74,11 @@ export function ShipmentDetailsDialog({ open, onOpenChange, order }: ShipmentDet
                       <span>{order.sku}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">{order.quantity?.toLocaleString()}</TableCell>
+                  <TableCell className="text-right">{order.quantity.toLocaleString()}</TableCell>
+                  <TableCell className="text-right">${order.pricePerUnit?.toFixed(2) || "0.00"}</TableCell>
+                  <TableCell className="text-right">
+                    ${(order.quantity * (order.pricePerUnit || 0)).toFixed(2)}
+                  </TableCell>
                 </TableRow>
               </TableBody>
             </Table>
@@ -118,9 +123,38 @@ export function ShipmentDetailsDialog({ open, onOpenChange, order }: ShipmentDet
               )}
             </div>
           </div>
+
+          <Separator />
+
+          {/* Vehicle Information */}
+          <div className="space-y-2">
+            <h3 className="text-lg font-medium">Vehicle Information</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Vehicle ID</p>
+                <div className="flex items-center gap-1.5">
+                  <Truck className="h-4 w-4 text-muted-foreground" />
+                  <span>{order.vehicleId || "Not assigned"}</span>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Driver Name</p>
+                <div className="flex items-center gap-1.5">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span>{order.driverName || "Not assigned"}</span>
+                </div>
+              </div>
+              <div className="space-y-1 col-span-2">
+                <p className="text-sm text-muted-foreground">Contact Number</p>
+                <div className="flex items-center gap-1.5">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                  <span>{order.contactNumber || "Not available"}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
   )
 }
-

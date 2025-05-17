@@ -56,7 +56,30 @@ export function ProductionChart({ timeRange }: ProductionChartProps) {
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="name" />
           <YAxis />
-          <Tooltip formatter={(value: number) => [value.toLocaleString(), ""]} />
+          <Tooltip
+            content={({ active, payload, label }) => {
+              if (active && payload && payload.length) {
+                return (
+                  <div className="bg-background border border-border rounded-md shadow-md p-3 text-sm">
+                    <p className="font-medium">{label}</p>
+                    {payload.map((entry, index) => (
+                      <p key={index} className="text-muted-foreground">
+                        <span className="font-medium" style={{ color: entry.color }}>
+                          {entry.name}:
+                        </span>{" "}
+                        {entry.value.toLocaleString()} units
+                      </p>
+                    ))}
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Total: {payload.reduce((sum, entry) => sum + entry.value, 0).toLocaleString()} units
+                    </p>
+                  </div>
+                )
+              }
+              return null
+            }}
+            wrapperStyle={{ outline: "none" }}
+          />
           <Legend />
           <Line type="monotone" dataKey="actual" stroke="#4f46e5" name="Actual" strokeWidth={2} />
           <Line type="monotone" dataKey="target" stroke="#94a3b8" name="Target" strokeWidth={2} strokeDasharray="5 5" />
@@ -65,4 +88,3 @@ export function ProductionChart({ timeRange }: ProductionChartProps) {
     </div>
   )
 }
-

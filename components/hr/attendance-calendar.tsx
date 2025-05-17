@@ -304,4 +304,3 @@ export function AttendanceCalendar({ employeeId, employeeName }: AttendanceCalen
     </div>
   )
 }
-

@@ -17,10 +17,6 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useToast } from "@/components/ui/use-toast"
-import { ProductInfo } from "./sales-dashboard"
-import { DataByTableName } from "../utils/api"
-import { useOrders } from "@/contexts/order-context"
-import { lodashGet } from "../common/generic"
 
 // Unit options
 const unitOptions = [
@@ -58,7 +54,6 @@ interface AddProductDialogProps {
 }
 
 export function AddProductDialog({ open, onOpenChange, onAdd, existingIds, clientId }: AddProductDialogProps) {
-  const { setRefetchData } = useOrders()
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -75,38 +70,34 @@ export function AddProductDialog({ open, onOpenChange, onAdd, existingIds, clien
 
   // Handle form submission
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setIsSubmitting(true)
+
+    // Format price with ₹ symbol
+    const formattedPrice = values.price.startsWith("₹") ? values.price : `₹${values.price}`
+
     // Create new product
     const newProduct = {
+      id: existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1,
+      product: values.product,
       sku: values.sku,
-      price: parseInt(values.price),
-      units: values.unit,
-      name: values.product
-    } as Partial<ProductInfo>
+      price: formattedPrice,
+      unit: values.unit,
+      clientId: clientId,
+    }
 
-    const instance = new DataByTableName("dim_product");
-    const clientProposedInstance = new DataByTableName("client_proposed_price");
-    // setIsSubmitting(true)
-    instance.post(newProduct).then(res => {
-      return lodashGet({ data: res, path: "data.data.0.productId" })
-    }).then((productId) => {
-      return clientProposedInstance.post({
-        clientId,
-        productId,
-        proposedPrice: values.price
-      })
-    }).then(() => {
-      toast({
-        title: "Product added",
-        description: `${values.product} has been added to the products list.`,
-      })
-      form.reset()
-      onOpenChange(false)
-      setIsSubmitting(false)
-      setRefetchData(p => !p)
+    // Add product
+    onAdd(newProduct)
+
+    // Show success toast
+    toast({
+      title: "Product added",
+      description: `${values.product} has been added to the products list.`,
     })
-      .catch(error => {
-        console.log({ error })
-      })
+
+    // Reset form and close dialog
+    form.reset()
+    onOpenChange(false)
+    setIsSubmitting(false)
   }
 
   return (
@@ -154,7 +145,7 @@ export function AddProductDialog({ open, onOpenChange, onAdd, existingIds, clien
                   <FormItem>
                     <FormLabel>Price</FormLabel>
                     <FormControl>
-                      <Input placeholder="45000" type="number" {...field} />
+                      <Input placeholder="45000" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

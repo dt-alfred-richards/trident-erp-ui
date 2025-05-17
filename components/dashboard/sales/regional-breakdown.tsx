@@ -1,7 +1,7 @@
 "use client"
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, Tooltip } from "recharts"
+import { ChartContainer } from "@/components/ui/chart"
 import { Badge } from "@/components/ui/badge"
 
 interface RegionalBreakdownProps {
@@ -92,25 +92,29 @@ export function RegionalBreakdown({ timeRange }: RegionalBreakdownProps) {
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.3} />
               <XAxis dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
               <YAxis hide={true} />
-              <ChartTooltip
-                content={
-                  <ChartTooltipContent
-                    content={({ payload, label }) => {
-                      if (payload && payload.length) {
-                        const data = payload[0].payload
-                        return (
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium">{label}</p>
-                            <p className="text-xs text-muted-foreground">{data.region} Region</p>
-                            <p className="text-sm font-medium">{formatRevenue(data.value)}</p>
-                            <p className="text-xs text-green-600">+{data.growth}% growth</p>
-                          </div>
-                        )
-                      }
-                      return null
-                    }}
-                  />
-                }
+              <Tooltip
+                content={({ active, payload, label }) => {
+                  if (active && payload && payload.length) {
+                    return (
+                      <div className="bg-background border border-border rounded-md shadow-md p-3 text-sm">
+                        <p className="font-medium">{label}</p>
+                        {payload.map((entry, index) => (
+                          <p key={index} className="text-muted-foreground">
+                            <span className="font-medium" style={{ color: entry.color }}>
+                              {entry.name}:{" "}
+                            </span>
+                            ₹{entry.value.toLocaleString()}
+                          </p>
+                        ))}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Total: ₹{payload.reduce((sum, entry) => sum + entry.value, 0).toLocaleString()}
+                        </p>
+                      </div>
+                    )
+                  }
+                  return null
+                }}
+                wrapperStyle={{ outline: "none" }}
               />
               <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                 {data.map((entry, index) => (
@@ -124,4 +128,3 @@ export function RegionalBreakdown({ timeRange }: RegionalBreakdownProps) {
     </div>
   )
 }
-

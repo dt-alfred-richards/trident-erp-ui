@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { StatusBadge } from "@/components/common/status-badge"
@@ -18,21 +18,31 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { DataByTableName } from "../utils/api"
-import { DataTablePagination } from "../ui/data-table-pagination"
+import { useToast } from "@/components/ui/use-toast"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
 
 interface LogisticsTableProps {
   status: "all" | "ready" | "dispatched" | "delivered"
 }
 
-export function LogisticsTable({ status = 'all' }: LogisticsTableProps) {
+export function LogisticsTable({ status }: LogisticsTableProps) {
   const [openDispatchDialog, setOpenDispatchDialog] = useState(false)
   const [openDetailsDialog, setOpenDetailsDialog] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<any>(null)
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false)
+  const { toast } = useToast()
 
-  // Get logistics data from custom hook
-  const { orders, triggerRender } = useLogisticsData()
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(10)
+
+  // Get logistics data from custom hook with shared context
+  const { filteredOrders, updateOrderStatus } = useLogisticsData(status)
+
+  // Calculate pagination
+  const indexOfLastItem = currentPage * itemsPerPage
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage
+  const paginatedOrders = filteredOrders.slice(indexOfFirstItem, indexOfLastItem)
 
   const handleDispatchClick = (order: any) => {
     setSelectedOrder(order)
@@ -53,36 +63,40 @@ export function LogisticsTable({ status = 'all' }: LogisticsTableProps) {
     }
   }
 
-  const handleDeliveryConfirmed = useCallback(() => {
-    const instance = new DataByTableName("fact_logistics");
+  const handleDeliveryConfirmed = () => {
+    // Update the shared context state
+    if (selectedOrder) {
+      updateOrderStatus(selectedOrder.id, {
+        status: "delivered",
+        deliveryDate: new Date().toISOString().split("T")[0], // Today's date
+      })
 
-    instance.patch({ key: "orderId", value: selectedOrder.id }, { status: "delivered" }).then(() => {
-      triggerRender();
+      toast({
+        title: "Order Delivered",
+        description: `Order ${selectedOrder.id} has been marked as delivered.`,
+      })
+
       setOpenConfirmDialog(false)
-    }).catch(error => {
-      console.log({ error })
-    })
-  }, [selectedOrder])
+    }
+  }
 
-  const filteredOrders = useMemo(() => status === "all" ? orders : orders.filter(item => item.status === status), [status, orders])
+  const handleDispatchComplete = (orderId: string, updatedOrder: any) => {
+    // Update the shared context state
+    updateOrderStatus(orderId, {
+      status: "dispatched",
+      trackingId: updatedOrder.trackingId,
+      carrier: updatedOrder.carrier,
+      vehicleId: updatedOrder.vehicleId,
+      driverName: updatedOrder.driverName,
+      contactNumber: updatedOrder.contactNumber,
+    })
+
+    setOpenDispatchDialog(false)
+  }
 
   const isDispatched = (status: string) => {
     return ["dispatched", "partial_fulfillment", "delivered"].includes(status)
   }
-
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 5
-
-  const currentItems = useMemo(() => {
-    const indexOfLastItem = currentPage * itemsPerPage
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage
-    return filteredOrders.slice(indexOfFirstItem, indexOfLastItem)
-  }, [filteredOrders, currentPage])
-
-  // Get unique SKUs for filter dropdown
-  const handlePageChange = useCallback((page: number) => {
-    setCurrentPage(page)
-  }, [])
 
   return (
     <div className="space-y-4">
@@ -98,8 +112,8 @@ export function LogisticsTable({ status = 'all' }: LogisticsTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {currentItems.length > 0 ? (
-              currentItems.map((order) => (
+            {paginatedOrders.length > 0 ? (
+              paginatedOrders.map((order) => (
                 <TableRow key={order.id}>
                   <TableCell className="font-medium">{order.id}</TableCell>
                   <TableCell>{order.customer}</TableCell>
@@ -108,7 +122,7 @@ export function LogisticsTable({ status = 'all' }: LogisticsTableProps) {
                   </TableCell>
                   <TableCell>
                     {isDispatched(order.status) ? (
-                      order.shipmentId ||
+                      order.trackingId ||
                       `SH-${Math.floor(Math.random() * 10000)
                         .toString()
                         .padStart(4, "0")}`
@@ -128,12 +142,22 @@ export function LogisticsTable({ status = 'all' }: LogisticsTableProps) {
                         <Eye className="h-4 w-4" />
                       </Button>
                       {order.status === "ready" && (
-                        <Button variant="default" size="sm" onClick={() => handleDispatchClick(order)}>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleDispatchClick(order)}
+                          className="bg-[#725af2] hover:bg-[#5d48d0] text-white"
+                        >
                           Dispatch
                         </Button>
                       )}
                       {order.status === "dispatched" && (
-                        <Button variant="outline" size="sm" onClick={() => handleActionClick(order)}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleActionClick(order)}
+                          className="bg-[#2cd07e] hover:bg-[#25b06a] text-white border-none"
+                        >
                           Mark Delivered
                         </Button>
                       )}
@@ -151,16 +175,23 @@ export function LogisticsTable({ status = 'all' }: LogisticsTableProps) {
           </TableBody>
         </Table>
       </div>
+
+      {/* Pagination */}
       <DataTablePagination
         totalItems={filteredOrders.length}
         itemsPerPage={itemsPerPage}
         currentPage={currentPage}
-        onPageChange={handlePageChange}
+        onPageChange={setCurrentPage}
       />
 
       {selectedOrder && (
         <>
-          <DispatchDialog open={openDispatchDialog} onOpenChange={setOpenDispatchDialog} order={selectedOrder} />
+          <DispatchDialog
+            open={openDispatchDialog}
+            onOpenChange={setOpenDispatchDialog}
+            order={selectedOrder}
+            onDispatchComplete={handleDispatchComplete}
+          />
           <ShipmentDetailsDialog open={openDetailsDialog} onOpenChange={setOpenDetailsDialog} order={selectedOrder} />
           <AlertDialog open={openConfirmDialog} onOpenChange={setOpenConfirmDialog}>
             <AlertDialogContent>
@@ -181,4 +212,3 @@ export function LogisticsTable({ status = 'all' }: LogisticsTableProps) {
     </div>
   )
 }
-

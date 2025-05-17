@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,8 +11,6 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
 import { AddProductDialog } from "./add-product-dialog"
-import { useOrders } from "@/contexts/order-context"
-import { DataByTableName } from "../utils/api"
 
 interface ClientViewDialogProps {
   open: boolean
@@ -76,25 +74,10 @@ const initialProducts = [
 ]
 
 // Global products state (simulating a database)
-// let globalProducts = [...initialProducts]
+let globalProducts = [...initialProducts]
 
 export function ClientViewDialog({ open, onOpenChange, client }: ClientViewDialogProps) {
   const { toast } = useToast()
-  const { productInfo, clientProposedPrice, clientInfo, setRefetchData } = useOrders();
-  const globalProducts = useMemo(() => {
-    return Object.values(clientProposedPrice).map(item => {
-      const { name, sku, units = "-" } = productInfo[item.productId] ?? {}
-      return ({
-        id: item.id + "",
-        product: name,
-        sku: sku,
-        price: item.proposedPrice,
-        unit: `per ${units}`,
-        clientId: item.clientId,
-      })
-    })
-  }, [clientProposedPrice, productInfo, clientInfo])
-
   const [localProducts, setLocalProducts] = useState<any[]>([])
   const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false)
   const [selectedProducts, setSelectedProducts] = useState<number[]>([])
@@ -123,7 +106,7 @@ export function ClientViewDialog({ open, onOpenChange, client }: ClientViewDialo
     return () => {
       isMounted.current = false
     }
-  }, [open, globalProducts])
+  }, [open])
 
   // Get products for this client
   const clientProducts = localProducts.filter((product) => product.clientId === client?.id)
@@ -266,31 +249,22 @@ export function ClientViewDialog({ open, onOpenChange, client }: ClientViewDialo
   }
 
   // Handle bulk delete
-  const handleBulkDelete = useCallback(() => {
+  const handleBulkDelete = () => {
     if (selectedProducts.length === 0) return
 
-    const instance = new DataByTableName("client_proposed_price");
-    const apis = selectedProducts.map(item =>
-      instance.deleteById({ key: "id", value: item })
-    );
+    setLocalProducts((prev) => prev.filter((product) => !selectedProducts.includes(product.id)))
+    setIsDataSaved(false)
 
-    Promise.allSettled(apis).then((results) => {
-      setIsDataSaved(false);
-      toast({
-        title: "Products deleted",
-        description: `${selectedProducts.length} product(s) have been removed. Don't forget to save all changes.`,
-      })
-
-      setSelectedProducts([])
-      setEditedPrices({})
-      setEditedUnits({})
-      setHasUnsavedChanges(false)
-      setRefetchData(p => !p)
-    }).catch(error => {
-      console.log({ error })
+    toast({
+      title: "Products deleted",
+      description: `${selectedProducts.length} product(s) have been removed. Don't forget to save all changes.`,
     })
 
-  }, [selectedProducts])
+    setSelectedProducts([])
+    setEditedPrices({})
+    setEditedUnits({})
+    setHasUnsavedChanges(false)
+  }
 
   // Save all changes to the global products state
   const saveAllChanges = () => {
@@ -398,7 +372,7 @@ export function ClientViewDialog({ open, onOpenChange, client }: ClientViewDialo
                     Client Proposed Price
                   </CardTitle>
                   <div className="flex gap-2">
-                    {false && (
+                    {hasUnsavedChanges && (
                       <>
                         <Button variant="outline" size="sm" onClick={discardChanges}>
                           <X className="h-4 w-4 mr-2" />

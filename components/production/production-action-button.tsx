@@ -38,13 +38,12 @@ export function ProductionActionButton({
   return (
     <Button
       onClick={handleClick}
-      variant={deficit > 0 ? "default" : "outline"}
       size="sm"
-      disabled={disabled || deficit === 0}
+      disabled={disabled}
+      className="bg-[#1c86ff] hover:bg-[#1c86ff]/90 text-white border-[#1c86ff]"
     >
       <Plus className="h-4 w-4 mr-1" />
       Produce
     </Button>
   )
 }
-

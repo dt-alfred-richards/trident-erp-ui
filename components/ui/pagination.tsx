@@ -118,4 +118,3 @@ const PaginationNext = React.forwardRef<HTMLAnchorElement, React.HTMLAttributes<
 PaginationNext.displayName = "PaginationNext"
 
 export { PaginationContent, PaginationItem, PaginationLink, PaginationEllipsis, PaginationPrevious, PaginationNext }
-

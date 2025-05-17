@@ -13,13 +13,13 @@ export function RevenueChart({ timeRange }: RevenueChartProps) {
   // This would come from your API in a real application
   const revenueData = {
     week: [
-      { date: "Monday", revenue: 42000 },
-      { date: "Tuesday", revenue: 38000 },
-      { date: "Wednesday", revenue: 55000 },
-      { date: "Thursday", revenue: 47000 },
-      { date: "Friday", revenue: 63000 },
-      { date: "Saturday", revenue: 42000 },
-      { date: "Sunday", revenue: 33000 },
+      { date: "Mon", revenue: 42000 },
+      { date: "Tue", revenue: 38000 },
+      { date: "Wed", revenue: 55000 },
+      { date: "Thu", revenue: 47000 },
+      { date: "Fri", revenue: 63000 },
+      { date: "Sat", revenue: 42000 },
+      { date: "Sun", revenue: 33000 },
     ],
     month: Array.from({ length: 4 }, (_, i) => {
       const week = i + 1
@@ -94,7 +94,7 @@ export function RevenueChart({ timeRange }: RevenueChartProps) {
         <CardDescription>{periodDescription}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="h-[250px] w-full">
+        <div className="h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={data}
@@ -108,27 +108,56 @@ export function RevenueChart({ timeRange }: RevenueChartProps) {
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} />
               <YAxis
-                hide={true} // Hide the Y-axis completely
+                tickFormatter={formatRevenue}
+                axisLine={false}
+                tickLine={false}
+                tickMargin={8}
+                style={{ fontSize: "12px" }}
               />
               <Tooltip
-                content={<CustomTooltip />}
-                cursor={false} // Remove the vertical line cursor
+                content={({ active, payload, label }) => {
+                  if (active && payload && payload.length) {
+                    return (
+                      <div className="bg-background border border-border rounded-md shadow-md p-3 text-sm">
+                        <p className="font-medium">{label}</p>
+                        {payload.map((entry, index) => (
+                          <p key={index} className="text-muted-foreground">
+                            <span className="font-medium" style={{ color: entry.color }}>
+                              {entry.name}:{" "}
+                            </span>
+                            ₹{entry.value.toLocaleString()}
+                          </p>
+                        ))}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Total: ₹{payload.reduce((sum, entry) => sum + entry.value, 0).toLocaleString()}
+                        </p>
+                      </div>
+                    )
+                  }
+                  return null
+                }}
+                wrapperStyle={{ outline: "none" }}
               />
               <Line
                 type="monotone"
                 dataKey="revenue"
-                stroke="hsl(var(--chart-1))" // Use the chart-1 color from our theme
+                stroke="#2294f2" // Updated to requested blue color
                 strokeWidth={2}
                 dot={{
-                  fill: "hsl(var(--chart-1))",
+                  fill: "#2294f2", // Updated to requested blue color
                   r: 4,
                 }}
                 activeDot={{
                   r: 6,
-                  stroke: "hsl(var(--chart-1))",
+                  stroke: "#2294f2", // Updated to requested blue color
                   strokeWidth: 2,
                   fill: "hsl(var(--background))",
                 }}
+                label={({ x, y, value }) => (
+                  <text x={x} y={y - 10} fill="hsl(var(--foreground))" fontSize={12} textAnchor="middle">
+                    {formatRevenue(value)}
+                  </text>
+                )}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -146,4 +175,3 @@ export function RevenueChart({ timeRange }: RevenueChartProps) {
     </Card>
   )
 }
-

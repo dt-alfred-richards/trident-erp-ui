@@ -26,4 +26,3 @@ export function QuickActionCard({ title, icon: Icon, onClick, href }: QuickActio
 
   return <div onClick={onClick}>{content}</div>
 }
-

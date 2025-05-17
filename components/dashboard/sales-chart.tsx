@@ -60,10 +60,29 @@ export function SalesChart({ timeRange }: SalesChartProps) {
               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
             ))}
           </Pie>
-          <Tooltip formatter={(value: number) => [`${value.toLocaleString()} units`, "Sales"]} />
+          <Tooltip
+            content={({ active, payload, label }) => {
+              if (active && payload && payload.length) {
+                return (
+                  <div className="bg-background border border-border rounded-md shadow-md p-3 text-sm">
+                    <p className="font-medium">{label}</p>
+                    {payload.map((entry, index) => (
+                      <p key={index} className="text-muted-foreground">
+                        <span className="font-medium" style={{ color: entry.color }}>
+                          {entry.name}:
+                        </span>{" "}
+                        ₹{entry.value.toLocaleString()}
+                      </p>
+                    ))}
+                  </div>
+                )
+              }
+              return null
+            }}
+            wrapperStyle={{ outline: "none" }}
+          />
         </PieChart>
       </ResponsiveContainer>
     </div>
   )
 }
-

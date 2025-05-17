@@ -1,84 +1,158 @@
 "use client"
 
-import { FinishedGoodsContext, useFinished } from "@/app/inventory/finished-goods/context"
-import { Allocations } from "@/app/inventory/finished-goods/page"
-import { Badge } from "@/components/ui/badge"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { useOrders } from "@/contexts/order-context"
+import { CalendarIcon, Download, Search, X } from "lucide-react"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format } from "date-fns"
-import { CalendarIcon, Download, Search } from "lucide-react"
-import moment from "moment"
-import { useCallback, useContext, useEffect, useMemo, useState } from "react"
-import { DataTablePagination } from "../ui/data-table-pagination"
+import { Badge } from "@/components/ui/badge"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
 
-export function AllocationHistory() {
-  const { orderDetails } = useFinished();
-  const { clientInfo, productInfo } = useOrders();
+interface AllocationHistoryProps {
+  allocationHistory?: {
+    id: string
+    timestamp: string
+    orderId: string
+    customer: string
+    sku: string
+    allocated: number
+  }[]
+}
+
+export function AllocationHistory({ allocationHistory: propAllocationHistory }: AllocationHistoryProps) {
   const [startDate, setStartDate] = useState<Date>()
   const [endDate, setEndDate] = useState<Date>()
   const [filterSku, setFilterSku] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState<string>("")
-  const [filterStatus, setFilterStatus] = useState<string>("all")
-  const [allocations, setAllocations] = useState<Allocations[]>([])
+  const [displayHistory, setDisplayHistory] = useState<any[]>([])
+  const [newAllocations, setNewAllocations] = useState<string[]>([])
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 5
+
+  // Function to clear all filters
+  const clearFilters = () => {
+    setStartDate(undefined)
+    setEndDate(undefined)
+    setFilterSku("all")
+    setSearchQuery("")
+  }
+
+  // Check if any filters are active
+  const hasActiveFilters = startDate || endDate || filterSku !== "all" || searchQuery
+
+  // This would come from your API in a real application
+  const defaultAllocationHistory = [
+    {
+      id: "ALLOC-001",
+      timestamp: "2023-10-12T10:15:00",
+      orderId: "SO-1003",
+      customer: "Urgent Pharma",
+      sku: "500ml",
+      allocated: 200,
+    },
+    {
+      id: "ALLOC-002",
+      timestamp: "2023-10-12T10:20:00",
+      orderId: "SO-1001",
+      customer: "ABC Corp",
+      sku: "500ml",
+      allocated: 300,
+    },
+    {
+      id: "ALLOC-003",
+      timestamp: "2023-10-12T10:25:00",
+      orderId: "SO-1002",
+      customer: "XYZ Retail",
+      sku: "500ml",
+      allocated: 300,
+    },
+    {
+      id: "ALLOC-004",
+      timestamp: "2023-10-13T09:30:00",
+      orderId: "SO-1005",
+      customer: "Premium Stores",
+      sku: "750ml",
+      allocated: 400,
+    },
+    {
+      id: "ALLOC-005",
+      timestamp: "2023-10-13T14:45:00",
+      orderId: "SO-1004",
+      customer: "Global Foods",
+      sku: "750ml",
+      allocated: 600,
+    },
+    {
+      id: "ALLOC-006",
+      timestamp: "2023-10-14T11:30:00",
+      orderId: "SO-1006",
+      customer: "Metro Distributors",
+      sku: "1000ml",
+      allocated: 250,
+    },
+    {
+      id: "ALLOC-007",
+      timestamp: "2023-10-14T13:15:00",
+      orderId: "SO-1007",
+      customer: "City Wholesalers",
+      sku: "1000ml",
+      allocated: 350,
+    },
+  ]
+
+  // Update display history when prop history changes
   useEffect(() => {
-    if (orderDetails.length == 0) return
-    const _allocations = orderDetails.map((order, index) => ({
-      id: index + "",
-      timestamp: new Date(order.createdOn ?? "").toLocaleDateString(),
-      user: order.clientId,
-      orderId: order.orderId ?? "",
-      customer: clientInfo[order.clientId]?.name ?? "",
-      sku: productInfo[order.productId]?.sku ?? "",
-      allocated: order.casesReserved,
-      requested: order.cases,
-      status: order.status,
-      reason: "",
-    }))
-    setAllocations(_allocations)
-  }, [orderDetails, clientInfo, productInfo])
+    if (propAllocationHistory) {
+      setDisplayHistory(propAllocationHistory)
 
+      // Check for new allocations (those not in the default history)
+      const defaultIds = new Set(defaultAllocationHistory.map((item) => item.id))
+      const newIds = propAllocationHistory.filter((item) => !defaultIds.has(item.id)).map((item) => item.id)
 
+      setNewAllocations(newIds)
+    } else {
+      setDisplayHistory(defaultAllocationHistory)
+    }
+  }, [propAllocationHistory])
 
-  // Filter history based on date range, SKU, status, and search query
-  const filteredHistory = useMemo(() => allocations.filter((item) => {
+  // Filter history based on date range, SKU, and search query
+  const filteredHistory = displayHistory.filter((item) => {
     const itemDate = new Date(item.timestamp)
     const matchesDateRange = (!startDate || itemDate >= startDate) && (!endDate || itemDate <= endDate)
     const matchesSku = filterSku === "all" || item.sku === filterSku
-    const matchesStatus = filterStatus === "all" || item.status === filterStatus
 
     const matchesSearch =
       !searchQuery ||
       item.orderId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.reason.toLowerCase().includes(searchQuery.toLowerCase())
-    item.sku.toLowerCase().includes(searchQuery.toLowerCase())
+      item.customer.toLowerCase().includes(searchQuery.toLowerCase())
 
-    return matchesDateRange && matchesSku && matchesStatus && matchesSearch
-  }), [allocations, searchQuery, filterSku])
+    return matchesDateRange && matchesSku && matchesSearch
+  })
 
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 5
+  // Get current items for pagination
+  const indexOfLastItem = currentPage * itemsPerPage
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage
+  const currentItems = filteredHistory.slice(indexOfFirstItem, indexOfLastItem)
 
-  const currentItems = useMemo(() => {
-    const indexOfLastItem = currentPage * itemsPerPage
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage
-    return filteredHistory.slice(indexOfFirstItem, indexOfLastItem)
-  }, [filteredHistory, currentPage])
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
 
   // Get unique SKUs for filter dropdown
-  const uniqueSkus = Array.from(new Set(allocations.map((item) => item.sku))).filter(item => item)
+  const uniqueSkus = Array.from(new Set(displayHistory.map((item) => item.sku)))
 
-  const handlePageChange = useCallback((page: number) => {
-    setCurrentPage(page)
-  }, [])
-
+  // Check if an allocation is new (added in this session)
+  const isNewAllocation = (id: string) => {
+    return newAllocations.includes(id)
+  }
 
   return (
     <div className="space-y-6">
@@ -115,7 +189,7 @@ export function AllocationHistory() {
 
         <div className="space-y-2">
           <Label htmlFor="filter-sku">SKU</Label>
-          <Select value={filterSku ?? ""} onValueChange={setFilterSku}>
+          <Select value={filterSku} onValueChange={setFilterSku}>
             <SelectTrigger id="filter-sku" className="w-full">
               <SelectValue placeholder="Filter by SKU" />
             </SelectTrigger>
@@ -130,37 +204,40 @@ export function AllocationHistory() {
           </Select>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="filter-status">Status</Label>
-          <Select value={filterStatus ?? ""} onValueChange={setFilterStatus}>
-            <SelectTrigger id="filter-status" className="w-full">
-              <SelectValue placeholder="Filter by Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="complete">Complete</SelectItem>
-              <SelectItem value="partial">Partial</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
         <div className="space-y-2 flex-1">
           <Label htmlFor="search">Search</Label>
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               id="search"
-              placeholder="Search by order ID, customer, or reason"
+              placeholder="Search by order ID or customer"
               className="pl-8"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
         </div>
+
+        {hasActiveFilters && (
+          <div className="space-y-2 self-end">
+            <Label className="opacity-0">Clear</Label>
+            <Button variant="outline" onClick={clearFilters} className="flex items-center">
+              <X className="mr-2 h-4 w-4" />
+              Clear Filters
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">Allocation History</h3>
+        <h3 className="text-lg font-medium">
+          Allocation History
+          {hasActiveFilters && (
+            <span className="ml-2 text-sm text-muted-foreground">
+              ({filteredHistory.length} of {displayHistory.length} records)
+            </span>
+          )}
+        </h3>
         <Button variant="outline" size="sm">
           <Download className="mr-2 h-4 w-4" />
           Export CSV
@@ -172,52 +249,42 @@ export function AllocationHistory() {
           <TableHeader>
             <TableRow>
               <TableHead>Date & Time</TableHead>
-              <TableHead>User</TableHead>
               <TableHead>Order ID</TableHead>
               <TableHead>Customer</TableHead>
               <TableHead>SKU</TableHead>
               <TableHead className="text-right">Allocated</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Reason</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {currentItems.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell className="whitespace-nowrap">{moment(item.timestamp).format('DD-MM-YYYY')}</TableCell>
-                <TableCell>{item.user}</TableCell>
-                <TableCell className="font-medium">{item.orderId}</TableCell>
-                <TableCell>{item.customer}</TableCell>
-                <TableCell>{item.sku}</TableCell>
-                <TableCell className="text-right">
-                  {item.allocated.toLocaleString()} / {item.requested.toLocaleString()}
-                </TableCell>
-                <TableCell>
-                  {item.status === "partial_fulfillment" ? (
-                    <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-                      Partial
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                      Complete
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell className="max-w-[200px] truncate" title={item.reason}>
-                  {item.reason}
-                </TableCell>
-              </TableRow>
-            ))}
-            {filteredHistory.length === 0 && (
+            {currentItems.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center">
+                <TableCell colSpan={5} className="h-24 text-center">
                   No allocation records found
                 </TableCell>
               </TableRow>
+            ) : (
+              currentItems.map((item) => (
+                <TableRow key={item.id} className={isNewAllocation(item.id) ? "bg-green-50 dark:bg-green-900/10" : ""}>
+                  <TableCell className="whitespace-nowrap">
+                    {new Date(item.timestamp).toLocaleString()}
+                    {isNewAllocation(item.id) && (
+                      <Badge variant="outline" className="ml-2 bg-green-100 text-green-700 border-green-200">
+                        New
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="font-medium">{item.orderId}</TableCell>
+                  <TableCell>{item.customer}</TableCell>
+                  <TableCell>{item.sku}</TableCell>
+                  <TableCell className="text-right">{item.allocated.toLocaleString()}</TableCell>
+                </TableRow>
+              ))
             )}
           </TableBody>
         </Table>
       </div>
+
+      {/* Pagination */}
       <DataTablePagination
         totalItems={filteredHistory.length}
         itemsPerPage={itemsPerPage}
@@ -227,4 +294,3 @@ export function AllocationHistory() {
     </div>
   )
 }
-

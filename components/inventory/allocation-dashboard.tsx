@@ -560,4 +560,3 @@ export function AllocationDashboard() {
     </div>
   )
 }
-

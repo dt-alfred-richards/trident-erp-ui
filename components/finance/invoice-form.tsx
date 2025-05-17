@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import { useFinance, type Invoice } from "@/contexts/finance-context"
 import { X, Plus } from "lucide-react"
+import { useEffect } from "react"
 
 // Define the form schema
 const invoiceItemSchema = z.object({
@@ -74,6 +75,28 @@ export function InvoiceForm({ open, onOpenChange, initialValues, invoiceId }: In
     defaultValues,
   })
 
+  // Add this useEffect hook after the form initialization
+  useEffect(() => {
+    if (initialValues) {
+      form.reset({
+        customer: initialValues.customer || "",
+        date: initialValues.date || new Date().toISOString().split("T")[0],
+        dueDate: initialValues.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+        status: initialValues.status || "Open",
+        items: initialValues.items || [
+          {
+            description: "",
+            quantity: 1,
+            unitPrice: 0,
+            amount: 0,
+            taxRate: 18,
+            taxAmount: 0,
+          },
+        ],
+      })
+    }
+  }, [initialValues, form])
+
   // Use field array for invoice items
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -112,6 +135,13 @@ export function InvoiceForm({ open, onOpenChange, initialValues, invoiceId }: In
       taxRate: 18,
       taxAmount: 0,
     })
+
+    // Force recalculation of totals after adding a new item
+    setTimeout(() => {
+      const newIndex = fields.length
+      form.setValue(`items.${newIndex}.amount`, 0)
+      form.setValue(`items.${newIndex}.taxAmount`, 0)
+    }, 0)
   }
 
   // Handle form submission
@@ -138,7 +168,7 @@ export function InvoiceForm({ open, onOpenChange, initialValues, invoiceId }: In
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px]">
+      <DialogContent className="sm:max-w-[800px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEditing ? "Edit Invoice" : "Create Invoice"}</DialogTitle>
           <DialogDescription>
@@ -366,4 +396,3 @@ export function InvoiceForm({ open, onOpenChange, initialValues, invoiceId }: In
     </Dialog>
   )
 }
-

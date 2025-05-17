@@ -14,7 +14,7 @@ export function LogisticsDashboard() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="flex items-center justify-between mb-4">
           <ShipmentTrackingHeader>
-            <TabsList>
+            <TabsList className="bg-white dark:bg-[#0f1729] [&_[data-state=active]]:bg-white [&_[data-state=active]]:dark:bg-[#020817] [&_[data-state=active]]:text-[#1b84ff] [&_[data-state=active]]:border-b-2 [&_[data-state=active]]:border-[#1b84ff] [&_[data-state=inactive]]:bg-[#f1f5f8] [&_[data-state=inactive]]:dark:bg-[#101929]">
               <TabsTrigger value="all">All Shipments</TabsTrigger>
               <TabsTrigger value="ready">Ready for Dispatch</TabsTrigger>
               <TabsTrigger value="dispatched">Out for Delivery</TabsTrigger>
@@ -58,4 +58,3 @@ export function LogisticsDashboard() {
     </div>
   )
 }
-

@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useFinance, type Transaction } from "@/contexts/finance-context"
+import { useEffect } from "react"
 
 // Define the form schema
 const formSchema = z.object({
@@ -45,12 +46,11 @@ export function TransactionForm({ open, onOpenChange, initialValues, transaction
   const defaultValues: Partial<TransactionFormValues> = {
     date: new Date().toISOString().split("T")[0],
     description: "",
-    account: "",
+    account: bankAccounts.length > 0 ? bankAccounts[0].name : "",
     type: "Deposit",
     amount: 0,
     reference: "",
     status: "Pending",
-    ...initialValues,
   }
 
   // Initialize the form
@@ -58,6 +58,27 @@ export function TransactionForm({ open, onOpenChange, initialValues, transaction
     resolver: zodResolver(formSchema),
     defaultValues,
   })
+
+  // Reset form when dialog opens/closes or when editing/creating mode changes
+  useEffect(() => {
+    if (open) {
+      if (isEditing && initialValues) {
+        // If editing, populate with initial values
+        form.reset({
+          date: initialValues.date,
+          description: initialValues.description,
+          account: initialValues.account,
+          type: initialValues.type,
+          amount: initialValues.amount,
+          reference: initialValues.reference || "",
+          status: initialValues.status,
+        })
+      } else {
+        // If creating new, reset to default values
+        form.reset(defaultValues)
+      }
+    }
+  }, [form, initialValues, isEditing, open])
 
   // Handle form submission
   const onSubmit = (values: TransactionFormValues) => {
@@ -68,7 +89,6 @@ export function TransactionForm({ open, onOpenChange, initialValues, transaction
     }
 
     onOpenChange(false)
-    form.reset(defaultValues)
   }
 
   return (
@@ -218,4 +238,3 @@ export function TransactionForm({ open, onOpenChange, initialValues, transaction
     </Dialog>
   )
 }
-

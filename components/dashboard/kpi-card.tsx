@@ -12,7 +12,7 @@ interface KpiCardProps {
 
 export function KpiCard({ title, value, change, trend, description, icon: Icon }: KpiCardProps) {
   return (
-    <Card>
+    <Card className="overflow-hidden border-none shadow-md bg-[#f1f5f8] dark:bg-[#0f1729]">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         <Icon className="h-4 w-4 text-muted-foreground" />
@@ -34,4 +34,3 @@ export function KpiCard({ title, value, change, trend, description, icon: Icon }
     </Card>
   )
 }
-

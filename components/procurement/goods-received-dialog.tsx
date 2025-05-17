@@ -21,6 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 
 interface POItem {
   id: string
@@ -36,9 +37,10 @@ interface GoodsReceivedDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   poNumber: string
+  onGoodsReceived?: (poId: string, isFullDelivery: boolean) => void
 }
 
-export function GoodsReceivedDialog({ open, onOpenChange, poNumber }: GoodsReceivedDialogProps) {
+export function GoodsReceivedDialog({ open, onOpenChange, poNumber, onGoodsReceived }: GoodsReceivedDialogProps) {
   // Mock data for PO items - in a real app, this would be fetched based on the PO number
   const [poItems, setPoItems] = useState<POItem[]>([
     {
@@ -84,6 +86,10 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber }: GoodsRecei
     ],
   })
 
+  // Add state for confirmation dialog
+  const [confirmReceiveAll, setConfirmReceiveAll] = useState(false)
+  const [confirmGrnDialog, setConfirmGrnDialog] = useState(false)
+
   const handleItemSelection = (itemId: string, checked: boolean) => {
     setPoItems((prevItems) =>
       prevItems.map((item) =>
@@ -110,6 +116,32 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber }: GoodsRecei
       ...prev,
       [field]: value,
     }))
+  }
+
+  // Add function to handle "Receive All" button click
+  const handleReceiveAll = () => {
+    // Select all items and set received quantity to ordered quantity
+    setPoItems((prevItems) =>
+      prevItems.map((item) => ({
+        ...item,
+        selected: true,
+        receivedQuantity: item.quantity.toString(),
+      })),
+    )
+  }
+
+  // Add function to confirm receive all
+  const confirmReceiveAllItems = () => {
+    // Close the confirmation dialog
+    setConfirmReceiveAll(false)
+
+    // Call the callback to update the parent component
+    if (onGoodsReceived) {
+      onGoodsReceived(poNumber, true)
+    }
+
+    // Close the dialog
+    onOpenChange(false)
   }
 
   const rawMaterialCategories = [
@@ -213,6 +245,11 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber }: GoodsRecei
       return
     }
 
+    // Show confirmation dialog instead of immediately submitting
+    setConfirmGrnDialog(true)
+  }
+
+  const confirmCreateGrn = () => {
     // Here you would submit the GRN to your API
     console.log("Creating GRN:", {
       poId: poNumber,
@@ -231,8 +268,21 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber }: GoodsRecei
         : {}),
     })
 
-    alert("Goods received note created successfully!")
+    // Call the callback to update the parent component - always set to partial
+    if (onGoodsReceived) {
+      onGoodsReceived(poNumber, false) // false means partial delivery
+    }
+
+    // Close the confirmation dialog
+    setConfirmGrnDialog(false)
+
+    // Close the main dialog
     onOpenChange(false)
+  }
+
+  // Check if all items are fully received
+  const isFullyReceived = () => {
+    return poItems.every((item) => item.selected && Number(item.receivedQuantity) === item.quantity)
   }
 
   return (
@@ -246,6 +296,17 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber }: GoodsRecei
         <ScrollArea className="flex-1 h-full px-6 py-2 overflow-auto">
           <form id="grn-form" onSubmit={handleSubmit} className="space-y-4 pb-2">
             <div className="space-y-2">
+              <div className="flex justify-between items-center mb-2">
+                <div className="text-sm text-muted-foreground">Select items and enter received quantities</div>
+                <Button
+                  type="button"
+                  onClick={() => setConfirmReceiveAll(true)}
+                  className="text-sm bg-[#43ced7] hover:bg-[#36b0b8] text-white"
+                >
+                  Receive All
+                </Button>
+              </div>
+
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
@@ -499,11 +560,40 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber }: GoodsRecei
           <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button type="submit" form="grn-form">
+          <Button
+            type="submit"
+            form="grn-form"
+            style={{ backgroundColor: "#1b84ff", color: "#ffffff" }}
+            className="hover:bg-blue-600"
+          >
             Create GRN
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Confirmation Dialog for Receive All */}
+      <ConfirmationDialog
+        open={confirmReceiveAll}
+        onOpenChange={setConfirmReceiveAll}
+        title="Receive All Items"
+        description="This will mark all items as fully received. The order status will be changed to 'Completed'. Do you want to continue?"
+        confirmLabel="Yes, Receive All"
+        cancelLabel="Cancel"
+        onConfirm={() => {
+          handleReceiveAll()
+          confirmReceiveAllItems()
+        }}
+      />
+      {/* Confirmation Dialog for Create GRN */}
+      <ConfirmationDialog
+        open={confirmGrnDialog}
+        onOpenChange={setConfirmGrnDialog}
+        title="Create Goods Received Note"
+        description="Are you sure you want to create this GRN? The order status will be changed to 'Partial'."
+        confirmLabel="Yes, Create GRN"
+        cancelLabel="Cancel"
+        onConfirm={confirmCreateGrn}
+      />
     </Dialog>
   )
 }

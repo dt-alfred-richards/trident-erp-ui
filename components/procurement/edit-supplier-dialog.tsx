@@ -25,6 +25,7 @@ export function EditSupplierDialog({ supplier, open, onOpenChange, onSave }: Edi
   const [contactPerson, setContactPerson] = useState(supplier.contactPerson)
   const [email, setEmail] = useState(supplier.email)
   const [phone, setPhone] = useState(supplier.phone)
+  const [address, setAddress] = useState(supplier.address || "")
   const [errors, setErrors] = useState<Record<string, string>>({})
   const { toast } = useToast()
 
@@ -56,6 +57,7 @@ export function EditSupplierDialog({ supplier, open, onOpenChange, onSave }: Edi
       contactPerson,
       email,
       phone,
+      address,
     }
 
     // Call onSave with updated supplier
@@ -122,7 +124,6 @@ export function EditSupplierDialog({ supplier, open, onOpenChange, onSave }: Edi
               <Input
                 id="phone"
                 value={phone}
-                type='number'
                 onChange={(e) => {
                   setPhone(e.target.value)
                   if (errors.phone) setErrors({ ...errors, phone: "" })
@@ -130,6 +131,14 @@ export function EditSupplierDialog({ supplier, open, onOpenChange, onSave }: Edi
                 className={errors.phone ? "border-destructive" : ""}
               />
               {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
+            </div>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="address" className="text-right">
+              Address
+            </Label>
+            <div className="col-span-3 space-y-1">
+              <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} />
             </div>
           </div>
         </div>

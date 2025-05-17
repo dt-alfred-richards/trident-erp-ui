@@ -21,4 +21,3 @@ export function ChartCard({ title, description, children, className }: ChartCard
     </Card>
   )
 }
-

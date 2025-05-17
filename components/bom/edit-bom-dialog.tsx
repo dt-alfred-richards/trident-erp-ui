@@ -20,6 +20,11 @@ import { useBomStore } from "@/hooks/use-bom-store"
 import { useInventoryStore } from "@/hooks/use-inventory-store"
 import type { BomType, BomComponentType } from "@/types/bom"
 
+// Extended component type to include the type field
+interface ExtendedBomComponentType extends BomComponentType {
+  type?: string
+}
+
 interface EditBomDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -33,15 +38,52 @@ export function EditBomDialog({ open, onOpenChange, bom }: EditBomDialogProps) {
   const [productName, setProductName] = useState(bom.productName)
   const [bomCode, setBomCode] = useState(bom.bomCode)
   const [isActive, setIsActive] = useState(bom.status === "active")
-  const [components, setComponents] = useState<BomComponentType[]>(bom.components)
+  const [components, setComponents] = useState<ExtendedBomComponentType[]>(() => {
+    // Initialize components with type field if not present
+    return bom.components.map((comp) => ({
+      ...comp,
+      type: comp.type || "Standard",
+    }))
+  })
   const [error, setError] = useState<string | null>(null)
+
+  // Define the fixed material options
+  const materialOptions = [
+    { name: "Preform", unit: "Pcs", cost: 2.5 },
+    { name: "Caps", unit: "Pcs", cost: 0.75 },
+    { name: "Labels", unit: "Pcs", cost: 1.25 },
+    { name: "Shrink", unit: "Gms", cost: 0.5 },
+  ]
+
+  // Define unit options
+  const unitOptions = ["Pcs", "Gms"]
+
+  // Define type options based on material
+  const typeOptionsMap = {
+    Preform: ["9.3", "12.5", "19", "32", "26"],
+    Caps: ["Red", "White", "Black", "Pink", "Yellow", "Blue", "Orange"],
+    Labels: ["500ml Standard", "1L Premium", "2L Economy", "750ml Special", "330ml Mini"],
+    Shrink: ["480mm", "530mm"],
+    default: ["Standard", "Premium", "Economy", "Custom"],
+  }
+
+  // Get type options based on selected material
+  const getTypeOptions = (materialName: string) => {
+    return typeOptionsMap[materialName as keyof typeof typeOptionsMap] || typeOptionsMap.default
+  }
 
   // Update form when BOM changes
   useEffect(() => {
     setProductName(bom.productName)
     setBomCode(bom.bomCode)
     setIsActive(bom.status === "active")
-    setComponents(bom.components)
+    // Initialize components with type field if not present
+    setComponents(
+      bom.components.map((comp) => ({
+        ...comp,
+        type: comp.type || "Standard",
+      })),
+    )
   }, [bom])
 
   const handleAddComponent = () => {
@@ -50,8 +92,9 @@ export function EditBomDialog({ open, onOpenChange, bom }: EditBomDialogProps) {
       {
         materialName: "",
         quantity: 0,
-        unit: "",
+        unit: "Pcs", // Default unit
         cost: 0,
+        type: "Standard", // Default type
       },
     ])
   }
@@ -60,16 +103,37 @@ export function EditBomDialog({ open, onOpenChange, bom }: EditBomDialogProps) {
     setComponents(components.filter((_, i) => i !== index))
   }
 
-  const handleComponentChange = (index: number, field: keyof BomComponentType, value: string | number) => {
+  const handleComponentChange = (index: number, field: keyof ExtendedBomComponentType, value: string | number) => {
     const updatedComponents = [...components]
 
     if (field === "materialName") {
-      const selectedItem = inventoryItems.find((item) => item.name === value)
+      const selectedItem = materialOptions.find((item) => item.name === value)
+      const typeOptions = getTypeOptions(value as string)
+      const defaultType = typeOptions[0] || "Standard"
+
       updatedComponents[index] = {
         ...updatedComponents[index],
         [field]: value as string,
-        unit: selectedItem?.unit || "",
+        unit: selectedItem?.unit || "Pcs", // Default to Pcs if not found
         cost: selectedItem?.cost || 0,
+        type: defaultType, // Set default type based on selected material
+      }
+    } else if (field === "cost") {
+      // Handle cost changes - ensure it's a valid number
+      let costValue = value
+
+      // If it's a string (from input), parse it
+      if (typeof costValue === "string") {
+        // Remove currency symbol if present
+        costValue = costValue.replace("₹", "").trim()
+        // Parse as float
+        const parsedValue = Number.parseFloat(costValue as string)
+        costValue = isNaN(parsedValue) ? 0 : parsedValue
+      }
+
+      updatedComponents[index] = {
+        ...updatedComponents[index],
+        [field]: costValue as number,
       }
     } else {
       updatedComponents[index] = {
@@ -111,13 +175,18 @@ export function EditBomDialog({ open, onOpenChange, bom }: EditBomDialogProps) {
       }
     }
 
-    // Update BOM
+    // Update BOM - strip out the type field if it's not in the original type
+    const updatedComponents = components.map(({ type, ...rest }) => {
+      // Include type in the saved data
+      return { ...rest, type } as BomComponentType
+    })
+
     updateBom({
       ...bom,
       productName,
       bomCode,
       status: isActive ? "active" : "inactive",
-      components,
+      components: updatedComponents,
       unitCost: calculateTotalCost(),
     })
 
@@ -127,7 +196,7 @@ export function EditBomDialog({ open, onOpenChange, bom }: EditBomDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit BOM</DialogTitle>
           <DialogDescription>Update the Bill of Materials for {bom.productName}</DialogDescription>
@@ -148,7 +217,12 @@ export function EditBomDialog({ open, onOpenChange, bom }: EditBomDialogProps) {
           </div>
 
           <div className="flex items-center space-x-2">
-            <Switch id="active-status" checked={isActive} onCheckedChange={setIsActive} />
+            <Switch
+              id="active-status"
+              checked={isActive}
+              onCheckedChange={setIsActive}
+              className="data-[state=checked]:bg-[#2cd07e] data-[state=checked]:border-[#2cd07e]"
+            />
             <Label htmlFor="active-status">Active</Label>
           </div>
 
@@ -166,9 +240,10 @@ export function EditBomDialog({ open, onOpenChange, bom }: EditBomDialogProps) {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Material</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead>Quantity</TableHead>
                     <TableHead>Unit</TableHead>
-                    <TableHead>Cost</TableHead>
+                    <TableHead>Cost (₹)</TableHead>
                     <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -184,9 +259,26 @@ export function EditBomDialog({ open, onOpenChange, bom }: EditBomDialogProps) {
                             <SelectValue placeholder="Select material" />
                           </SelectTrigger>
                           <SelectContent>
-                            {inventoryItems.map((item) => (
-                              <SelectItem key={item.id} value={item.name}>
+                            {materialOptions.map((item) => (
+                              <SelectItem key={item.name} value={item.name}>
                                 {item.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={component.type || "Standard"}
+                          onValueChange={(value) => handleComponentChange(index, "type", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {getTypeOptions(component.materialName).map((type) => (
+                              <SelectItem key={type} value={type}>
+                                {type}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -201,10 +293,30 @@ export function EditBomDialog({ open, onOpenChange, bom }: EditBomDialogProps) {
                         />
                       </TableCell>
                       <TableCell>
-                        <Input value={component.unit} readOnly />
+                        <Select
+                          value={component.unit}
+                          onValueChange={(value) => handleComponentChange(index, "unit", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select unit" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {unitOptions.map((unit) => (
+                              <SelectItem key={unit} value={unit}>
+                                {unit}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell>
-                        <Input value={`₹${component.cost.toFixed(2)}`} readOnly />
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={component.cost}
+                          onChange={(e) => handleComponentChange(index, "cost", e.target.value)}
+                        />
                       </TableCell>
                       <TableCell>
                         <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveComponent(index)}>
@@ -242,4 +354,3 @@ export function EditBomDialog({ open, onOpenChange, bom }: EditBomDialogProps) {
     </Dialog>
   )
 }
-

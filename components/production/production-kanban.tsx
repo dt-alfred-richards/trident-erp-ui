@@ -17,6 +17,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { ConfirmationDialog } from "@/components/common/confirmation-dialog"
+import { progressHistoryStore } from "./update-progress-dialog"
 
 interface ProductionKanbanProps {
   onViewDetails: (orderId: string) => void
@@ -29,18 +31,30 @@ export function ProductionKanban({ onViewDetails, onUpdateProgress }: Production
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
   const [unitsCompleted, setUnitsCompleted] = useState<number>(0)
   const [error, setError] = useState<string | null>(null)
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
+  const [orderToCancel, setOrderToCancel] = useState<string | null>(null)
+  const [progressPercentage, setProgressPercentage] = useState<number>(0)
+  const [updateConfirmDialogOpen, setUpdateConfirmDialogOpen] = useState(false)
+  const [previousCompletedUnits, setPreviousCompletedUnits] = useState<number>(0)
 
-  // Group orders by status - removed "planned" section
+  // Group orders by status
   const columns = {
     inProgress: {
       id: "inProgress",
       title: "In Progress",
-      items: productionOrders.filter((order) => order.progress > 0 && order.progress < 100),
+      items: productionOrders.filter(
+        (order) => order.progress > 0 && order.progress < 100 && order.status !== "cancelled",
+      ),
     },
     completed: {
       id: "completed",
       title: "Completed",
       items: productionOrders.filter((order) => order.progress === 100),
+    },
+    cancelled: {
+      id: "cancelled",
+      title: "Cancelled Orders",
+      items: productionOrders.filter((order) => order.status === "cancelled"),
     },
   }
 
@@ -49,48 +63,117 @@ export function ProductionKanban({ onViewDetails, onUpdateProgress }: Production
   // Calculate remaining units and progress percentage
   const totalUnits = selectedOrder?.quantity || 0
   const remainingUnits = totalUnits - unitsCompleted
-  const progressPercentage = totalUnits > 0 ? Math.round((unitsCompleted / totalUnits) * 100) : 0
 
   const handleOpenUpdateDialog = (orderId: string) => {
     const order = productionOrders.find((o) => o.id === orderId)
     if (order) {
       setSelectedOrderId(orderId)
-      // Initialize units completed based on current progress
-      const initialUnitsCompleted = Math.round((order.progress / 100) * order.quantity)
-      setUnitsCompleted(initialUnitsCompleted)
+
+      // Get the actual completed units from our store or calculate from progress
+      let completed = 0
+
+      // Check if we have history for this order
+      const history = progressHistoryStore[orderId] || []
+      if (history.length > 0) {
+        // Use the last history entry's completed units
+        completed = history[history.length - 1].completedUnits
+      } else {
+        // Calculate exact units from the current progress
+        completed = Math.round((order.progress / 100) * order.quantity)
+
+        // Create an initial history entry if none exists
+        progressHistoryStore[orderId] = [
+          {
+            timestamp: new Date(order.startDate).toISOString(),
+            completedUnits: completed,
+            totalUnits: order.quantity,
+            progressPercentage: order.progress,
+          },
+        ]
+      }
+
+      setUnitsCompleted(completed)
+      setPreviousCompletedUnits(completed)
+
+      // Store the exact progress percentage
+      setProgressPercentage(order.progress)
+
       setError(null)
       setUpdateDialogOpen(true)
     }
   }
 
-  const handleUnitsChange = (value: string) => {
-    const units = Number.parseInt(value, 10) || 0
-
-    if (selectedOrder) {
-      if (units > selectedOrder.quantity) {
-        setError(`Cannot exceed order quantity of ${selectedOrder.quantity.toLocaleString()} units`)
-        setUnitsCompleted(selectedOrder.quantity)
-      } else if (units < 0) {
-        setError("Units completed cannot be negative")
-        setUnitsCompleted(0)
-      } else {
-        setError(null)
-        setUnitsCompleted(units)
+  const handleUpdateClick = () => {
+    if (selectedOrderId && selectedOrder && !error) {
+      // Validate that new value is not less than previous
+      if (unitsCompleted < previousCompletedUnits) {
+        setError(`Cannot decrease from previous value of ${previousCompletedUnits} units`)
+        return
       }
+
+      setUpdateConfirmDialogOpen(true)
     }
   }
 
-  const handleSaveProgress = () => {
-    if (selectedOrderId && selectedOrder) {
-      // Convert units to percentage
-      const progress = Math.round((unitsCompleted / selectedOrder.quantity) * 100)
-      onUpdateProgress(selectedOrderId, progress)
+  const confirmUpdate = () => {
+    if (selectedOrderId && selectedOrder && !error) {
+      // Create a new progress history entry
+      const newHistoryEntry = {
+        timestamp: new Date().toISOString(),
+        completedUnits: unitsCompleted,
+        totalUnits: selectedOrder.quantity,
+        progressPercentage: progressPercentage,
+      }
+
+      // Update the progress history in our local store
+      const currentHistory = progressHistoryStore[selectedOrderId] || []
+      progressHistoryStore[selectedOrderId] = [...currentHistory, newHistoryEntry]
+
+      // Call the store to update the order progress
+      onUpdateProgress(selectedOrderId, progressPercentage)
+
+      // Close both dialogs
+      setUpdateConfirmDialogOpen(false)
       setUpdateDialogOpen(false)
     }
   }
 
   const handleMarkComplete = (orderId: string) => {
-    onUpdateProgress(orderId, 100)
+    const order = productionOrders.find((o) => o.id === orderId)
+    if (order) {
+      // Create a history entry for 100% completion
+      const newHistoryEntry = {
+        timestamp: new Date().toISOString(),
+        completedUnits: order.quantity,
+        totalUnits: order.quantity,
+        progressPercentage: 100,
+      }
+
+      // Update the progress history
+      const currentHistory = progressHistoryStore[orderId] || []
+      progressHistoryStore[orderId] = [...currentHistory, newHistoryEntry]
+
+      // Update the progress
+      onUpdateProgress(orderId, 100)
+    }
+  }
+
+  const handleCancelProduction = (orderId: string) => {
+    setOrderToCancel(orderId)
+    setCancelDialogOpen(true)
+  }
+
+  const confirmCancelProduction = () => {
+    if (orderToCancel) {
+      // Call the store to update the order status
+      const { updateOrderStatus } = useProductionStore.getState()
+      updateOrderStatus(orderToCancel, "cancelled", 0)
+
+      // Close both dialogs
+      setCancelDialogOpen(false)
+      setUpdateDialogOpen(false)
+      setOrderToCancel(null)
+    }
   }
 
   return (
@@ -103,7 +186,7 @@ export function ProductionKanban({ onViewDetails, onUpdateProgress }: Production
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {Object.values(columns).map((column) => (
           <div key={column.id} className="flex flex-col">
             <div className="flex items-center justify-between mb-3">
@@ -115,19 +198,40 @@ export function ProductionKanban({ onViewDetails, onUpdateProgress }: Production
             <div className="flex-1 space-y-3 min-h-[500px] bg-muted/30 p-3 rounded-lg">
               {column.items.length === 0 ? (
                 <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
-                  No {column.title.toLowerCase()} orders
+                  No {column.title.toLowerCase()}
                 </div>
               ) : (
                 column.items.map((item) => (
                   <Card
                     key={item.id}
-                    className={`border-l-4 ${column.id === "completed" ? "border-l-green-500" : "border-l-blue-500"}`}
+                    className={`border-l-4 ${
+                      column.id === "completed"
+                        ? "border-l-green-500"
+                        : column.id === "cancelled"
+                          ? "border-l-red-500"
+                          : "border-l-[#f6c000]"
+                    }`}
                   >
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-center">
                         <CardTitle className="text-base">{item.sku}</CardTitle>
-                        <Badge variant={column.id === "completed" ? "default" : "outline"}>
-                          {column.id === "inProgress" ? "In Progress" : "Completed"}
+                        <Badge
+                          variant="outline"
+                          className={`
+${
+  column.id === "inProgress"
+    ? "border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-400"
+    : column.id === "completed"
+      ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-400"
+      : "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400"
+}
+`}
+                        >
+                          {column.id === "inProgress"
+                            ? "In Progress"
+                            : column.id === "completed"
+                              ? "Completed"
+                              : "Cancelled"}
                         </Badge>
                       </div>
                     </CardHeader>
@@ -140,9 +244,15 @@ export function ProductionKanban({ onViewDetails, onUpdateProgress }: Production
                         <div className="flex items-center gap-2">
                           <Progress
                             value={item.progress}
-                            className={`h-2 flex-1 ${item.progress === 100 ? "bg-green-100" : ""}`}
+                            className={`h-2 flex-1 ${
+                              item.progress === 100
+                                ? "bg-[#2cd07e]/20 [&>div]:bg-[#2cd07e]"
+                                : column.id === "cancelled"
+                                  ? "bg-red-100 [&>div]:bg-red-500"
+                                  : "bg-[#f6c000]/20 [&>div]:bg-[#f6c000]"
+                            }`}
                           />
-                          <span className="text-sm font-medium w-9">{item.progress}%</span>
+                          <span className="text-sm font-medium w-14">{item.progress.toFixed(2)}%</span>
                         </div>
                         <div className="text-sm text-muted-foreground">
                           Deadline: {new Date(item.deadline).toLocaleDateString()}
@@ -161,7 +271,7 @@ export function ProductionKanban({ onViewDetails, onUpdateProgress }: Production
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 w-7 p-0"
+                          className="h-7 w-7 p-0 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
                           onClick={() => onViewDetails(item.id)}
                         >
                           <Eye className="h-4 w-4" />
@@ -171,19 +281,19 @@ export function ProductionKanban({ onViewDetails, onUpdateProgress }: Production
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-7 px-2 text-xs bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 border-blue-200"
+                              className="h-7 px-2 text-xs rounded-full bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/50 dark:hover:text-blue-200"
                               onClick={() => handleOpenUpdateDialog(item.id)}
                             >
-                              <BarChart2 className="h-3 w-3 mr-1 text-blue-600" />
+                              <BarChart2 className="h-3 w-3 mr-1" />
                               Update
                             </Button>
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-7 px-2 text-xs bg-gradient-to-r from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 border-green-200"
+                              className="h-7 px-2 text-xs rounded-full bg-green-50 text-green-700 border-green-200 hover:bg-green-100 hover:text-green-800 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800 dark:hover:bg-green-900/50 dark:hover:text-green-200"
                               onClick={() => handleMarkComplete(item.id)}
                             >
-                              <CheckCircle className="h-3 w-3 mr-1 text-green-600" />
+                              <CheckCircle className="h-3 w-3 mr-1" />
                               Complete
                             </Button>
                           </>
@@ -222,7 +332,7 @@ export function ProductionKanban({ onViewDetails, onUpdateProgress }: Production
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Current Progress</p>
-                    <p className="text-lg font-semibold">{selectedOrder.progress}%</p>
+                    <p className="text-lg font-semibold">{selectedOrder.progress.toFixed(2)}%</p>
                   </div>
                 </div>
               )}
@@ -233,44 +343,125 @@ export function ProductionKanban({ onViewDetails, onUpdateProgress }: Production
                 </label>
                 <Input
                   id="units-completed"
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={unitsCompleted}
-                  onChange={(e) => handleUnitsChange(e.target.value)}
-                  min={0}
-                  max={selectedOrder?.quantity}
+                  onChange={(e) => {
+                    const value = e.target.value
+
+                    // Allow empty string for user to clear the field
+                    if (value === "") {
+                      setUnitsCompleted(0)
+                      setError(null)
+                      return
+                    }
+
+                    // Check if the value is a valid integer
+                    const numValue = Number.parseInt(value, 10)
+                    if (isNaN(numValue) || numValue.toString() !== value) {
+                      setError("Please enter a valid integer")
+                      return
+                    }
+
+                    // Update the units completed
+                    setUnitsCompleted(numValue)
+
+                    if (selectedOrder) {
+                      // Prevent decreasing progress
+                      if (numValue < previousCompletedUnits) {
+                        setError(
+                          `Cannot decrease progress. Previous completed units: ${previousCompletedUnits.toLocaleString()}`,
+                        )
+                        return
+                      }
+
+                      if (numValue > selectedOrder.quantity) {
+                        setError(`Cannot exceed order quantity of ${selectedOrder.quantity.toLocaleString()} units`)
+                        return
+                      }
+
+                      setError(null)
+
+                      // Calculate exact progress percentage with 2 decimal places
+                      const exactProgress = (numValue / selectedOrder.quantity) * 100
+                      setProgressPercentage(Number.parseFloat(exactProgress.toFixed(2)))
+                    }
+                  }}
                   className="w-full"
                 />
+                {previousCompletedUnits > 0 && (
+                  <p className="text-xs text-muted-foreground flex items-center">
+                    <span className="mr-1">↑</span>
+                    Previous total: {previousCompletedUnits.toLocaleString()} units
+                  </p>
+                )}
                 {error && <p className="text-sm text-red-500">{error}</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-4 bg-muted/50 p-3 rounded-md">
                 <div>
                   <p className="text-sm font-medium">Remaining Units</p>
-                  <p className="text-lg font-semibold text-amber-600">{remainingUnits.toLocaleString()}</p>
+                  <p className="text-lg font-semibold text-amber-600">
+                    {selectedOrder ? (selectedOrder.quantity - unitsCompleted).toLocaleString() : 0}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm font-medium">New Progress</p>
-                  <p className="text-lg font-semibold text-blue-600">{progressPercentage}%</p>
+                  <p className="text-lg font-semibold text-blue-600">{progressPercentage.toFixed(2)}%</p>
                 </div>
               </div>
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setUpdateDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveProgress}
-              disabled={!!error}
-              className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600"
-            >
-              Save Progress
-            </Button>
+            <div className="flex justify-between w-full">
+              <Button
+                variant="destructive"
+                onClick={() => selectedOrderId && handleCancelProduction(selectedOrderId)}
+                disabled={!selectedOrderId || selectedOrder?.progress === 100}
+              >
+                Cancel Production
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setUpdateDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleUpdateClick} disabled={!!error}>
+                  Update
+                </Button>
+              </div>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Update Confirmation Dialog */}
+      <ConfirmationDialog
+        open={updateConfirmDialogOpen}
+        onOpenChange={setUpdateConfirmDialogOpen}
+        title="Confirm Progress Update"
+        description={
+          selectedOrder
+            ? `Are you sure you want to update the progress to ${unitsCompleted} units (${progressPercentage.toFixed(2)}%)?`
+            : "Confirm progress update"
+        }
+        confirmLabel="Update"
+        cancelLabel="Cancel"
+        onConfirm={confirmUpdate}
+      />
+
+      {/* Cancellation Confirmation Dialog */}
+      <ConfirmationDialog
+        open={cancelDialogOpen}
+        onOpenChange={setCancelDialogOpen}
+        title="Confirm Production Cancellation"
+        description="Are you sure you want to cancel this production order?"
+        confirmLabel="Confirm"
+        cancelLabel="Go Back"
+        onConfirm={confirmCancelProduction}
+        variant="destructive"
+      />
     </div>
   )
 }
-

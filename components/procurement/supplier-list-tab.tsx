@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -18,28 +18,101 @@ import { useToast } from "@/components/ui/use-toast"
 import { AddSupplierDialog } from "./add-supplier-dialog"
 import { ViewSupplierDialog } from "./view-supplier-dialog"
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
-import { Supplier, useProcurement } from "./procurement-context"
+
+// Mock data for suppliers
+const mockSuppliers = [
+  {
+    id: "SUP001",
+    name: "ABC Materials",
+    materialName: "Steel Sheets",
+    materialType: "Metal",
+    price: 450,
+    unit: "per ton",
+    contactPerson: "John Doe",
+    email: "john@abcmaterials.com",
+    phone: "+1-555-123-4567",
+  },
+  {
+    id: "SUP002",
+    name: "XYZ Chemicals",
+    materialName: "Industrial Adhesive",
+    materialType: "Chemical",
+    price: 75,
+    unit: "per liter",
+    contactPerson: "Jane Smith",
+    email: "jane@xyzchemicals.com",
+    phone: "+1-555-987-6543",
+  },
+  {
+    id: "SUP003",
+    name: "Global Plastics",
+    materialName: "PVC Pipes",
+    materialType: "Plastic",
+    price: 120,
+    unit: "per meter",
+    contactPerson: "Robert Johnson",
+    email: "robert@globalplastics.com",
+    phone: "+1-555-456-7890",
+  },
+  {
+    id: "SUP004",
+    name: "Timber Industries",
+    materialName: "Plywood Sheets",
+    materialType: "Wood",
+    price: 35,
+    unit: "per sheet",
+    contactPerson: "Sarah Williams",
+    email: "sarah@timberindustries.com",
+    phone: "+1-555-234-5678",
+  },
+  {
+    id: "SUP005",
+    name: "Fabric World",
+    materialName: "Cotton Fabric",
+    materialType: "Textile",
+    price: 8,
+    unit: "per yard",
+    contactPerson: "Michael Brown",
+    email: "michael@fabricworld.com",
+    phone: "+1-555-345-6789",
+  },
+  {
+    id: "SUP006",
+    name: "Metal Works",
+    materialName: "Aluminum Rods",
+    materialType: "Metal",
+    price: 200,
+    unit: "per kg",
+    contactPerson: "David Wilson",
+    email: "david@metalworks.com",
+    phone: "+1-555-567-8901",
+  },
+  {
+    id: "SUP007",
+    name: "Eco Packaging",
+    materialName: "Cardboard Boxes",
+    materialType: "Paper",
+    price: 2.5,
+    unit: "per unit",
+    contactPerson: "Lisa Taylor",
+    email: "lisa@ecopackaging.com",
+    phone: "+1-555-678-9012",
+  },
+  {
+    id: "SUP008",
+    name: "Tech Components",
+    materialName: "Circuit Boards",
+    materialType: "Electronic",
+    price: 45,
+    unit: "per piece",
+    contactPerson: "James Anderson",
+    email: "james@techcomponents.com",
+    phone: "+1-555-789-0123",
+  },
+]
 
 export function SupplierListTab() {
-  const { suppliersData = [], triggerRender } = useProcurement();
-
-  const [suppliers, setSuppliers] = useState<any[]>([])
-
-  useEffect(() => {
-    setSuppliers(
-      suppliersData?.map(item => ({
-        id: item.id + '',
-        name: item.name,
-        materialName: "Circuit Boards",
-        materialType: "Electronic",
-        price: 45,
-        unit: "per piece",
-        contactPerson: item.contactPerson,
-        email: item.email,
-        phone: item.phone,
-      }))
-    )
-  }, [suppliersData])
+  const [suppliers, setSuppliers] = useState(mockSuppliers)
   const [searchQuery, setSearchQuery] = useState("")
 
   // For edit dialog
@@ -151,7 +224,10 @@ export function SupplierListTab() {
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Button className="whitespace-nowrap" onClick={() => setIsAddDialogOpen(true)}>
+          <Button
+            className="whitespace-nowrap bg-[#725af2] hover:bg-[#5d48d0] text-white border-0"
+            onClick={() => setIsAddDialogOpen(true)}
+          >
             <Plus className="mr-2 h-4 w-4" />
             Add Supplier
           </Button>

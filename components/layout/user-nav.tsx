@@ -1,4 +1,4 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+"use client"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -10,17 +10,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
-import { User, Settings, LogOut } from "lucide-react"
+import { User, Lock, LogOut } from "lucide-react"
 
 export function UserNav() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src="/placeholder.svg?height=32&width=32" alt="@admin" />
-            <AvatarFallback>AD</AvatarFallback>
-          </Avatar>
+        <Button variant="ghost" className="relative h-8 w-8 rounded-full flex items-center justify-center">
+          <User className="h-5 w-5" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
@@ -39,14 +36,14 @@ export function UserNav() {
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href="/settings" className="flex w-full cursor-pointer items-center">
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Settings</span>
+            <Link href="/change-password" className="flex w-full cursor-pointer items-center">
+              <Lock className="mr-2 h-4 w-4" />
+              <span>Change Password</span>
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>
+        <DropdownMenuItem className="cursor-pointer">
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>
         </DropdownMenuItem>
@@ -54,4 +51,3 @@ export function UserNav() {
     </DropdownMenu>
   )
 }
-

@@ -8,6 +8,8 @@ import { useState } from "react"
 
 export function FinanceOverview() {
   const { journalEntries, invoices, bills, accounts } = useFinance()
+  const [isJournalEntryFormOpen, setIsJournalEntryFormOpen] = useState(false)
+  const [isInvoiceFormOpen, setIsInvoiceFormOpen] = useState(false)
 
   // Calculate financial metrics
   const totalRevenue = accounts
@@ -139,51 +141,67 @@ export function FinanceOverview() {
   return (
     <div className="p-6 space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="overflow-hidden border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-200">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <IndianRupee className="h-4 w-4" />
-              Total Revenue
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₹{(totalRevenue / 1000000).toFixed(1)}M</div>
+        <Card className="overflow-hidden border-none shadow-md hover:shadow-lg transition-shadow duration-200 bg-gradient-to-br from-green-500/5 to-green-500/10">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
+                <div className="flex items-baseline gap-2">
+                  <h3 className="text-2xl font-bold">₹{(totalRevenue / 1000000).toFixed(1)}M</h3>
+                </div>
+              </div>
+              <div className="rounded-full p-3 bg-green-500/10">
+                <IndianRupee className="h-4 w-4 text-green-500" />
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="overflow-hidden border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-200">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Receipt className="h-4 w-4" />
-              Accounts Receivable
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₹{(totalReceivables / 1000000).toFixed(1)}M</div>
+        <Card className="overflow-hidden border-none shadow-md hover:shadow-lg transition-shadow duration-200 bg-gradient-to-br from-blue-500/5 to-blue-500/10">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Accounts Receivable</p>
+                <div className="flex items-baseline gap-2">
+                  <h3 className="text-2xl font-bold">₹{(totalReceivables / 1000000).toFixed(1)}M</h3>
+                </div>
+              </div>
+              <div className="rounded-full p-3 bg-blue-500/10">
+                <Receipt className="h-4 w-4 text-blue-500" />
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="overflow-hidden border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-200">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <CreditCard className="h-4 w-4" />
-              Accounts Payable
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₹{(totalPayables / 1000000).toFixed(1)}M</div>
+        <Card className="overflow-hidden border-none shadow-md hover:shadow-lg transition-shadow duration-200 bg-gradient-to-br from-amber-500/5 to-amber-500/10">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Accounts Payable</p>
+                <div className="flex items-baseline gap-2">
+                  <h3 className="text-2xl font-bold">₹{(totalPayables / 1000000).toFixed(1)}M</h3>
+                </div>
+              </div>
+              <div className="rounded-full p-3 bg-amber-500/10">
+                <CreditCard className="h-4 w-4 text-amber-500" />
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="overflow-hidden border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-200">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Building className="h-4 w-4" />
-              Net Profit
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₹{(netProfit / 1000000).toFixed(1)}M</div>
+        <Card className="overflow-hidden border-none shadow-md hover:shadow-lg transition-shadow duration-200 bg-gradient-to-br from-purple-500/5 to-purple-500/10">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Net Profit</p>
+                <div className="flex items-baseline gap-2">
+                  <h3 className="text-2xl font-bold">₹{(netProfit / 1000000).toFixed(1)}M</h3>
+                </div>
+              </div>
+              <div className="rounded-full p-3 bg-purple-500/10">
+                <Building className="h-4 w-4 text-purple-500" />
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -197,8 +215,18 @@ export function FinanceOverview() {
           <CardContent>
             <Tabs defaultValue="receivables">
               <TabsList className="grid w-full grid-cols-2 bg-muted/50">
-                <TabsTrigger value="receivables">Receivables</TabsTrigger>
-                <TabsTrigger value="payables">Payables</TabsTrigger>
+                <TabsTrigger
+                  value="receivables"
+                  className="data-[state=active]:bg-white dark:data-[state=active]:bg-[#0f1729] data-[state=active]:text-[#1b84ff] data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff] rounded-none"
+                >
+                  Receivables
+                </TabsTrigger>
+                <TabsTrigger
+                  value="payables"
+                  className="data-[state=active]:bg-white dark:data-[state=active]:bg-[#0f1729] data-[state=active]:text-[#1b84ff] data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff] rounded-none"
+                >
+                  Payables
+                </TabsTrigger>
               </TabsList>
               <TabsContent value="receivables" className="pt-4">
                 <div className="space-y-4">
@@ -376,4 +404,3 @@ export function FinanceOverview() {
     </div>
   )
 }
-

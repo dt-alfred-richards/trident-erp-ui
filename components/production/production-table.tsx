@@ -79,7 +79,6 @@ export function ProductionTable({ onProduceClick }: ProductionTableProps) {
                 <Button
                   variant={item.deficit > 0 ? "default" : "outline"}
                   size="sm"
-                  disabled={item.deficit === 0}
                   onClick={() => onProduceClick(item.sku, item.deficit)}
                 >
                   Produce
@@ -92,4 +91,3 @@ export function ProductionTable({ onProduceClick }: ProductionTableProps) {
     </div>
   )
 }
-

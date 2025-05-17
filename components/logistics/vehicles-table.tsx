@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -15,19 +15,72 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
-import { Edit, Plus, Trash2 } from "lucide-react"
+import { Edit, Plus, Trash2, Search } from "lucide-react"
 import { ConfirmationDialog } from "@/components/common/confirmation-dialog"
-import { useLogisticsData } from "@/hooks/use-logistics-data"
-import { DataByTableName } from "../utils/api"
-import { DataTablePagination } from "../ui/data-table-pagination"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
+
+// Sample vehicle data
+const initialVehicles = [
+  {
+    id: "VEH001",
+    type: "Truck",
+    model: "Tata Ace",
+    capacity: "1 Ton",
+    registrationNumber: "MH 01 AB 1234",
+  },
+  {
+    id: "VEH002",
+    type: "Van",
+    model: "Mahindra Supro",
+    capacity: "750 kg",
+    registrationNumber: "MH 02 CD 5678",
+  },
+  {
+    id: "VEH003",
+    type: "Truck",
+    model: "Ashok Leyland Dost",
+    capacity: "1.25 Ton",
+    registrationNumber: "MH 03 EF 9012",
+  },
+  {
+    id: "VEH004",
+    type: "Truck",
+    model: "Eicher Pro 1049",
+    capacity: "2.5 Ton",
+    registrationNumber: "MH 04 GH 3456",
+  },
+  {
+    id: "VEH005",
+    type: "Van",
+    model: "Tata Winger",
+    capacity: "1 Ton",
+    registrationNumber: "MH 05 IJ 7890",
+  },
+  {
+    id: "VEH006",
+    type: "Truck",
+    model: "Tata 407",
+    capacity: "2.5 Ton",
+    registrationNumber: "MH 06 KL 1234",
+  },
+  {
+    id: "VEH007",
+    type: "Van",
+    model: "Force Traveller",
+    capacity: "1.2 Ton",
+    registrationNumber: "MH 07 MN 5678",
+  },
+  {
+    id: "VEH008",
+    type: "Truck",
+    model: "Mahindra Bolero Pickup",
+    capacity: "1.5 Ton",
+    registrationNumber: "MH 08 OP 9012",
+  },
+]
 
 export function VehiclesTable() {
-  const dimVehicleInstance = new DataByTableName("dim_vehicle");
-
-  const { vehicles: _vehicles = {}, triggerRender = () => { } } = useLogisticsData();
-
-  const [vehicles, setVehicles] = useState<any[]>([])
-
+  const [vehicles, setVehicles] = useState(initialVehicles)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -42,156 +95,169 @@ export function VehiclesTable() {
   })
   const { toast } = useToast()
 
-  useEffect(() => {
-    setVehicles(Object.values(_vehicles).map(item => ({
-      id: item.vehicleId,
-      type: item.type,
-      model: item.model,
-      capacity: item.maxLoad,
-      registrationNumber: item.registrationNumber
-    })) as any)
-  }, [_vehicles])
+  // Add search functionality to the vehicles table
+  const [searchQuery, setSearchQuery] = useState("")
 
-  const handleAddVehicle = useCallback(() => {
-    const { type, capacity, model, registrationNumber } = newVehicle
-    dimVehicleInstance.post({
-      type,
-      model,
-      registrationNumber,
-      maxLoad: capacity
-    }).then(() => {
-      triggerRender();
-      setIsAddDialogOpen(false)
-    }).catch(error => {
-      console.log({ error })
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 5
+
+  // Filter vehicles based on search query
+  const filteredVehicles = vehicles.filter((vehicle) => {
+    const query = searchQuery.toLowerCase()
+    return (
+      vehicle.id.toLowerCase().includes(query) ||
+      vehicle.type.toLowerCase().includes(query) ||
+      vehicle.model.toLowerCase().includes(query) ||
+      vehicle.registrationNumber.toLowerCase().includes(query) ||
+      vehicle.capacity.toLowerCase().includes(query)
+    )
+  })
+
+  // Get current vehicles for pagination
+  const indexOfLastVehicle = currentPage * itemsPerPage
+  const indexOfFirstVehicle = indexOfLastVehicle - itemsPerPage
+  const currentVehicles = filteredVehicles.slice(indexOfFirstVehicle, indexOfLastVehicle)
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
+
+  const handleAddVehicle = () => {
+    // Generate a new ID
+    const newId = `VEH${(vehicles.length + 1).toString().padStart(3, "0")}`
+    const vehicleToAdd = { ...newVehicle, id: newId }
+
+    setVehicles([...vehicles, vehicleToAdd])
+    setNewVehicle({
+      id: "",
+      type: "",
+      model: "",
+      capacity: "",
+      registrationNumber: "",
     })
-  }, [newVehicle])
+    setIsAddDialogOpen(false)
 
-  const handleEditVehicle = useCallback(() => {
-
-    const payload = Object.fromEntries(Object.entries({
-      type: selectedVehicle.type,
-      model: selectedVehicle.model,
-      maxLoad: selectedVehicle.capacity,
-      registrationNumber: selectedVehicle.registrationNumber
-    }).filter(item => item[1]))
-
-    dimVehicleInstance.patch({
-      key: "vehicleId",
-      value: selectedVehicle?.id || ""
-    }, payload).then(_ => {
-      triggerRender()
-      setIsEditDialogOpen(false)
-    }).catch(error => {
-      console.log({ error })
+    toast({
+      title: "Vehicle Added",
+      description: `Vehicle ${newId} has been added successfully.`,
     })
-  }, [selectedVehicle])
+  }
+
+  const handleEditVehicle = () => {
+    setVehicles(vehicles.map((vehicle) => (vehicle.id === selectedVehicle.id ? selectedVehicle : vehicle)))
+    setIsEditDialogOpen(false)
+
+    toast({
+      title: "Vehicle Updated",
+      description: `Vehicle ${selectedVehicle.id} has been updated successfully.`,
+    })
+  }
 
   const confirmDelete = (id: string) => {
     setVehicleToDelete(id)
     setIsDeleteDialogOpen(true)
   }
 
-  const handleDeleteVehicle = useCallback(() => {
-    if (!vehicleToDelete) return;
+  const handleDeleteVehicle = () => {
+    if (!vehicleToDelete) return
 
-    dimVehicleInstance.deleteById(
-      {
-        key: "vehicleId",
-        value: vehicleToDelete || ""
-      }
-    ).then(() => {
-      triggerRender();
-      setVehicleToDelete(null)
-      setIsDeleteDialogOpen(false)
-    }).catch(error => {
-      console.log({ error })
+    setVehicles(vehicles.filter((vehicle) => vehicle.id !== vehicleToDelete))
+    setIsDeleteDialogOpen(false)
+
+    toast({
+      title: "Vehicle Deleted",
+      description: `Vehicle ${vehicleToDelete} has been deleted successfully.`,
     })
 
-  }, [vehicleToDelete])
+    setVehicleToDelete(null)
+  }
 
   const openEditDialog = (vehicle: any) => {
     setSelectedVehicle(vehicle)
     setIsEditDialogOpen(true)
   }
 
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 5
-
-  const currentItems = useMemo(() => {
-    const indexOfLastItem = currentPage * itemsPerPage
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage
-    return vehicles.slice(indexOfFirstItem, indexOfLastItem)
-  }, [vehicles, currentPage])
-
-  // Get unique SKUs for filter dropdown
-  const handlePageChange = useCallback((page: number) => {
-    setCurrentPage(page)
-  }, [])
-
-
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Vehicles</h2>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Vehicle
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Vehicle</DialogTitle>
-              <DialogDescription>Enter the details of the new vehicle to add to the fleet.</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="type">Vehicle Type</Label>
-                  <Input
-                    id="type"
-                    value={newVehicle.type}
-                    onChange={(e) => setNewVehicle({ ...newVehicle, type: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="model">Model</Label>
-                  <Input
-                    id="model"
-                    value={newVehicle.model}
-                    onChange={(e) => setNewVehicle({ ...newVehicle, model: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="capacity">Capacity</Label>
-                  <Input
-                    id="capacity"
-                    value={newVehicle.capacity}
-                    onChange={(e) => setNewVehicle({ ...newVehicle, capacity: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="registrationNumber">Registration Number</Label>
-                  <Input
-                    id="registrationNumber"
-                    value={newVehicle.registrationNumber}
-                    onChange={(e) => setNewVehicle({ ...newVehicle, registrationNumber: e.target.value })}
-                  />
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                Cancel
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search vehicles..."
+              className="w-[250px] pl-8"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+                setCurrentPage(1) // Reset to first page on search
+              }}
+            />
+          </div>
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-[#1c86ff] hover:bg-[#1a78e6] text-[#ffffff]">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Vehicle
               </Button>
-              <Button onClick={handleAddVehicle}>Add Vehicle</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Vehicle</DialogTitle>
+                <DialogDescription>Enter the details of the new vehicle to add to the fleet.</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="type">Vehicle Type</Label>
+                    <Input
+                      id="type"
+                      value={newVehicle.type}
+                      onChange={(e) => setNewVehicle({ ...newVehicle, type: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="model">Model</Label>
+                    <Input
+                      id="model"
+                      value={newVehicle.model}
+                      onChange={(e) => setNewVehicle({ ...newVehicle, model: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="capacity">Capacity</Label>
+                    <Input
+                      id="capacity"
+                      value={newVehicle.capacity}
+                      onChange={(e) => setNewVehicle({ ...newVehicle, capacity: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="registrationNumber">Registration Number</Label>
+                    <Input
+                      id="registrationNumber"
+                      value={newVehicle.registrationNumber}
+                      onChange={(e) => setNewVehicle({ ...newVehicle, registrationNumber: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleAddVehicle} className="bg-[#1b84ff] hover:bg-[#0a6edf] text-[#ffffff]">
+                  Add Vehicle
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="border rounded-md">
@@ -207,40 +273,49 @@ export function VehiclesTable() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {currentItems.map((vehicle) => (
-              <TableRow key={vehicle.id}>
-                <TableCell className="font-medium">{vehicle.id}</TableCell>
-                <TableCell>{vehicle.type}</TableCell>
-                <TableCell>{vehicle.model}</TableCell>
-                <TableCell>{vehicle.capacity}</TableCell>
-                <TableCell>{vehicle.registrationNumber}</TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => openEditDialog(vehicle)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => confirmDelete(vehicle.id)}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+            {currentVehicles.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="h-24 text-center">
+                  No vehicles found.
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              currentVehicles.map((vehicle) => (
+                <TableRow key={vehicle.id}>
+                  <TableCell className="font-medium">{vehicle.id}</TableCell>
+                  <TableCell>{vehicle.type}</TableCell>
+                  <TableCell>{vehicle.model}</TableCell>
+                  <TableCell>{vehicle.capacity}</TableCell>
+                  <TableCell>{vehicle.registrationNumber}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="icon" onClick={() => openEditDialog(vehicle)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => confirmDelete(vehicle.id)}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
+
+      {/* Pagination */}
       <DataTablePagination
-        totalItems={vehicles.length}
+        totalItems={filteredVehicles.length}
         itemsPerPage={itemsPerPage}
         currentPage={currentPage}
         onPageChange={handlePageChange}
       />
-
 
       {/* Edit Vehicle Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

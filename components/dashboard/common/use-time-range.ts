@@ -50,4 +50,3 @@ export function useTimeRange(defaultRange = "month") {
     handleTimeRangeChange,
   }
 }
-

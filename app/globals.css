@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 210 33% 96%; /* #f2f6fa */
     --foreground: 222.2 84% 4.9%;
 
     --card: 0 0% 100%;
@@ -35,16 +35,24 @@
     --radius: 0.5rem;
 
     /* Sidebar variables */
-    --sidebar-background: 0 0% 98%; /* Original was using HSL values */
+    --sidebar-background: 0 0% 100%; /* #ffffff */
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-border: 220 13% 91%;
     --sidebar-accent: 240 4.8% 95.9%;
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Chart colors */
+    --chart-1: 215 90% 50%;
+    --chart-2: 150 60% 50%;
+    --chart-3: 40 90% 50%;
+    --chart-4: 0 90% 60%;
+    --chart-5: 270 60% 60%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 222 47% 11%; /* darker complementary color to #f2f6fa */
+    --card: 222 47% 12%;
     --foreground: 210 40% 98%;
 
     --card: 222.2 84% 4.9%;
@@ -79,15 +87,71 @@
     --sidebar-accent: 240 3.7% 15.9%;
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Chart colors - slightly adjusted for dark mode */
+    --chart-1: 215 90% 60%;
+    --chart-2: 150 60% 60%;
+    --chart-3: 40 90% 60%;
+    --chart-4: 0 90% 70%;
+    --chart-5: 270 60% 70%;
   }
 }
 
 @layer base {
   * {
     @apply border-border;
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
   }
   body {
     @apply bg-background text-foreground;
   }
 }
 
+/* Custom tab styling */
+.tabs-list {
+  background-color: var(--background);
+}
+
+[data-state="active"].tabs-trigger {
+  background-color: #ffffff;
+  color: hsl(var(--primary));
+  font-weight: 500;
+}
+
+/* Hide scrollbar but keep functionality */
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+  }
+}
+
+/* Gradient animations for sidebar */
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.gradient-animation {
+  background-size: 200% 200%;
+  animation: gradient-shift 15s ease infinite;
+}
+
+/* Glass effect */
+.glass-effect {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}

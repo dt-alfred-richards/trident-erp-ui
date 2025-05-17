@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Separator } from "@/components/ui/separator"
 import type { BomType } from "@/types/bom"
 import { useInventoryStore } from "@/hooks/use-inventory-store"
+import { Download } from "lucide-react"
 
 interface BomDetailsDialogProps {
   open: boolean
@@ -23,6 +24,61 @@ interface BomDetailsDialogProps {
 
 export function BomDetailsDialog({ open, onOpenChange, bom }: BomDetailsDialogProps) {
   const { getInventoryItemByName } = useInventoryStore()
+
+  const handleExport = () => {
+    // Format BOM data for export
+    const exportData = {
+      bomCode: bom.bomCode,
+      productName: bom.productName,
+      status: bom.status,
+      unitCost: bom.unitCost,
+      components: bom.components.map((component) => ({
+        materialName: component.materialName,
+        type: component.type || "Standard",
+        quantity: component.quantity,
+        unit: component.unit,
+        cost: component.cost,
+        stockStatus: getInventoryItemByName(component.materialName)
+          ? getInventoryItemByName(component.materialName).quantity >= component.quantity
+            ? "In Stock"
+            : "Low Stock"
+          : "Not Found",
+      })),
+    }
+
+    // Convert to CSV
+    const headers = ["Material Name", "Type", "Quantity", "Unit", "Cost", "Stock Status"]
+    const csvContent = [
+      `BOM Code: ${exportData.bomCode}`,
+      `Product Name: ${exportData.productName}`,
+      `Status: ${exportData.status}`,
+      `Unit Cost: ₹${exportData.unitCost.toFixed(2)}`,
+      "",
+      "Components:",
+      headers.join(","),
+      ...exportData.components.map((comp) =>
+        [
+          `"${comp.materialName}"`,
+          `"${comp.type}"`,
+          comp.quantity,
+          comp.unit,
+          `₹${comp.cost.toFixed(2)}`,
+          `"${comp.stockStatus}"`,
+        ].join(","),
+      ),
+    ].join("\n")
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.setAttribute("href", url)
+    link.setAttribute("download", `bom-${exportData.bomCode}.csv`)
+    link.style.visibility = "hidden"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -57,6 +113,7 @@ export function BomDetailsDialog({ open, onOpenChange, bom }: BomDetailsDialogPr
               <TableHeader>
                 <TableRow>
                   <TableHead>Material</TableHead>
+                  <TableHead>Type</TableHead>
                   <TableHead>Quantity</TableHead>
                   <TableHead>Unit</TableHead>
                   <TableHead>Cost</TableHead>
@@ -75,6 +132,7 @@ export function BomDetailsDialog({ open, onOpenChange, bom }: BomDetailsDialogPr
                   return (
                     <TableRow key={index}>
                       <TableCell className="font-medium">{component.materialName}</TableCell>
+                      <TableCell>{component.type || "Standard"}</TableCell>
                       <TableCell>{component.quantity}</TableCell>
                       <TableCell>{component.unit}</TableCell>
                       <TableCell>₹{component.cost.toFixed(2)}</TableCell>
@@ -100,6 +158,10 @@ export function BomDetailsDialog({ open, onOpenChange, bom }: BomDetailsDialogPr
         </div>
 
         <DialogFooter>
+          <Button variant="outline" onClick={handleExport} className="mr-2">
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
@@ -108,4 +170,3 @@ export function BomDetailsDialog({ open, onOpenChange, bom }: BomDetailsDialogPr
     </Dialog>
   )
 }
-

@@ -163,6 +163,12 @@ type FinanceContextType = {
   addTaxFiling: (filing: Omit<TaxFiling, "id">) => void
   updateTaxFiling: (id: string, filing: Partial<TaxFiling>) => void
   deleteTaxFiling: (id: string) => void
+
+  updateTotalReceivables: (amount: number, customer?: string) => void
+  decreaseTotalReceivables: (amount: number, customer?: string, invoiceId?: string) => void
+
+  updateTotalPayables: (amount: number, supplier?: string) => void
+  decreaseTotalPayables: (amount: number, supplier?: string, billId?: string) => void
 }
 
 // Sample data
@@ -828,6 +834,11 @@ const FinanceContext = createContext<FinanceContextType>({
   addTaxFiling: () => {},
   updateTaxFiling: () => {},
   deleteTaxFiling: () => {},
+
+  updateTotalReceivables: () => {},
+  decreaseTotalReceivables: () => {},
+  updateTotalPayables: () => {},
+  decreaseTotalPayables: () => {},
 })
 
 // Helper function to generate IDs
@@ -1083,6 +1094,200 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     })
   }
 
+  // Function to update total receivables
+  const updateTotalReceivables = (amount: number, customer = "Journal Entry Customer") => {
+    // Create a new invoice with the amount as balance
+    const newInvoice = {
+      id: `INV-${new Date().getTime()}`,
+      customer: customer,
+      date: new Date().toISOString().split("T")[0],
+      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+      amount: amount,
+      balance: amount,
+      status: "Open" as const,
+      items: [
+        {
+          id: `ITEM-${new Date().getTime()}`,
+          description: "Journal Entry Item",
+          quantity: 1,
+          unitPrice: amount,
+          amount: amount,
+          taxRate: 0,
+          taxAmount: 0,
+        },
+      ],
+    }
+
+    setInvoices([newInvoice, ...invoices])
+
+    toast({
+      title: "Total Receivables Updated",
+      description: `₹${amount.toLocaleString("en-IN")} has been added to Total Receivables.`,
+    })
+  }
+
+  // Function to decrease total receivables
+  const decreaseTotalReceivables = (amount: number, customer = "Journal Entry Payment", invoiceId?: string) => {
+    // If a specific invoice ID is provided, update that invoice
+    if (invoiceId) {
+      const invoice = invoices.find((inv) => inv.id === invoiceId)
+
+      if (invoice) {
+        const newBalance = Math.max(0, invoice.balance - amount)
+        const newStatus = newBalance <= 0 ? "Paid" : "Partially Paid"
+
+        updateInvoice(invoiceId, {
+          balance: newBalance,
+          status: newStatus,
+        })
+
+        return
+      }
+    }
+
+    // If no specific invoice or invoice not found, find an open invoice to update
+    const openInvoice = invoices.find(
+      (invoice) => invoice.status === "Open" && invoice.balance >= amount && invoice.customer === customer,
+    )
+
+    if (openInvoice) {
+      // Update the existing invoice
+      const newBalance = openInvoice.balance - amount
+      const newStatus = newBalance <= 0 ? "Paid" : "Partially Paid"
+
+      updateInvoice(openInvoice.id, {
+        balance: newBalance,
+        status: newStatus,
+      })
+    } else {
+      // Create a payment record
+      const paymentRecord = {
+        id: `PMT-${new Date().getTime()}`,
+        customer: customer,
+        date: new Date().toISOString().split("T")[0],
+        dueDate: new Date().toISOString().split("T")[0],
+        amount: amount,
+        balance: 0,
+        status: "Paid" as const,
+        items: [
+          {
+            id: `ITEM-${new Date().getTime()}`,
+            description: "Payment against receivables",
+            quantity: 1,
+            unitPrice: amount,
+            amount: amount,
+            taxRate: 0,
+            taxAmount: 0,
+          },
+        ],
+      }
+
+      setInvoices([paymentRecord, ...invoices])
+    }
+
+    toast({
+      title: "Total Receivables Updated",
+      description: `₹${amount.toLocaleString("en-IN")} has been deducted from Total Receivables.`,
+    })
+  }
+
+  // Function to update total payables
+  const updateTotalPayables = (amount: number, supplier = "Journal Entry Supplier") => {
+    // Create a new bill with the amount as balance
+    const newBill = {
+      id: `BILL-${new Date().getTime()}`,
+      supplier: supplier,
+      date: new Date().toISOString().split("T")[0],
+      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+      amount: amount,
+      balance: amount,
+      status: "Open" as const,
+      items: [
+        {
+          id: `ITEM-${new Date().getTime()}`,
+          description: "Journal Entry Item",
+          quantity: 1,
+          unitPrice: amount,
+          amount: amount,
+          taxRate: 0,
+          taxAmount: 0,
+        },
+      ],
+    }
+
+    setBills([newBill, ...bills])
+
+    toast({
+      title: "Total Payables Updated",
+      description: `₹${amount.toLocaleString("en-IN")} has been added to Total Payables.`,
+    })
+  }
+
+  // Function to decrease total payables
+  const decreaseTotalPayables = (amount: number, supplier = "Journal Entry Payment", billId?: string) => {
+    // If a specific bill ID is provided, update that bill
+    if (billId) {
+      const bill = bills.find((b) => b.id === billId)
+
+      if (bill) {
+        const newBalance = Math.max(0, bill.balance - amount)
+        const newStatus = newBalance <= 0 ? "Paid" : "Partially Paid"
+
+        updateBill(billId, {
+          balance: newBalance,
+          status: newStatus,
+        })
+
+        return
+      }
+    }
+
+    // If no specific bill or bill not found, find an open bill to update
+    const openBill = bills.find(
+      (bill) => bill.status === "Open" && bill.balance >= amount && bill.supplier === supplier,
+    )
+
+    if (openBill) {
+      // Update the existing bill
+      const newBalance = openBill.balance - amount
+      const newStatus = newBalance <= 0 ? "Paid" : "Partially Paid"
+
+      updateBill(openBill.id, {
+        balance: newBalance,
+        status: newStatus,
+      })
+    } else {
+      // Create a payment record
+      const paymentRecord = {
+        id: `PMT-${new Date().getTime()}`,
+        supplier: supplier,
+        date: new Date().toISOString().split("T")[0],
+        dueDate: new Date().toISOString().split("T")[0],
+        amount: amount,
+        balance: 0,
+        status: "Paid" as const,
+        items: [
+          {
+            id: `ITEM-${new Date().getTime()}`,
+            description: "Payment against payables",
+            quantity: 1,
+            unitPrice: amount,
+            amount: amount,
+            taxRate: 0,
+            taxAmount: 0,
+          },
+        ],
+      }
+
+      setBills([paymentRecord, ...bills])
+    }
+
+    toast({
+      title: "Total Payables Updated",
+      description: `₹${amount.toLocaleString("en-IN")} has been deducted from Total Payables.`,
+    })
+  }
+
   return (
     <FinanceContext.Provider
       value={{
@@ -1131,6 +1336,11 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         addTaxFiling,
         updateTaxFiling,
         deleteTaxFiling,
+
+        updateTotalReceivables,
+        decreaseTotalReceivables,
+        updateTotalPayables,
+        decreaseTotalPayables,
       }}
     >
       {children}
@@ -1140,4 +1350,3 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
 // Custom hook to use the finance context
 export const useFinance = () => useContext(FinanceContext)
-

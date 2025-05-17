@@ -24,4 +24,3 @@ export interface ProductionOrderType {
   plannedDate: string
   status: "pending" | "ready" | "insufficient_stock"
 }
-

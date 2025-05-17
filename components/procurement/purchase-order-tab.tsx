@@ -18,6 +18,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { PurchaseOrderDialog } from "./purchase-order-dialog"
 import { Input } from "@/components/ui/input"
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface PurchaseOrder {
   id: string
@@ -218,29 +219,43 @@ export function PurchaseOrderTab({
     setIsOrderDialogOpen(false)
   }
 
+  // Update the getStatusBadge function to include dark mode styling similar to the StatusBadge component
+
   const getStatusBadge = (status: string, received?: number, quantity?: number) => {
     switch (status) {
       case "pending":
         return (
-          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+          <Badge
+            variant="outline"
+            className="bg-blue-50 text-blue-700 border-blue-200 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-400"
+          >
             Pending
           </Badge>
         )
       case "partial":
         return (
-          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+          <Badge
+            variant="outline"
+            className="bg-amber-50 text-amber-700 border-amber-200 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400"
+          >
             Partial {received && quantity ? `(${received}/${quantity})` : ""}
           </Badge>
         )
       case "completed":
         return (
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+          <Badge
+            variant="outline"
+            className="bg-green-50 text-green-700 border-green-200 dark:border-green-800 dark:bg-green-950/30 dark:text-green-400"
+          >
             Completed
           </Badge>
         )
       case "cancelled":
         return (
-          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+          <Badge
+            variant="outline"
+            className="bg-red-50 text-red-700 border-red-200 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400"
+          >
             Cancelled
           </Badge>
         )
@@ -330,6 +345,23 @@ export function PurchaseOrderTab({
   // Check if any filters are applied
   const hasFilters = statusFilter.length > 0 || dateRange?.from || searchQuery
 
+  const handleGoodsReceived = (poId: string, isFullDelivery: boolean) => {
+    // Update the purchase orders state with the updated status
+    // When using "Create GRN", we always set to "partial" regardless of quantities
+    setPurchaseOrders((prevOrders) =>
+      prevOrders.map((order) =>
+        order.id === poId ? { ...order, status: isFullDelivery ? "completed" : "partial" } : order,
+      ),
+    )
+
+    // Show success notification
+    toast({
+      title: `Purchase Order ${isFullDelivery ? "Completed" : "Partially Received"}`,
+      description: `Purchase order ${poId} has been ${isFullDelivery ? "fully received" : "partially received"}.`,
+      variant: "default",
+    })
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
@@ -345,7 +377,34 @@ export function PurchaseOrderTab({
               className="pl-8"
             />
           </div>
-          <Button onClick={handleNewOrder} className="gap-1 whitespace-nowrap">
+
+          {/* Add Status filter dropdown */}
+          <Select
+            value={statusFilter.length === 1 ? statusFilter[0] : "all"}
+            onValueChange={(value) => {
+              if (value === "all") {
+                setStatusFilter([])
+              } else {
+                setStatusFilter([value])
+              }
+            }}
+          >
+            <SelectTrigger className="w-[130px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="partial">Partial</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button
+            onClick={handleNewOrder}
+            className="gap-1 whitespace-nowrap bg-[#725af2] hover:bg-[#5d48d0] text-white"
+          >
             <PlusCircle className="h-4 w-4" />
             <span>New Order</span>
           </Button>
@@ -420,7 +479,7 @@ export function PurchaseOrderTab({
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-8"
+                              className="h-8 bg-[#43ced7] hover:bg-[#39b0b8] text-white border-0"
                               onClick={() => handleReceiveClick(po.id)}
                             >
                               Receive
@@ -501,7 +560,12 @@ export function PurchaseOrderTab({
       />
 
       {receiveDialogOpen && (
-        <GoodsReceivedDialog open={receiveDialogOpen} onOpenChange={setReceiveDialogOpen} poNumber={selectedPO} />
+        <GoodsReceivedDialog
+          open={receiveDialogOpen}
+          onOpenChange={setReceiveDialogOpen}
+          poNumber={selectedPO}
+          onGoodsReceived={handleGoodsReceived}
+        />
       )}
 
       {viewDialogOpen && (

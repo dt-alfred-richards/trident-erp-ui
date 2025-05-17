@@ -1,0 +1,977 @@
+"use client"
+
+import type React from "react"
+
+import { useState, useRef, useEffect } from "react"
+import { User, Bell, Shield, Clock, FileText, Mail, Phone, MapPin, Edit, CheckCircle } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
+
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Separator } from "@/components/ui/separator"
+import { Badge } from "@/components/ui/badge"
+
+// Add these imports at the top of the file (after the existing imports)
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { format } from "date-fns"
+
+export default function ProfilePage() {
+  const [activeTab, setActiveTab] = useState("account")
+  const [avatarSrc, setAvatarSrc] = useState("/placeholder.svg?height=96&width=96")
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [showActivityLog, setShowActivityLog] = useState(false)
+
+  // Full activity log data - this would come from your API in a real application
+  const fullActivityLog = [
+    {
+      action: "Logged in",
+      details: "Chrome on Windows",
+      time: "Today, 10:30 AM",
+      icon: <CheckCircle className="h-6 w-6 text-green-500" />,
+    },
+    {
+      action: "Updated inventory levels",
+      details: "Modified 5 items",
+      time: "Yesterday, 3:45 PM",
+      icon: <Edit className="h-6 w-6 text-blue-500" />,
+    },
+    {
+      action: "Approved purchase order",
+      details: "PO-2023-0456",
+      time: "Yesterday, 11:20 AM",
+      icon: <CheckCircle className="h-6 w-6 text-green-500" />,
+    },
+    {
+      action: "Generated monthly report",
+      details: "Finance summary for March 2023",
+      time: "Mar 31, 2023, 5:00 PM",
+      icon: <FileText className="h-6 w-6 text-blue-500" />,
+    },
+    {
+      action: "Password changed",
+      details: "Security update",
+      time: "Mar 15, 2023, 9:30 AM",
+      icon: <Shield className="h-6 w-6 text-orange-500" />,
+    },
+    {
+      action: "Updated profile information",
+      details: "Changed contact details",
+      time: "Mar 10, 2023, 2:15 PM",
+      icon: <Edit className="h-6 w-6 text-blue-500" />,
+    },
+    {
+      action: "Created production order",
+      details: "Order #PRD-2023-0089",
+      time: "Mar 8, 2023, 11:05 AM",
+      icon: <FileText className="h-6 w-6 text-blue-500" />,
+    },
+    {
+      action: "Approved requisition",
+      details: "REQ-2023-0034",
+      time: "Mar 5, 2023, 9:45 AM",
+      icon: <CheckCircle className="h-6 w-6 text-green-500" />,
+    },
+    {
+      action: "Logged in",
+      details: "Firefox on Windows",
+      time: "Mar 5, 2023, 9:30 AM",
+      icon: <CheckCircle className="h-6 w-6 text-green-500" />,
+    },
+    {
+      action: "Created sales order",
+      details: "Order #SO-2023-0156",
+      time: "Mar 3, 2023, 3:20 PM",
+      icon: <FileText className="h-6 w-6 text-blue-500" />,
+    },
+    {
+      action: "Updated customer information",
+      details: "Customer #CUST-0089",
+      time: "Mar 1, 2023, 10:15 AM",
+      icon: <Edit className="h-6 w-6 text-blue-500" />,
+    },
+    {
+      action: "Generated inventory report",
+      details: "Monthly inventory summary",
+      time: "Feb 28, 2023, 4:30 PM",
+      icon: <FileText className="h-6 w-6 text-blue-500" />,
+    },
+    {
+      action: "Approved leave request",
+      details: "Employee #EMP-0023",
+      time: "Feb 25, 2023, 11:45 AM",
+      icon: <CheckCircle className="h-6 w-6 text-green-500" />,
+    },
+    {
+      action: "Created purchase order",
+      details: "PO-2023-0045",
+      time: "Feb 22, 2023, 2:10 PM",
+      icon: <FileText className="h-6 w-6 text-blue-500" />,
+    },
+    {
+      action: "System maintenance",
+      details: "Scheduled backup",
+      time: "Feb 20, 2023, 1:00 AM",
+      icon: <Shield className="h-6 w-6 text-orange-500" />,
+    },
+  ]
+
+  // Add these state variables inside the ProfilePage component (after the existing state variables)
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: undefined,
+    to: undefined,
+  })
+  const [filteredActivityLog, setFilteredActivityLog] = useState(fullActivityLog)
+
+  const handleEditProfilePicture = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click()
+    }
+  }
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      // Create a URL for the selected file
+      const imageUrl = URL.createObjectURL(file)
+      setAvatarSrc(imageUrl)
+
+      // In a real application, you would upload the file to your server here
+      // and update the avatar with the returned URL
+      console.log("File selected:", file.name)
+    }
+  }
+
+  // Add this function inside the ProfilePage component (before the return statement)
+  const filterActivitiesByDate = () => {
+    if (!dateRange.from && !dateRange.to) {
+      setFilteredActivityLog(fullActivityLog)
+      return
+    }
+
+    const filtered = fullActivityLog.filter((activity) => {
+      const activityDate = new Date(activity.time.replace(/Today, |Yesterday, /g, ""))
+
+      // Handle relative dates like "Today" and "Yesterday"
+      if (activity.time.includes("Today")) {
+        activityDate.setFullYear(new Date().getFullYear())
+        activityDate.setMonth(new Date().getMonth())
+        activityDate.setDate(new Date().getDate())
+      } else if (activity.time.includes("Yesterday")) {
+        activityDate.setFullYear(new Date().getFullYear())
+        activityDate.setMonth(new Date().getMonth())
+        activityDate.setDate(new Date().getDate() - 1)
+      }
+
+      // If only from date is set
+      if (dateRange.from && !dateRange.to) {
+        return activityDate >= dateRange.from
+      }
+
+      // If only to date is set
+      if (!dateRange.from && dateRange.to) {
+        return activityDate <= dateRange.to
+      }
+
+      // If both dates are set
+      return activityDate >= dateRange.from! && activityDate <= dateRange.to!
+    })
+
+    setFilteredActivityLog(filtered)
+  }
+
+  // Add this useEffect to update filtered activities when dateRange changes
+  useEffect(() => {
+    filterActivitiesByDate()
+  }, [dateRange])
+
+  return (
+    <div className="container mx-auto py-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
+          <p className="text-muted-foreground">Manage your account settings and preferences</p>
+        </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-6">
+        {/* Profile Summary Card */}
+        <Card className="md:w-1/3">
+          <CardHeader className="pb-2">
+            <CardTitle>Profile Summary</CardTitle>
+            <CardDescription>Your account information</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center text-center space-y-4">
+            <div className="relative">
+              <Avatar className="h-24 w-24">
+                <AvatarImage src={avatarSrc || "/placeholder.svg"} alt="@admin" />
+                <AvatarFallback className="text-2xl">AD</AvatarFallback>
+              </Avatar>
+              <button
+                className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-1.5 shadow-sm hover:bg-primary/90 transition-colors"
+                aria-label="Edit profile picture"
+                onClick={handleEditProfilePicture}
+              >
+                <Edit className="h-4 w-4" />
+              </button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={handleFileChange}
+                aria-label="Upload profile picture"
+              />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold">Administrator</h2>
+              <p className="text-sm text-muted-foreground">System Administrator</p>
+              <Badge className="mt-2" variant="outline">
+                Active
+              </Badge>
+            </div>
+            <Separator />
+            <div className="w-full space-y-2">
+              <div className="flex items-center">
+                <Mail className="h-4 w-4 mr-2 text-muted-foreground" />
+                <span className="text-sm">admin@dhaara.com</span>
+              </div>
+              <div className="flex items-center">
+                <Phone className="h-4 w-4 mr-2 text-muted-foreground" />
+                <span className="text-sm">+91 98765 43210</span>
+              </div>
+              <div className="flex items-center">
+                <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
+                <span className="text-sm">Bangalore, India</span>
+              </div>
+            </div>
+            <Separator />
+            <div className="w-full space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Joined</span>
+                <span className="text-sm">Jan 15, 2023</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Last login</span>
+                <span className="text-sm">Today, 10:30 AM</span>
+              </div>
+            </div>
+            <Button className="w-full" variant="outline">
+              <Edit className="h-4 w-4 mr-2" />
+              Edit Profile
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Tabs Section */}
+        <div className="md:w-2/3">
+          <Tabs defaultValue="account" value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid grid-cols-5 mb-4 p-1 bg-muted dark:bg-muted">
+              <TabsTrigger
+                value="account"
+                className="data-[state=active]:bg-white dark:data-[state=active]:bg-[#0f1729] data-[state=active]:text-[#1b84ff] data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff] transition-all"
+              >
+                <User className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Account</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="basic-info"
+                className="data-[state=active]:bg-white dark:data-[state=active]:bg-[#0f1729] data-[state=active]:text-[#1b84ff] data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff] transition-all"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Basic Info</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="security"
+                className="data-[state=active]:bg-white dark:data-[state=active]:bg-[#0f1729] data-[state=active]:text-[#1b84ff] data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff] transition-all"
+              >
+                <Shield className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Security</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="notifications"
+                className="data-[state=active]:bg-white dark:data-[state=active]:bg-[#0f1729] data-[state=active]:text-[#1b84ff] data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff] transition-all"
+              >
+                <Bell className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Notifications</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="activity"
+                className="data-[state=active]:bg-white dark:data-[state=active]:bg-[#0f1729] data-[state=active]:text-[#1b84ff] data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff] transition-all"
+              >
+                <Clock className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Activity</span>
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Account Tab */}
+            <TabsContent value="account" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Account Preferences</CardTitle>
+                  <CardDescription>Manage your account settings</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="username">Emp-ID</Label>
+                    <Input id="username" defaultValue="admin" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="display-name">Display Name</Label>
+                    <Input id="display-name" defaultValue="Administrator" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bio">Bio</Label>
+                    <textarea
+                      id="bio"
+                      className="w-full min-h-[100px] p-2 border rounded-md"
+                      defaultValue="System Administrator responsible for managing the Dhaara ERP system and user accounts."
+                    />
+                  </div>
+                  <Separator />
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-medium">Preferences</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="language">Language</Label>
+                        <select id="language" className="w-full p-2 border rounded-md">
+                          <option value="en">English</option>
+                          <option value="hi">Hindi</option>
+                          <option value="kn">Kannada</option>
+                          <option value="ta">Tamil</option>
+                          <option value="te">Telugu</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="timezone">Timezone</Label>
+                        <select id="timezone" className="w-full p-2 border rounded-md">
+                          <option value="ist">Indian Standard Time (IST)</option>
+                          <option value="gmt">Greenwich Mean Time (GMT)</option>
+                          <option value="est">Eastern Standard Time (EST)</option>
+                          <option value="pst">Pacific Standard Time (PST)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="flex justify-between">
+                  <Button variant="outline">Cancel</Button>
+                  <Button className="bg-[#1b84ff] text-[#ffffff] hover:bg-[#1b84ff]/90">Save Changes</Button>
+                </CardFooter>
+              </Card>
+            </TabsContent>
+
+            {/* Basic Info Tab */}
+            <TabsContent value="basic-info" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Basic Information</CardTitle>
+                  <CardDescription>Your personal and contact details</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Personal Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-medium">Personal Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="full-name">Full Name</Label>
+                        <Input id="full-name" defaultValue="Administrator" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="date-of-birth">Date of Birth</Label>
+                        <Input id="date-of-birth" type="date" defaultValue="1985-06-15" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="gender">Gender</Label>
+                        <select id="gender" className="w-full p-2 border rounded-md">
+                          <option value="male">Male</option>
+                          <option value="female">Female</option>
+                          <option value="other">Other</option>
+                          <option value="prefer-not-to-say">Prefer not to say</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="blood-group">Blood Group</Label>
+                        <select id="blood-group" className="w-full p-2 border rounded-md">
+                          <option value="a+">A+</option>
+                          <option value="a-">A-</option>
+                          <option value="b+">B+</option>
+                          <option value="b-">B-</option>
+                          <option value="ab+">AB+</option>
+                          <option value="ab-">AB-</option>
+                          <option value="o+">O+</option>
+                          <option value="o-">O-</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="nationality">Nationality</Label>
+                        <Input id="nationality" defaultValue="Indian" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator className="my-4" />
+
+                  {/* Contact Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-medium">Contact Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="primary-email">Primary Email</Label>
+                        <Input id="primary-email" type="email" defaultValue="admin@dhaara.com" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="secondary-email">Secondary Email</Label>
+                        <Input id="secondary-email" type="email" defaultValue="" placeholder="Add a backup email" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="mobile-number">Mobile Number</Label>
+                        <Input id="mobile-number" defaultValue="+91 98765 43210" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="work-phone">Work Phone</Label>
+                        <Input id="work-phone" defaultValue="+91 80 4567 8901" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator className="my-4" />
+
+                  {/* Address Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-medium">Address Information</h3>
+                    <div className="space-y-2">
+                      <Label htmlFor="address-line1">Address Line 1</Label>
+                      <Input id="address-line1" defaultValue="123 Tech Park" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="address-line2">Address Line 2</Label>
+                      <Input id="address-line2" defaultValue="Electronic City Phase 1" />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="city">City</Label>
+                        <Input id="city" defaultValue="Bangalore" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="state">State</Label>
+                        <Input id="state" defaultValue="Karnataka" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="postal-code">Postal Code</Label>
+                        <Input id="postal-code" defaultValue="560100" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="country">Country</Label>
+                      <select id="country" className="w-full p-2 border rounded-md">
+                        <option value="india">India</option>
+                        <option value="usa">United States</option>
+                        <option value="uk">United Kingdom</option>
+                        <option value="canada">Canada</option>
+                        <option value="australia">Australia</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <Separator className="my-4" />
+
+                  {/* Professional Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-medium">Professional Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="role">Role</Label>
+                        <Input id="role" defaultValue="System Administrator" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="department">Department</Label>
+                        <select id="department" className="w-full p-2 border rounded-md">
+                          <option value="it">IT & Systems</option>
+                          <option value="finance">Finance</option>
+                          <option value="hr">Human Resources</option>
+                          <option value="production">Production</option>
+                          <option value="sales">Sales</option>
+                          <option value="procurement">Procurement</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="employment-type">Employment Type</Label>
+                        <select id="employment-type" className="w-full p-2 border rounded-md">
+                          <option value="full-time">Full-time</option>
+                          <option value="part-time">Part-time</option>
+                          <option value="contract">Contract</option>
+                          <option value="temporary">Temporary</option>
+                          <option value="intern">Intern</option>
+                          <option value="consultant">Consultant</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="working-hours">Average Working Hours</Label>
+                        <Input id="working-hours" defaultValue="40" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="shift-duration">Shift Duration</Label>
+                        <select id="shift-duration" className="w-full p-2 border rounded-md">
+                          <option value="8">8 Hours</option>
+                          <option value="9">9 Hours</option>
+                          <option value="10">10 Hours</option>
+                          <option value="12">12 Hours</option>
+                          <option value="flexible">Flexible</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator className="my-4" />
+
+                  {/* Salary Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-medium">Salary Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="salary">Salary</Label>
+                        <Input id="salary" defaultValue="₹1,200,000" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="base-pay">Base Pay</Label>
+                        <Input id="base-pay" defaultValue="₹100,000" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="monthly-payment">Monthly Payment</Label>
+                        <select id="monthly-payment" className="w-full p-2 border rounded-md">
+                          <option value="yes">Yes</option>
+                          <option value="no">No</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="pay-cycle">Pay Cycle</Label>
+                        <select id="pay-cycle" className="w-full p-2 border rounded-md">
+                          <option value="monthly">Monthly</option>
+                          <option value="bi-weekly">Bi-Weekly</option>
+                          <option value="weekly">Weekly</option>
+                          <option value="quarterly">Quarterly</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator className="my-4" />
+
+                  {/* Identifications and Banking */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-medium">Identifications and Banking</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="aadhaar-number">Aadhaar Number</Label>
+                        <Input id="aadhaar-number" defaultValue="1234 5678 9012" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="pan-number">PAN Number</Label>
+                        <Input id="pan-number" defaultValue="ABCDE1234F" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="uan-number">UAN Number</Label>
+                        <Input id="uan-number" defaultValue="123456789012" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="bank-name">Bank Name</Label>
+                        <Input id="bank-name" defaultValue="State Bank of India" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="bank-branch">Bank Branch</Label>
+                        <Input id="bank-branch" defaultValue="Electronic City" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="account-number">Account Number</Label>
+                        <Input id="account-number" defaultValue="1234567890" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="ifsc-code">IFSC Code</Label>
+                        <Input id="ifsc-code" defaultValue="SBIN0012345" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator className="my-4" />
+
+                  {/* Leaves Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-medium">Leaves</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="total-leaves">Total Leaves</Label>
+                        <Input id="total-leaves" defaultValue="24" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="earned-leaves">Earned Leaves</Label>
+                        <Input id="earned-leaves" defaultValue="18" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="used-leaves">Used Leaves</Label>
+                        <Input id="used-leaves" defaultValue="12" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="balance-leaves">Balance Leaves</Label>
+                        <Input id="balance-leaves" defaultValue="12" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="sunday-holiday">Sunday Holiday</Label>
+                        <select id="sunday-holiday" className="w-full p-2 border rounded-md">
+                          <option value="yes">Yes</option>
+                          <option value="no">No</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="flex justify-between">
+                  <Button variant="outline">Cancel</Button>
+                  <Button className="bg-[#1b84ff] text-[#ffffff] hover:bg-[#1b84ff]/90">Save Changes</Button>
+                </CardFooter>
+              </Card>
+            </TabsContent>
+
+            {/* Security Tab */}
+            <TabsContent value="security" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Security Settings</CardTitle>
+                  <CardDescription>Manage your password and authentication</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-medium">Change Password</h3>
+                    <div className="space-y-2">
+                      <Label htmlFor="current-password">Current Password</Label>
+                      <Input id="current-password" type="password" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="new-password">New Password</Label>
+                      <Input id="new-password" type="password" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm-password">Confirm New Password</Label>
+                      <Input id="confirm-password" type="password" />
+                    </div>
+                    <Button className="bg-[#725af2] text-[#ffffff] hover:bg-[#725af2]/90">Update Password</Button>
+                  </div>
+
+                  <Separator className="my-4" />
+
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-medium">Two-Factor Authentication</h3>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">Two-factor authentication is disabled</p>
+                        <p className="text-sm text-muted-foreground">Add an extra layer of security to your account</p>
+                      </div>
+                      <Button variant="outline">Enable</Button>
+                    </div>
+                  </div>
+
+                  <Separator className="my-4" />
+
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-medium">Active Sessions</h3>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">Current Session</p>
+                          <p className="text-sm text-muted-foreground">Bangalore, India • Chrome on Windows</p>
+                          <p className="text-xs text-muted-foreground">Started 2 hours ago</p>
+                        </div>
+                        <Badge>Active</Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">Mobile Session</p>
+                          <p className="text-sm text-muted-foreground">Bangalore, India • Dhaara App on Android</p>
+                          <p className="text-xs text-muted-foreground">Started 1 day ago</p>
+                        </div>
+                        <Button variant="outline" size="sm">
+                          Sign Out
+                        </Button>
+                      </div>
+                    </div>
+                    <Button variant="outline">Sign Out All Devices</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Notifications Tab */}
+            <TabsContent value="notifications" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Notification Preferences</CardTitle>
+                  <CardDescription>Manage how you receive notifications</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-medium">Email Notifications</h3>
+                    <div className="space-y-2">
+                      {[
+                        "System alerts",
+                        "Order updates",
+                        "Production status changes",
+                        "Inventory alerts",
+                        "Financial reports",
+                      ].map((item) => (
+                        <div key={item} className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">{item}</p>
+                            <p className="text-sm text-muted-foreground">
+                              Receive email notifications for {item.toLowerCase()}
+                            </p>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id={`email-${item.replace(/\s+/g, "-").toLowerCase()}`}
+                              defaultChecked
+                            />
+                            <Label htmlFor={`email-${item.replace(/\s+/g, "-").toLowerCase()}`} className="sr-only">
+                              {item}
+                            </Label>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Separator className="my-4" />
+
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-medium">In-App Notifications</h3>
+                    <div className="space-y-2">
+                      {["Task assignments", "Mentions", "Comments", "Approvals", "System updates"].map((item) => (
+                        <div key={item} className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">{item}</p>
+                            <p className="text-sm text-muted-foreground">
+                              Receive in-app notifications for {item.toLowerCase()}
+                            </p>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id={`app-${item.replace(/\s+/g, "-").toLowerCase()}`}
+                              defaultChecked
+                            />
+                            <Label htmlFor={`app-${item.replace(/\s+/g, "-").toLowerCase()}`} className="sr-only">
+                              {item}
+                            </Label>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Separator className="my-4" />
+
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-medium">Notification Schedule</h3>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">Quiet Hours</p>
+                          <p className="text-sm text-muted-foreground">Don't send notifications during these hours</p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <input type="checkbox" id="quiet-hours" />
+                          <Label htmlFor="quiet-hours" className="sr-only">
+                            Quiet Hours
+                          </Label>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="quiet-start">Start Time</Label>
+                          <Input id="quiet-start" type="time" defaultValue="22:00" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="quiet-end">End Time</Label>
+                          <Input id="quiet-end" type="time" defaultValue="08:00" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="flex justify-between">
+                  <Button variant="outline">Reset to Defaults</Button>
+                  <Button className="bg-[#1b84ff] text-[#ffffff] hover:bg-[#1b84ff]/90">Save Preferences</Button>
+                </CardFooter>
+              </Card>
+            </TabsContent>
+
+            {/* Activity Tab */}
+            <TabsContent value="activity" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Account Activity</CardTitle>
+                  <CardDescription>Recent activity on your account</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-8">
+                    {[
+                      {
+                        action: "Logged in",
+                        details: "Chrome on Windows",
+                        time: "Today, 10:30 AM",
+                        icon: <CheckCircle className="h-6 w-6 text-green-500" />,
+                      },
+                      {
+                        action: "Updated inventory levels",
+                        details: "Modified 5 items",
+                        time: "Yesterday, 3:45 PM",
+                        icon: <Edit className="h-6 w-6 text-blue-500" />,
+                      },
+                      {
+                        action: "Approved purchase order",
+                        details: "PO-2023-0456",
+                        time: "Yesterday, 11:20 AM",
+                        icon: <CheckCircle className="h-6 w-6 text-green-500" />,
+                      },
+                      {
+                        action: "Generated monthly report",
+                        details: "Finance summary for March 2023",
+                        time: "Mar 31, 2023, 5:00 PM",
+                        icon: <FileText className="h-6 w-6 text-blue-500" />,
+                      },
+                      {
+                        action: "Password changed",
+                        details: "Security update",
+                        time: "Mar 15, 2023, 9:30 AM",
+                        icon: <Shield className="h-6 w-6 text-orange-500" />,
+                      },
+                    ].map((item, index) => (
+                      <div key={index} className="flex">
+                        <div className="mr-4 flex-shrink-0">{item.icon}</div>
+                        <div className="flex-grow">
+                          <div className="flex justify-between">
+                            <p className="font-medium">{item.action}</p>
+                            <span className="text-sm text-muted-foreground">{item.time}</span>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{item.details}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button
+                    className="w-full bg-[#725af2] text-[#ffffff] hover:bg-[#725af2]/90"
+                    onClick={() => setShowActivityLog(true)}
+                  >
+                    View Full Activity Log
+                  </Button>
+                </CardFooter>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
+
+      {/* Activity Log Dialog */}
+
+      <Dialog open={showActivityLog} onOpenChange={setShowActivityLog}>
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh] p-6">
+          <DialogHeader className="pb-4">
+            <DialogTitle>Full Activity Log</DialogTitle>
+            <DialogDescription>Complete history of account activity</DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col sm:flex-row gap-4 mb-4">
+            <div className="flex-1 space-y-1">
+              <Label htmlFor="date-from">From Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button id="date-from" variant="outline" className="w-full justify-start text-left font-normal">
+                    {dateRange.from ? (
+                      format(dateRange.from, "PPP")
+                    ) : (
+                      <span className="text-muted-foreground">Pick a date</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dateRange.from}
+                    onSelect={(date) => setDateRange({ ...dateRange, from: date })}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="flex-1 space-y-1">
+              <Label htmlFor="date-to">To Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button id="date-to" variant="outline" className="w-full justify-start text-left font-normal">
+                    {dateRange.to ? (
+                      format(dateRange.to, "PPP")
+                    ) : (
+                      <span className="text-muted-foreground">Pick a date</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dateRange.to}
+                    onSelect={(date) => setDateRange({ ...dateRange, to: date })}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="flex items-end">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setDateRange({ from: undefined, to: undefined })
+                }}
+              >
+                Reset
+              </Button>
+            </div>
+          </div>
+
+          {filteredActivityLog.length === 0 ? (
+            <div className="py-8 text-center text-muted-foreground">
+              No activities found for the selected date range
+            </div>
+          ) : (
+            <div className="relative">
+              <ScrollArea className="h-[50vh] pr-4 -mr-6">
+                <div className="space-y-4 py-2 pr-6">
+                  {filteredActivityLog.map((item, index) => (
+                    <div key={index} className="flex border-b border-gray-100 dark:border-gray-800 pb-4 last:border-0">
+                      <div className="mr-4 flex-shrink-0">{item.icon}</div>
+                      <div className="flex-grow min-w-0">
+                        <div className="flex justify-between items-start">
+                          <p className="font-medium truncate">{item.action}</p>
+                          <span className="text-sm text-muted-foreground whitespace-nowrap ml-2">{item.time}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{item.details}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}

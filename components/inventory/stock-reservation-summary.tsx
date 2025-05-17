@@ -127,4 +127,3 @@ export function StockReservationSummary({ open, onOpenChange, data }: StockReser
     </Dialog>
   )
 }
-

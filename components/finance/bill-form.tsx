@@ -138,7 +138,7 @@ export function BillForm({ open, onOpenChange, initialValues, billId }: BillForm
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px]">
+      <DialogContent className="sm:max-w-[800px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEditing ? "Edit Bill" : "Create Bill"}</DialogTitle>
           <DialogDescription>
@@ -366,4 +366,3 @@ export function BillForm({ open, onOpenChange, initialValues, billId }: BillForm
     </Dialog>
   )
 }
-

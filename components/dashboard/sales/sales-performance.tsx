@@ -145,4 +145,3 @@ export function SalesPerformance({ timeRange }: SalesPerformanceProps) {
     </div>
   )
 }
-

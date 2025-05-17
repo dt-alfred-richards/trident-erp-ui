@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -13,20 +13,19 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { DataByTableName } from "../utils/api"
-import { useOrders } from "@/contexts/order-context"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-export function AddClientDialog({ open, onOpenChange, onAddClient }: any) {
-  const { setRefetchData } = useOrders();
+export function AddClientDialog({ open, onOpenChange, onAddClient }) {
   const [formData, setFormData] = useState({
     name: "",
     contactPerson: "",
     email: "",
     phone: "",
     address: "",
+    clientType: "", // Add this new field
   })
 
-  const [errors, setErrors] = useState<any>({})
+  const [errors, setErrors] = useState({})
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -37,57 +36,52 @@ export function AddClientDialog({ open, onOpenChange, onAddClient }: any) {
     }
   }
 
+  const handleSelectChange = (value) => {
+    setFormData((prev) => ({ ...prev, clientType: value }))
+    // Clear error when field is edited
+    if (errors.clientType) {
+      setErrors((prev) => ({ ...prev, clientType: null }))
+    }
+  }
+
   const validateForm = () => {
-    const newErrors = {} as any
+    const newErrors = {}
     if (!formData.name.trim()) newErrors.name = "Client name is required"
     if (!formData.contactPerson.trim()) newErrors.contactPerson = "Contact person is required"
     if (!formData.email.trim()) newErrors.email = "Email is required"
     if (!/^\S+@\S+\.\S+$/.test(formData.email)) newErrors.email = "Invalid email format"
     if (!formData.phone.trim()) newErrors.phone = "Phone number is required"
     if (!formData.address.trim()) newErrors.address = "Address is required"
+    if (!formData.clientType) newErrors.clientType = "Client type is required"
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = useCallback((e) => {
+  const handleSubmit = (e) => {
     e.preventDefault()
 
     if (validateForm()) {
-      const { address, contactPerson, email, name, phone } = formData
+      // Call the onAddClient function with the form data
+      onAddClient(formData)
 
-      const instance = new DataByTableName("dim_client_v2")
+      // Close the dialog
+      onOpenChange(false)
 
-      instance.post({
-        name,
-        reference: contactPerson,
-        email,
-        contactNumber: phone,
-        address,
-        type: "Individual",
-        gst: "",
-        pan: "",
-        cin: "",
-      }).then(res => {
-        onOpenChange(false)
-
-        // Reset form
-        setFormData({
-          name: "",
-          contactPerson: "",
-          email: "",
-          phone: "",
-          address: "",
-        })
-
-        // Clear errors
-        setErrors({})
-        setRefetchData(p => !p)
-      }).catch(error => {
-        console.log({ error })
+      // Reset form
+      setFormData({
+        name: "",
+        contactPerson: "",
+        email: "",
+        phone: "",
+        address: "",
+        clientType: "", // Add this new field
       })
+
+      // Clear errors
+      setErrors({})
     }
-  }, [formData])
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -138,7 +132,7 @@ export function AddClientDialog({ open, onOpenChange, onAddClient }: any) {
               <Label htmlFor="phone" className="text-right">
                 Phone
               </Label>
-              <Input id="phone" name="phone" type="number" value={formData.phone} onChange={handleChange} className="col-span-3" />
+              <Input id="phone" name="phone" value={formData.phone} onChange={handleChange} className="col-span-3" />
               {errors.phone && <p className="col-span-3 col-start-2 text-sm text-red-500">{errors.phone}</p>}
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -155,12 +149,33 @@ export function AddClientDialog({ open, onOpenChange, onAddClient }: any) {
               />
               {errors.address && <p className="col-span-3 col-start-2 text-sm text-red-500">{errors.address}</p>}
             </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="clientType" className="text-right">
+                Client Type
+              </Label>
+              <div className="col-span-3">
+                <Select value={formData.clientType} onValueChange={handleSelectChange}>
+                  <SelectTrigger id="clientType">
+                    <SelectValue placeholder="Select client type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Corporate">Corporate</SelectItem>
+                    <SelectItem value="Distributor">Distributor</SelectItem>
+                    <SelectItem value="Wholeseller">Wholeseller</SelectItem>
+                    <SelectItem value="Hotels&Restaurants">Hotels & Restaurants</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.clientType && <p className="text-sm text-red-500 mt-1">{errors.clientType}</p>}
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit">Add Client</Button>
+            <Button type="submit" className="bg-[#1b84ff] hover:bg-[#1670e0] text-white">
+              Add Client
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
