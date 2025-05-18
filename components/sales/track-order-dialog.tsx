@@ -7,6 +7,7 @@ import { CheckCircle2, Clock, Package, Truck } from "lucide-react"
 import { StatusBadge } from "@/components/common/status-badge"
 import type { Order, OrderProduct } from "@/types/order"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { convertDate } from "../generic"
 
 interface TrackOrderDialogProps {
   open: boolean
@@ -17,7 +18,7 @@ interface TrackOrderDialogProps {
 export function TrackOrderDialog({ open, onOpenChange, order }: TrackOrderDialogProps) {
   // In a real application, you would fetch the tracking details from your backend
   const trackingDetails = {
-    trackingId: order.trackingId || "TRK-" + order.id.substring(3),
+    trackingId: order.trackingId || "TRK-" + order.id,
     carrier: order.carrier || "Dhaara Logistics",
     status: order.status,
     events: [
@@ -101,7 +102,7 @@ export function TrackOrderDialog({ open, onOpenChange, order }: TrackOrderDialog
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px] max-h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-xl">Track Order {order.id}</DialogTitle>
+          <DialogTitle className="text-xl">{`Track Order "ORDER-${order.id}"`}</DialogTitle>
         </DialogHeader>
 
         <div className="mt-4 space-y-6 overflow-y-auto pr-1 flex-1">
@@ -171,7 +172,7 @@ export function TrackOrderDialog({ open, onOpenChange, order }: TrackOrderDialog
                     <div className="flex items-center justify-between">
                       <h4 className="font-medium">{event.status}</h4>
                       <span className="text-sm text-muted-foreground">
-                        {event.date.toLocaleDateString()}{" "}
+                        {convertDate(event.date)}{" "}
                         {event.completed && event.date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </span>
                     </div>
@@ -187,7 +188,7 @@ export function TrackOrderDialog({ open, onOpenChange, order }: TrackOrderDialog
 
         <div className="flex justify-between mt-4 pt-4 border-t">
           <p className="text-sm text-muted-foreground">
-            Expected Delivery: <span className="font-medium">{new Date(order.deliveryDate).toLocaleDateString()}</span>
+            Expected Delivery: <span className="font-medium">{convertDate(order.deliveryDate)}</span>
           </p>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close

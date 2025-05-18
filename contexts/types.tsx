@@ -16,6 +16,7 @@ export type Sale = {
     priority: OrderPriority,
     createdBy: string,
     createdAt: string,
+    createdOn: string,
     modifiedBy: string,
     modifiedOn: string,
     subtotal: number,

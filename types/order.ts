@@ -419,9 +419,12 @@ export type SalesOrderDetails = {
   productId: string,
   selectedSku: string,
   cases: number,
+  quantity: object,
+  createdOn: string,
   status: string
 }
 
 export type OrderSummary = {
   subtotal: number, discountType: string, discount: number, taxesEnabled: boolean, taxType: string, taxTotal: number, total: number
 }
+

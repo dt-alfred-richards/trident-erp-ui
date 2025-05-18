@@ -16,7 +16,7 @@ axiosInstance.interceptors.request.use(
     if (token) {
       config.headers["token"] =
         token ||
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNzQ3NDgzMDc1fQ.6jTK03Mqq3Xh9Lj5NtNgfE3BtgzZOmumzBbxqjbfhMY";
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibmFtZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBnbWFpbC5jb20iLCJpYXQiOjE3NDc1NTI5MDR9.uBLHguj0ToxYnfH9-qxHacUELnmO5xd-qkK3ZGIYwuE";
     }
     return config;
   },

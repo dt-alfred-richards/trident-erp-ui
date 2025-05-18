@@ -6,12 +6,14 @@ import type { ProductStatus } from "@/types/product"
 import { DataByTableName } from "@/components/api"
 import { createType, getChildObject } from "@/components/generic"
 import { Client, ClientReferences, Sale } from "./types"
+import { id } from "date-fns/locale"
+import { useGlobalContext } from "@/app/GlobalContext"
 
 interface OrderContextType {
   orders: Order[]
   currentUser: string
   filteredOrders: (status: OrderStatus | "all") => Order[]
-  approveOrder: (orderId: string) => void
+  approveOrder: (orderId: string) => Promise<void>
   rejectOrder: (orderId: string) => void
   allocateInventory: (orderId: string, productId: string, quantity: number) => void
   dispatchProducts: (orderId: string, productId: string, quantity: number) => void
@@ -19,7 +21,7 @@ interface OrderContextType {
   getOrderById: (orderId: string) => Order | undefined
   updateOrder: (orderId: string, updatedOrder: Partial<Order>) => void
   addOrder: (order: Order & { summary: OrderSummary }) => Promise<void>
-  cancelOrder: (orderId: string) => void,
+  cancelOrder: (orderId: string) => Promise<void>,
   clientMapper: Record<string, Client>,
   shippingAddress: ShippingAddress[],
   references: ClientReferences[],
@@ -30,6 +32,7 @@ interface OrderContextType {
 const OrderContext = createContext<OrderContextType | undefined>(undefined)
 
 export function OrderProvider({ children }: { children: ReactNode }) {
+  const { usersMapper = {} } = useGlobalContext();
   const fetchRef = useRef(true);
   const [sales, setSales] = useState([]);
   const [clients, setClients] = useState<Client[]>([])
@@ -41,43 +44,51 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const [orders, setOrders] = useState<Order[]>([])
   const [currentUser, setCurrentUser] = useState<string>("Current User") // In a real app, this would come from authentication
 
+  const salesInstance = new DataByTableName("sales");
+
   const fetchContextInfo = useCallback(() => {
     const referenceInstance = new DataByTableName("client_references");
     const clientInstance = new DataByTableName("clients");
-    const salesInstance = new DataByTableName("sales");
     const shippingAddressInstance = new DataByTableName("shipping_addresses")
     const productsInstance = new DataByTableName("products")
+    const saleOrders = new DataByTableName("sales_order_details")
 
     Promise.allSettled([
       referenceInstance.get(),
       clientInstance.get(),
       salesInstance.get(),
       shippingAddressInstance.get(),
-      productsInstance.get()
+      productsInstance.get(),
+      saleOrders.get()
     ]).then(responses => {
       const _references = getChildObject(responses, "0.value.data", [])
       const _clients = getChildObject(responses, "1.value.data", []) as Client[]
       const _sales = getChildObject(responses, "2.value.data", [])
       const _shippingAddress = getChildObject(responses, "3.value.data", [])
       const _products = getChildObject(responses, "4.value.data", [])
-
-      const clientMapper = _clients.reduce((a, c: Client) => {
-        if (!a[c.clientId]) {
-          a[c.clientId] = c;
+      const _saleOrders = getChildObject(responses, "5.value.data", []) as SalesOrderDetails[]
+      const _clientMapper = _clients.reduce((a, c: Client) => {
+        if (!a[c.id]) {
+          a[c.id] = c;
         }
         return a
       }, {} as Record<string, Client>)
-
+      const _productsMapper = _products.reduce((a, c: Product) => {
+        if (!a[c.id]) {
+          a[c.id] = c;
+        }
+        return a
+      }, {} as Record<string, Product>)
       const _orders = _sales.map((item: Sale) => ({
-        id: `ORDER-${item.id}`,
+        id: item.id + "",
         orderDate: item.orderDate,
-        customer: clientMapper[item.clientId]?.clientName || "",
+        customer: _clientMapper[item.clientId]?.clientName || "",
         reference: item.reference,
         deliveryDate: item.deliveryDate,
         priority: item.priority,
         status: item.status,
-        createdBy: item.createdBy,
-        createdAt: item.createdAt,
+        createdBy: usersMapper[item.createdBy] || "",
+        createdAt: item.createdOn,
         statusHistory: [
           {
             timestamp: "2023-06-05T10:30:00Z",
@@ -86,32 +97,32 @@ export function OrderProvider({ children }: { children: ReactNode }) {
             note: "Order created",
           },
         ],
-        products: [
-          {
-            id: "P1",
-            name: "Premium Water Bottle",
-            sku: "500ml",
-            quantity: 1000,
-            price: 120,
-            status: "pending",
-          },
-        ],
+        products: _saleOrders.filter(i => i.salesId === item.salesId).map(i => {
+          return ({
+            id: i.id,
+            name: _productsMapper[i.productId]?.name || "",
+            sku: i.selectedSku,
+            quantity: i.cases,
+            price: _productsMapper[i.productId]?.price || 0,
+            status: i.status,
+          })
+        })
       }))
       setClients(_sales)
       setClientReferences(_references)
       setSales(_sales)
       setOrders(_orders as Order[])
-      setClientMapper(clientMapper)
+      setClientMapper(_clientMapper)
       setShippingAddress(_shippingAddress.map((item: ShippingAddress) => ({ ...item, isDefault: item.id === 1 })))
       setProducts(_products)
     })
-  }, [fetchRef])
+  }, [fetchRef, usersMapper])
 
   useEffect(() => {
-    if (!fetchRef.current) return
+    if (!fetchRef.current || Object.values(usersMapper).length === 0) return
     fetchRef.current = false;
     fetchContextInfo()
-  }, [fetchRef, fetchContextInfo])
+  }, [fetchRef, fetchContextInfo, usersMapper])
   // Get filtered orders by status
   const filteredOrders = (status: OrderStatus | "all") => {
     if (status === "all") {
@@ -128,10 +139,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   // Approve an order
   const approveOrder = (orderId: string) => {
     try {
-      setOrders((prevOrders) =>
-        prevOrders.map((order) => (order.id === orderId ? OrderActionService.approveOrder(order, currentUser) : order)),
-      )
-      console.log(`Order ${orderId} approved successfully`)
+      return salesInstance.patch({ key: "id", value: orderId }, { status: "approved" })
     } catch (error) {
       console.error(`Error approving order ${orderId}:`, error)
       // In a real app, you would show an error notification
@@ -155,34 +163,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   // Add this function after the rejectOrder function
   const cancelOrder = (orderId: string) => {
     try {
-      setOrders((prevOrders) =>
-        prevOrders.map((order) => {
-          if (order.id === orderId) {
-            // Update all products to cancelled status
-            const updatedProducts = order.products.map((product) => ({
-              ...product,
-              status: "cancelled" as ProductStatus,
-            }))
-
-            return {
-              ...order,
-              status: "cancelled" as OrderStatus,
-              products: updatedProducts,
-              statusHistory: [
-                ...order.statusHistory,
-                {
-                  timestamp: new Date().toISOString(),
-                  status: "cancelled",
-                  user: currentUser,
-                  note: "Order cancelled",
-                },
-              ],
-            }
-          }
-          return order
-        }),
-      )
-      console.log(`Order ${orderId} cancelled successfully`)
+      return salesInstance.patch({ key: "id", value: orderId }, { status: "cancelled" })
     } catch (error) {
       console.error(`Error cancelling order ${orderId}:`, error)
       // In a real app, you would show an error notification
@@ -266,12 +247,13 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   // Add a new order
   const addOrder = (order: Order & { summary: OrderSummary }) => {
     try {
-      const { customer, deliveryDate, orderDate, priority, products, reference, status, statusHistory, approvedAt, approvedBy, carrier, trackingId, poDate, poId, poNumber, shippingAddress, remarks, summary } = order
+      const { customer, deliveryDate, orderDate, priority, products, reference, status, statusHistory, approvedAt, approvedBy, carrier, trackingId, poDate, poId, poNumber, shippingAddress, remarks, summary, createdAt, createdBy } = order
 
       const { discount, discountType, subtotal, taxesEnabled, taxTotal, taxType, total } = summary
 
       const salesEntry: Partial<Sale> = {
-        clientId: customer, deliveryDate: deliveryDate,
+        clientId: customer,
+        deliveryDate: deliveryDate,
         orderDate,
         priority,
         status,

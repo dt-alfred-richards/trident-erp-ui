@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils"
 import { useOrders } from "@/contexts/order-context"
 import { ShippingAddress } from "@/types/order"
 import { getChildObject } from "../generic"
+import { useGlobalContext } from "@/app/GlobalContext"
 
 // Mock data for clients
 
@@ -75,6 +76,7 @@ interface CreateSalesOrderDialogProps {
 
 export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderDialogProps) {
   const { addOrder, shippingAddress = [], clientMapper, references = [], products = [], refetchContext = () => { } } = useOrders()
+  const { userId } = useGlobalContext();
   // Order header state
   const [orderDate] = useState<Date>(new Date()) // Remove setOrderDate since it's now fixed
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<Date | undefined>(undefined)
@@ -309,8 +311,6 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
       deliveryDate: expectedDeliveryDate?.toISOString(),
       priority: "medium", // Default priority
       status: "pending_approval", // Set initial status to pending_approval
-      createdBy: "Current User", // This would come from authentication in a real app
-      createdAt: new Date().toISOString(),
       statusHistory: [
         {
           timestamp: new Date().toISOString(),

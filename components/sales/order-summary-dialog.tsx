@@ -16,6 +16,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import type { Order, OrderProduct } from "@/types/order"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
+import moment from "moment"
 
 interface OrderSummaryDialogProps {
   open: boolean
@@ -38,16 +39,8 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
   }
 
   // Format date for display
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "—"
-    const date = new Date(dateString)
-    return new Intl.DateTimeFormat("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(date)
+  const formatDate = (date: Date) => {
+    return moment(date).format("LL")
   }
 
   return (
@@ -56,7 +49,7 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
         <DialogHeader>
           <DialogTitle className="text-xl">Order Summary</DialogTitle>
           <DialogDescription>
-            Order details for <span className="font-medium">{order.id}</span>
+            Order details for <span className="font-medium">{`ORDER-${order.id}`}</span>
           </DialogDescription>
         </DialogHeader>
 
@@ -111,7 +104,7 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
                     </div>
                     <div className="grid grid-cols-2">
                       <span className="text-sm text-muted-foreground">Order ID:</span>
-                      <span className="text-sm font-medium">{order.id}</span>
+                      <span className="text-sm font-medium">{`ORDER-${order.id}`}</span>
                     </div>
                     <div className="grid grid-cols-2">
                       <span className="text-sm text-muted-foreground">Reference:</span>
@@ -195,60 +188,60 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
             {(order.status === "dispatched" ||
               order.status === "delivered" ||
               order.status === "partial_fulfillment") && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Payment Details */}
-                <Card>
-                  <CardContent className="p-4 space-y-3">
-                    <h3 className="font-medium">Payment Details</h3>
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-2">
-                        <span className="text-sm text-muted-foreground">Payment Method:</span>
-                        <span className="text-sm">Bank Transfer</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Payment Details */}
+                  <Card>
+                    <CardContent className="p-4 space-y-3">
+                      <h3 className="font-medium">Payment Details</h3>
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-2">
+                          <span className="text-sm text-muted-foreground">Payment Method:</span>
+                          <span className="text-sm">Bank Transfer</span>
+                        </div>
+                        <div className="grid grid-cols-2">
+                          <span className="text-sm text-muted-foreground">Transaction ID:</span>
+                          <span className="text-sm">{"TXN-" + order.id.substring(3)}</span>
+                        </div>
+                        <div className="grid grid-cols-2">
+                          <span className="text-sm text-muted-foreground">Amount:</span>
+                          <span className="text-sm font-medium">₹{total.toFixed(2)}</span>
+                        </div>
+                        <div className="grid grid-cols-2">
+                          <span className="text-sm text-muted-foreground">Status:</span>
+                          <span className="text-sm text-green-600 font-medium">Paid</span>
+                        </div>
                       </div>
-                      <div className="grid grid-cols-2">
-                        <span className="text-sm text-muted-foreground">Transaction ID:</span>
-                        <span className="text-sm">{"TXN-" + order.id.substring(3)}</span>
-                      </div>
-                      <div className="grid grid-cols-2">
-                        <span className="text-sm text-muted-foreground">Amount:</span>
-                        <span className="text-sm font-medium">₹{total.toFixed(2)}</span>
-                      </div>
-                      <div className="grid grid-cols-2">
-                        <span className="text-sm text-muted-foreground">Status:</span>
-                        <span className="text-sm text-green-600 font-medium">Paid</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
 
-                {/* Shipping Details */}
-                <Card>
-                  <CardContent className="p-4 space-y-3">
-                    <h3 className="font-medium">Shipping Details</h3>
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-2">
-                        <span className="text-sm text-muted-foreground">Carrier:</span>
-                        <span className="text-sm">{order.carrier || "Dhaara Logistics"}</span>
+                  {/* Shipping Details */}
+                  <Card>
+                    <CardContent className="p-4 space-y-3">
+                      <h3 className="font-medium">Shipping Details</h3>
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-2">
+                          <span className="text-sm text-muted-foreground">Carrier:</span>
+                          <span className="text-sm">{order.carrier || "Dhaara Logistics"}</span>
+                        </div>
+                        <div className="grid grid-cols-2">
+                          <span className="text-sm text-muted-foreground">Tracking Code:</span>
+                          <span className="text-sm">{order.trackingId || "TRK-" + order.id.substring(3)}</span>
+                        </div>
+                        <div className="grid grid-cols-2">
+                          <span className="text-sm text-muted-foreground">Status:</span>
+                          <span className="text-sm text-green-600 font-medium">
+                            {order.status === "delivered"
+                              ? "Delivered"
+                              : order.status === "dispatched"
+                                ? "In Transit"
+                                : "Partially Shipped"}
+                          </span>
+                        </div>
                       </div>
-                      <div className="grid grid-cols-2">
-                        <span className="text-sm text-muted-foreground">Tracking Code:</span>
-                        <span className="text-sm">{order.trackingId || "TRK-" + order.id.substring(3)}</span>
-                      </div>
-                      <div className="grid grid-cols-2">
-                        <span className="text-sm text-muted-foreground">Status:</span>
-                        <span className="text-sm text-green-600 font-medium">
-                          {order.status === "delivered"
-                            ? "Delivered"
-                            : order.status === "dispatched"
-                              ? "In Transit"
-                              : "Partially Shipped"}
-                        </span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
 
             {/* Addresses */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
