@@ -8,6 +8,7 @@ import { createType, getChildObject } from "@/components/generic"
 import { Client, ClientReferences, Sale } from "./types"
 import { id } from "date-fns/locale"
 import { useGlobalContext } from "@/app/GlobalContext"
+import { Summary } from "framer-motion"
 
 interface OrderContextType {
   orders: Order[]
@@ -19,7 +20,7 @@ interface OrderContextType {
   dispatchProducts: (orderId: string, productId: string, quantity: number) => void
   deliverProducts: (orderId: string, productId: string, quantity: number) => void
   getOrderById: (orderId: string) => Order | undefined
-  updateOrder: (orderId: string, updatedOrder: Partial<Order>) => void
+  updateOrder: (orderId: string, updatedOrder: Partial<Order>) => Promise<void>
   addOrder: (order: Order & { summary: OrderSummary }) => Promise<void>
   cancelOrder: (orderId: string) => Promise<void>,
   clientMapper: Record<string, Client>,
@@ -44,11 +45,11 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const [orders, setOrders] = useState<Order[]>([])
   const [currentUser, setCurrentUser] = useState<string>("Current User") // In a real app, this would come from authentication
 
-  const salesInstance = new DataByTableName("sales");
+  const salesInstance = new DataByTableName("v1_sales");
 
   const fetchContextInfo = useCallback(() => {
     const referenceInstance = new DataByTableName("client_references");
-    const clientInstance = new DataByTableName("clients");
+    const clientInstance = new DataByTableName("v1_clients");
     const shippingAddressInstance = new DataByTableName("shipping_addresses")
     const productsInstance = new DataByTableName("products")
     const saleOrders = new DataByTableName("sales_order_details")
@@ -68,8 +69,8 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       const _products = getChildObject(responses, "4.value.data", [])
       const _saleOrders = getChildObject(responses, "5.value.data", []) as SalesOrderDetails[]
       const _clientMapper = _clients.reduce((a, c: Client) => {
-        if (!a[c.id]) {
-          a[c.id] = c;
+        if (!a[c.clientId]) {
+          a[c.clientId] = c;
         }
         return a
       }, {} as Record<string, Client>)
@@ -79,39 +80,44 @@ export function OrderProvider({ children }: { children: ReactNode }) {
         }
         return a
       }, {} as Record<string, Product>)
-      const _orders = _sales.map((item: Sale) => ({
-        id: item.id + "",
-        orderDate: item.orderDate,
-        customer: _clientMapper[item.clientId]?.clientName || "",
-        reference: item.reference,
-        deliveryDate: item.deliveryDate,
-        priority: item.priority,
-        status: item.status,
-        createdBy: usersMapper[item.createdBy] || "",
-        createdAt: item.createdOn,
-        statusHistory: [
-          {
-            timestamp: "2023-06-05T10:30:00Z",
-            status: "pending_approval",
-            user: "John Doe",
-            note: "Order created",
-          },
-        ],
-        products: _saleOrders.filter(i => i.salesId === item.salesId).map(i => {
-          return ({
-            id: i.id,
-            name: _productsMapper[i.productId]?.name || "",
-            sku: i.selectedSku,
-            quantity: i.cases,
-            price: _productsMapper[i.productId]?.price || 0,
-            status: i.status,
-          })
-        })
-      }))
+      const _orders = _sales.map((item: Sale) => {
+        return ({
+          clientId: item.clientId,
+          createdAt: item.createdOn,
+          createdBy: item.createdBy,
+          deliveryDate: item.deliveryDate,
+          customer: _clientMapper[item.clientId]?.name || "",
+          carrier: "",
+          id: item.saleId,
+          modifiedBy: item.modifiedBy,
+          orderDate: item.orderDate,
+          poDate: item.poDate,
+          poId: item.poId,
+          poNumber: item.poNumber,
+          priority: "low",
+          products: [],
+          reference: item.reference,
+          remarks: item.remarks,
+          salesId: item.saleId,
+          status: item.status,
+          statusHistory: [],
+          shippingAddressId: item.shippingAddressId,
+          summary: {
+            discount: item.discount,
+            discountType: item.discountType,
+            subtotal: item.subtotal,
+            taxTotal: item.taxTotal,
+            taxType: item.taxType,
+            total: item.total,
+            taxEnabled: item.taxesEnabled,
+            taxesEnabled: item.taxesEnabled
+          }
+        } as Partial<Order>)
+      })
       setClients(_sales)
       setClientReferences(_references)
       setSales(_sales)
-      setOrders(_orders as Order[])
+      setOrders(_orders)
       setClientMapper(_clientMapper)
       setShippingAddress(_shippingAddress.map((item: ShippingAddress) => ({ ...item, isDefault: item.id === 1 })))
       setProducts(_products)
@@ -138,12 +144,9 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 
   // Approve an order
   const approveOrder = (orderId: string) => {
-    try {
-      return salesInstance.patch({ key: "id", value: orderId }, { status: "approved" })
-    } catch (error) {
+    return salesInstance.patch({ key: "id", value: orderId }, { status: "approved" }).catch(error => {
       console.error(`Error approving order ${orderId}:`, error)
-      // In a real app, you would show an error notification
-    }
+    })
   }
 
   // Reject an order
@@ -162,41 +165,71 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   // Add the cancelOrder implementation in the OrderProvider
   // Add this function after the rejectOrder function
   const cancelOrder = (orderId: string) => {
-    try {
-      return salesInstance.patch({ key: "id", value: orderId }, { status: "cancelled" })
-    } catch (error) {
+    return salesInstance.patch({ key: "id", value: orderId }, { status: "cancelled" }).catch(error => {
       console.error(`Error cancelling order ${orderId}:`, error)
-      // In a real app, you would show an error notification
-    }
+    })
   }
 
   // Update an order
   const updateOrder = (orderId: string, updatedOrder: Partial<Order>) => {
-    try {
-      setOrders((prevOrders) =>
-        prevOrders.map((order) =>
-          order.id === orderId
-            ? {
-              ...order,
-              ...updatedOrder,
-              statusHistory: [
-                ...order.statusHistory,
-                {
-                  timestamp: new Date().toISOString(),
-                  status: updatedOrder.status || order.status,
-                  user: currentUser,
-                  note: "Order updated",
-                },
-              ],
-            }
-            : order,
-        ),
-      )
-      console.log(`Order ${orderId} updated successfully`)
-    } catch (error) {
-      console.error(`Error updating order ${orderId}:`, error)
-      // In a real app, you would show an error notification
-    }
+    const summary = updatedOrder.summary ?? {} as OrderSummary
+    summary["taxEnabled"] = updatedOrder.summary?.taxesEnabled
+
+    delete summary["taxesEnabled"]
+
+    const saleOrderPayload = {
+      deliveryDate: updatedOrder.deliveryDate?.toISOString(),
+      shippingAddress: updatedOrder.shippingAddress,
+      reference: updatedOrder.reference,
+      ...summary
+    } as Partial<Sale>
+
+    const salesOrderDetailsPayload: Partial<SalesOrderDetails>[] = (updatedOrder.products ?? []).map(item => ({
+      productId: getChildObject(item, "productId", ""),
+      selectedSku: getChildObject(item, "sku", ""),
+      cases: getChildObject(item, "cases", ""),
+      status: getChildObject(item, "status", ""),
+      salesId: getChildObject(item, "salesId", "")
+    }))
+
+    const saleInstance = new DataByTableName("sales")
+    const saleOrderDetailsInstance = new DataByTableName("sales_order_details")
+
+    Promise.allSettled([
+      saleInstance.patch({ key: "id", value: orderId }, saleOrderPayload),
+      ...salesOrderDetailsPayload.map(item => {
+        return saleOrderDetailsInstance.patch({ key: "sales_id", value: item.salesId }, item)
+      })
+    ]).then(res => {
+      console.log({ res })
+    })
+    // return Promise.resolve("alfreds")
+
+    //  try {
+    //    setOrders((prevOrders) =>
+    //     prevOrders.map((order) =>
+    //       order.id === orderId
+    //         ? {
+    //           ...order,
+    //           ...updatedOrder,
+    //           statusHistory: [
+    //             ...order.statusHistory,
+    //             {
+    //               timestamp: new Date().toISOString(),
+    //               status: updatedOrder.status || order.status,
+    //               user: currentUser,
+    //               note: "Order updated",
+    //             },
+    //           ],
+    //         }
+    //         : order,
+    //     ),
+    //   )
+    //   console.log(`Order ${orderId} updated successfully`)
+    // } catch (error) {
+    //   console.error(`Error updating order ${orderId}:`, error)
+    //   // In a real app, you would show an error notification
+    // }
   }
 
   // Allocate inventory to a product
@@ -247,7 +280,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   // Add a new order
   const addOrder = (order: Order & { summary: OrderSummary }) => {
     try {
-      const { customer, deliveryDate, orderDate, priority, products, reference, status, statusHistory, approvedAt, approvedBy, carrier, trackingId, poDate, poId, poNumber, shippingAddress, remarks, summary, createdAt, createdBy } = order
+      const { customer, deliveryDate, orderDate, priority, products, reference, status, statusHistory, carrier, trackingId, poDate, poId, poNumber, shippingAddress, remarks, summary } = order
 
       const { discount, discountType, subtotal, taxesEnabled, taxTotal, taxType, total } = summary
 
@@ -257,16 +290,15 @@ export function OrderProvider({ children }: { children: ReactNode }) {
         orderDate,
         priority,
         status,
-        purchaseOrderDate: poDate,
-        purchaseOrderNumber: poNumber,
-        purchaseOrderId: poId,
-        shippingAddress: getChildObject(shippingAddress, "id", ""),
+        poDate,
+        poNumber,
+        poId,
+        shippingAddressId: getChildObject(shippingAddress, "id", ""),
         remarks,
         reference: clientReferences.find(item => item.referenceId === reference)?.referenceId || "",
         subtotal,
         discount,
         discountType,
-        taxEnabled: taxesEnabled,
         taxTotal,
         total,
         taxType
@@ -319,7 +351,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     references: clientReferences,
     products,
     refetchContext: fetchContextInfo
-  }), [orders, currentUser, clientMapper, shippingAddress, clientReferences, products, fetchContextInfo])
+  }), [orders, currentUser, clientMapper, shippingAddress, clientReferences, products, fetchContextInfo, shippingAddress])
 
   return <OrderContext.Provider value={value}>{children}</OrderContext.Provider>
 }

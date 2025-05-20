@@ -17,6 +17,7 @@ import type { Order, OrderProduct } from "@/types/order"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import moment from "moment"
+import { convertDate } from "../generic"
 
 interface OrderSummaryDialogProps {
   open: boolean
@@ -96,7 +97,7 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
                   <div className="space-y-2">
                     <div className="grid grid-cols-2">
                       <span className="text-sm text-muted-foreground">Order Date:</span>
-                      <span className="text-sm">{formatDate(order.orderDate)}</span>
+                      <span className="text-sm">{convertDate(order.orderDate)}</span>
                     </div>
                     <div className="grid grid-cols-2">
                       <span className="text-sm text-muted-foreground">Delivery Date:</span>
@@ -104,7 +105,7 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
                     </div>
                     <div className="grid grid-cols-2">
                       <span className="text-sm text-muted-foreground">Order ID:</span>
-                      <span className="text-sm font-medium">{`ORDER-${order.id}`}</span>
+                      <span className="text-sm font-medium">{order.id}</span>
                     </div>
                     <div className="grid grid-cols-2">
                       <span className="text-sm text-muted-foreground">Reference:</span>
@@ -114,10 +115,10 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
                       <span className="text-sm text-muted-foreground">Created By:</span>
                       <span className="text-sm">{order.createdBy}</span>
                     </div>
-                    {order.approvedBy && (
+                    {order.modifiedBy && (
                       <div className="grid grid-cols-2">
                         <span className="text-sm text-muted-foreground">Approved By:</span>
-                        <span className="text-sm">{order.approvedBy}</span>
+                        <span className="text-sm">{order.modifiedBy}</span>
                       </div>
                     )}
                   </div>

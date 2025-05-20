@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { DashboardShell } from "@/components/dashboard-shell"
 import { ClientListDashboard } from "@/components/sales/client-list-dashboard"
+import { ClientProvider } from "./client-context"
 
 export const metadata: Metadata = {
   title: "Client List",
@@ -10,7 +11,9 @@ export const metadata: Metadata = {
 export default function ClientListPage() {
   return (
     <DashboardShell>
-      <ClientListDashboard />
+      <ClientProvider>
+        <ClientListDashboard />
+      </ClientProvider>
     </DashboardShell>
   )
 }

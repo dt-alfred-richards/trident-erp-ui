@@ -14,45 +14,61 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Client, useClient } from "@/app/sales/client-list/client-context"
+import { Basic } from "@/contexts/types"
 
+type ComponentClientProps = Omit<Client, keyof Basic>;
+const initialState: Client = {
+  clientId: "",
+  id: -1,
+  name: "",
+  contactPerson: "",
+  email: "",
+  phoneNumber: "",
+  shippingAddress: "",
+  clientType: "", // Add this new field
+  gstNumber: "",
+  panNumber: "",
+  createdBy: "",
+  createdOn: "",
+  modifiedBy: "",
+  modifiedOn: ""
+
+}
 export function AddClientDialog({ open, onOpenChange, onAddClient }) {
-  const [formData, setFormData] = useState({
-    name: "",
-    contactPerson: "",
-    email: "",
-    phone: "",
-    address: "",
-    clientType: "", // Add this new field
-  })
+  const { addClient, refetchContext } = useClient();
+  const [formData, setFormData] = useState<Client>(initialState)
 
-  const [errors, setErrors] = useState({})
+  const [errors, setErrors] = useState<any>({})
 
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
     // Clear error when field is edited
     if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: null }))
+      setErrors((prev: any) => ({ ...prev, [name]: null }))
     }
   }
 
   const handleSelectChange = (value) => {
-    setFormData((prev) => ({ ...prev, clientType: value }))
+    setFormData((prev: any) => ({ ...prev, clientType: value }))
     // Clear error when field is edited
     if (errors.clientType) {
-      setErrors((prev) => ({ ...prev, clientType: null }))
+      setErrors((prev: any) => ({ ...prev, clientType: null }))
     }
   }
 
   const validateForm = () => {
-    const newErrors = {}
+    const newErrors = {} as any
     if (!formData.name.trim()) newErrors.name = "Client name is required"
     if (!formData.contactPerson.trim()) newErrors.contactPerson = "Contact person is required"
     if (!formData.email.trim()) newErrors.email = "Email is required"
     if (!/^\S+@\S+\.\S+$/.test(formData.email)) newErrors.email = "Invalid email format"
-    if (!formData.phone.trim()) newErrors.phone = "Phone number is required"
-    if (!formData.address.trim()) newErrors.address = "Address is required"
+    if (!formData.phoneNumber.trim()) newErrors.phone = "Phone number is required"
+    if (!formData.shippingAddress.trim()) newErrors.address = "Address is required"
     if (!formData.clientType) newErrors.clientType = "Client type is required"
+    if (!formData.gstNumber) newErrors.gstNumber = "Gst number is required"
+    if (!formData.panNumber) newErrors.panNumber = "Pan number is required"
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -60,26 +76,17 @@ export function AddClientDialog({ open, onOpenChange, onAddClient }) {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-
     if (validateForm()) {
-      // Call the onAddClient function with the form data
-      onAddClient(formData)
+      addClient(formData).then(() => {
+        onOpenChange(false)
 
-      // Close the dialog
-      onOpenChange(false)
+        // Reset form
+        setFormData(initialState)
 
-      // Reset form
-      setFormData({
-        name: "",
-        contactPerson: "",
-        email: "",
-        phone: "",
-        address: "",
-        clientType: "", // Add this new field
+        // Clear errors
+        setErrors({})
+        refetchContext()
       })
-
-      // Clear errors
-      setErrors({})
     }
   }
 
@@ -132,22 +139,36 @@ export function AddClientDialog({ open, onOpenChange, onAddClient }) {
               <Label htmlFor="phone" className="text-right">
                 Phone
               </Label>
-              <Input id="phone" name="phone" value={formData.phone} onChange={handleChange} className="col-span-3" />
-              {errors.phone && <p className="col-span-3 col-start-2 text-sm text-red-500">{errors.phone}</p>}
+              <Input id="phoneNumber" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} className="col-span-3" />
+              {errors.phoneNumber && <p className="col-span-3 col-start-2 text-sm text-red-500">{errors.phoneNumber}</p>}
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="address" className="text-right">
+              <Label htmlFor="gstNumber" className="text-right">
+                Gst number
+              </Label>
+              <Input id="gstNumber" name="gstNumber" value={formData.gstNumber} onChange={handleChange} className="col-span-3" />
+              {errors.gstNumber && <p className="col-span-3 col-start-2 text-sm text-red-500">{errors.gstNumber}</p>}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="panNumber" className="text-right">
+                Pan number
+              </Label>
+              <Input id="panNumber" name="panNumber" value={formData.panNumber} onChange={handleChange} className="col-span-3" />
+              {errors.panNumber && <p className="col-span-3 col-start-2 text-sm text-red-500">{errors.panNumber}</p>}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="shippingAddress" className="text-right">
                 Address
               </Label>
               <Textarea
-                id="address"
-                name="address"
-                value={formData.address}
+                id="shippingAddress"
+                name="shippingAddress"
+                value={formData.shippingAddress}
                 onChange={handleChange}
                 className="col-span-3"
                 rows={3}
               />
-              {errors.address && <p className="col-span-3 col-start-2 text-sm text-red-500">{errors.address}</p>}
+              {errors.shippingAddress && <p className="col-span-3 col-start-2 text-sm text-red-500">{errors.shippingAddress}</p>}
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="clientType" className="text-right">

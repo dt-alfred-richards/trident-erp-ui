@@ -37,6 +37,7 @@ import { useOrders } from "@/contexts/order-context"
 import { ShippingAddress } from "@/types/order"
 import { getChildObject } from "../generic"
 import { useGlobalContext } from "@/app/GlobalContext"
+import { Client } from "@/contexts/types"
 
 // Mock data for clients
 
@@ -75,7 +76,7 @@ interface CreateSalesOrderDialogProps {
 }
 
 export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderDialogProps) {
-  const { addOrder, shippingAddress = [], clientMapper, references = [], products = [], refetchContext = () => { } } = useOrders()
+  const { addOrder, shippingAddress: contextShippingAddress = [], clientMapper, references = [], products = [], refetchContext = () => { } } = useOrders()
   const { userId } = useGlobalContext();
   // Order header state
   const [orderDate] = useState<Date>(new Date()) // Remove setOrderDate since it's now fixed
@@ -92,7 +93,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
   const [gstNumber, setGstNumber] = useState("")
   const [panNumber, setPanNumber] = useState("")
   const [availableReferences, setAvailableReferences] = useState<string[]>([])
-  const [shippingAddresses, setShippingAddresses] = useState<ShippingAddress[]>(shippingAddress)
+  const [shippingAddresses, setShippingAddresses] = useState<ShippingAddress[]>(contextShippingAddress)
   const [selectedShippingAddressId, setSelectedShippingAddressId] = useState("")
 
   // Tax location state
@@ -114,13 +115,13 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
   const CLIENTS = useMemo(() => {
     return Object.values(clientMapper).map(item => ({
       id: item.id,
-      name: item.clientName,
+      name: item.name,
       gstNumber: item.gstNumber,
       panNumber: item.panNumber,
       references: references.filter(element => element.clientId === item.clientId).map(item => item.referenceId),
-      shippingAddresses: shippingAddress.filter(address => address.clientId === item.clientId)
-    }))
-  }, [shippingAddress, clientMapper, references])
+      shippingAddresses: contextShippingAddress.filter(address => address.clientId === item.clientId)
+    } as Partial<Client>))
+  }, [contextShippingAddress, clientMapper, references])
 
   // Order summary state
   const [subtotal, setSubtotal] = useState(0)
@@ -145,25 +146,26 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
   // Update client details when client changes
   useEffect(() => {
     if (clientId) {
-      const selectedClient = CLIENTS.find((client) => client.id === clientId)
+      const selectedClient = CLIENTS.find((client) => client.clientId === clientId)
       if (selectedClient) {
-        setClientName(selectedClient.name)
-        setGstNumber(selectedClient.gstNumber)
-        setPanNumber(selectedClient.panNumber)
-        setAvailableReferences(selectedClient.references)
+        const clientAddresses = contextShippingAddress.filter(item => item.clientId === selectedClient.clientId)
+        setClientName(selectedClient.name || "")
+        setGstNumber(selectedClient.gstNumber || "")
+        setPanNumber(selectedClient.panNumber || "")
+        setAvailableReferences(references.filter(item => item.clientId === selectedClient.clientId).map(item => item.name))
         setReference("") // Reset reference when client changes
 
         // Set shipping addresses
-        if (selectedClient.shippingAddresses) {
-          setShippingAddresses(selectedClient.shippingAddresses)
+        if (clientAddresses.length) {
+          setShippingAddresses(clientAddresses)
 
           // Auto-select if there's only one address or a default address
-          if (selectedClient.shippingAddresses.length === 1) {
-            setSelectedShippingAddressId(selectedClient.shippingAddresses[0].id)
+          if (clientAddresses.length === 1) {
+            setSelectedShippingAddressId(clientAddresses[0].addressId + '')
           } else {
-            const defaultAddress = selectedClient.shippingAddresses.find((addr) => addr.isDefault)
+            const defaultAddress = clientAddresses.find((addr) => addr.isDefault)
             if (defaultAddress) {
-              setSelectedShippingAddressId(defaultAddress.id)
+              setSelectedShippingAddressId(defaultAddress.addressId + '')
             } else {
               setSelectedShippingAddressId("") // Reset if no default
             }
@@ -187,7 +189,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
   // Update when shipping address changes
   useEffect(() => {
     if (selectedShippingAddressId) {
-      const selectedAddress = shippingAddresses.find((addr) => addr.id === selectedShippingAddressId)
+      const selectedAddress = shippingAddresses.find((addr) => addr.addressId === selectedShippingAddressId)
       if (selectedAddress) {
         // Check if address contains "Telangana" to determine tax type
         setIsInTelangana(selectedAddress.address.includes("Telangana"))
@@ -465,7 +467,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                     </SelectTrigger>
                     <SelectContent>
                       {CLIENTS.map((client) => (
-                        <SelectItem key={client.id} value={client.id}>
+                        <SelectItem key={client.clientId} value={client.clientId}>
                           {client.name}
                         </SelectItem>
                       ))}

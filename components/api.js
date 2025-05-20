@@ -12,11 +12,11 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
   (config) => {
     const token =
-      localStorage.getItem("token") || sessionStorage.getItem("token"); // Get token from localStorage
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibmFtZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBnbWFpbC5jb20iLCJpYXQiOjE3NDc2NjY2MzR9.XaiBHTRxm5GeCO3AmqFTXbYOxfsW6tbfj5fiaAgIqwk" ||
+      localStorage.getItem("token") ||
+      sessionStorage.getItem("token"); // Get token from localStorage
     if (token) {
-      config.headers["token"] =
-        token ||
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibmFtZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBnbWFpbC5jb20iLCJpYXQiOjE3NDc1NTI5MDR9.uBLHguj0ToxYnfH9-qxHacUELnmO5xd-qkK3ZGIYwuE";
+      config.headers["token"] = token;
     }
     return config;
   },
@@ -36,9 +36,9 @@ axiosInstance.interceptors.response.use(
       sessionStorage.removeItem("role");
 
       // Redirect to login page if token is invalid
-      if (typeof window !== "undefined") {
-        window.location.href = "/login"; // fallback if you can't use router.push
-      }
+      // if (typeof window !== "undefined") {
+      //   window.location.href = "/login"; // fallback if you can't use router.push
+      // }
     }
 
     return Promise.reject(error);

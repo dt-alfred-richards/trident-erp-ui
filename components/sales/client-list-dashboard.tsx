@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -13,126 +13,25 @@ import { ConfirmationDialog } from "@/components/common/confirmation-dialog"
 import { useToast } from "@/hooks/use-toast"
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Client, useClient } from "@/app/sales/client-list/client-context"
 
-// Sample client data with removed fields
-const initialClients = [
-  {
-    id: "CL-001",
-    name: "Acme Corporation",
-    contactPerson: "John Doe",
-    email: "john.doe@acme.com",
-    phone: "+1 (555) 123-4567",
-    address: "123 Business Ave, New York, NY 10001",
-    status: "Active",
-    lastOrder: "2023-04-15",
-    totalOrders: 24,
-    totalValue: "$145,780",
-    clientType: "Corporate",
-  },
-  {
-    id: "CL-002",
-    name: "TechNova Solutions",
-    contactPerson: "Jane Smith",
-    email: "jane.smith@technova.com",
-    phone: "+1 (555) 987-6543",
-    address: "456 Innovation Blvd, San Francisco, CA 94105",
-    status: "Active",
-    lastOrder: "2023-04-02",
-    totalOrders: 18,
-    totalValue: "$98,450",
-    clientType: "Corporate",
-  },
-  {
-    id: "CL-003",
-    name: "Global Industries",
-    contactPerson: "Robert Johnson",
-    email: "robert@globalind.com",
-    phone: "+1 (555) 456-7890",
-    address: "789 Enterprise St, Chicago, IL 60601",
-    status: "Inactive",
-    lastOrder: "2023-01-20",
-    totalOrders: 7,
-    totalValue: "$42,300",
-    clientType: "Distributor",
-  },
-  {
-    id: "CL-004",
-    name: "Sunrise Manufacturing",
-    contactPerson: "Emily Chen",
-    email: "emily.chen@sunrise.com",
-    phone: "+1 (555) 234-5678",
-    address: "101 Factory Lane, Detroit, MI 48201",
-    status: "Active",
-    lastOrder: "2023-03-28",
-    totalOrders: 15,
-    totalValue: "$87,620",
-    clientType: "Wholeseller",
-  },
-  {
-    id: "CL-005",
-    name: "Quantum Enterprises",
-    contactPerson: "Michael Brown",
-    email: "michael@quantum.com",
-    phone: "+1 (555) 876-5432",
-    address: "202 Quantum Drive, Austin, TX 78701",
-    status: "Active",
-    lastOrder: "2023-04-10",
-    totalOrders: 12,
-    totalValue: "$65,890",
-    clientType: "Corporate",
-  },
-  {
-    id: "CL-006",
-    name: "Pinnacle Systems",
-    contactPerson: "Sarah Wilson",
-    email: "sarah@pinnacle.com",
-    phone: "+1 (555) 222-3333",
-    address: "303 Summit Road, Boston, MA 02108",
-    status: "Active",
-    lastOrder: "2023-04-05",
-    totalOrders: 9,
-    totalValue: "$54,320",
-    clientType: "Hotels&Restaurants",
-  },
-  {
-    id: "CL-007",
-    name: "Horizon Distributors",
-    contactPerson: "David Lee",
-    email: "david@horizon.com",
-    phone: "+1 (555) 444-5555",
-    address: "404 Skyline Ave, Seattle, WA 98101",
-    status: "Inactive",
-    lastOrder: "2023-02-15",
-    totalOrders: 5,
-    totalValue: "$28,750",
-    clientType: "Distributor",
-  },
-  {
-    id: "CL-008",
-    name: "Elite Innovations",
-    contactPerson: "Jennifer Taylor",
-    email: "jennifer@elite.com",
-    phone: "+1 (555) 666-7777",
-    address: "505 Tech Parkway, Denver, CO 80202",
-    status: "Active",
-    lastOrder: "2023-03-22",
-    totalOrders: 14,
-    totalValue: "$76,430",
-    clientType: "Wholeseller",
-  },
-]
 
 export function ClientListDashboard() {
-  const [clients, setClients] = useState(initialClients)
+  const { clientMapper, deleteClient, refetchContext } = useClient();
+  const [clients, setClients] = useState<Client[]>([])
+
+  useEffect(() => {
+    setClients(Object.values(clientMapper))
+  }, [clientMapper])
   const [searchQuery, setSearchQuery] = useState("")
   const [clientTypeFilter, setClientTypeFilter] = useState("All")
-  const [selectedClient, setSelectedClient] = useState(null)
-  const [viewClient, setViewClient] = useState(null)
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null)
+  const [viewClient, setViewClient] = useState<Client | null>(null)
   const [showDetailsDialog, setShowDetailsDialog] = useState(false)
   const [showViewDialog, setShowViewDialog] = useState(false)
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [clientToDelete, setClientToDelete] = useState(null)
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null)
   const { toast } = useToast()
 
   // Pagination state
@@ -142,7 +41,7 @@ export function ClientListDashboard() {
   const filteredClients = clients.filter(
     (client) =>
       (client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        client.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (client.id + "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         client.contactPerson.toLowerCase().includes(searchQuery.toLowerCase()) ||
         client.email.toLowerCase().includes(searchQuery.toLowerCase())) &&
       (clientTypeFilter === "All" || client.clientType === clientTypeFilter),
@@ -153,19 +52,13 @@ export function ClientListDashboard() {
   const indexOfFirstClient = indexOfLastClient - itemsPerPage
   const currentClients = filteredClients.slice(indexOfFirstClient, indexOfLastClient)
 
-  const handleAddClient = (newClient) => {
-    // Generate a new client ID
-    const newId = `CL-${String(clients.length + 1).padStart(3, "0")}`
-
+  const handleAddClient = (newClient: Client) => {
     // Create the complete client object
     const clientToAdd = {
       ...newClient,
-      id: newId,
+      id: clients.length + 1,
       // Add any other default fields that might be needed
       status: "Active",
-      lastOrder: "-",
-      totalOrders: 0,
-      totalValue: "₹0.00",
     }
 
     // Update the clients state with the new client
@@ -180,7 +73,7 @@ export function ClientListDashboard() {
     console.log("Added new client:", clientToAdd)
   }
 
-  const handleUpdateClient = (updatedClient) => {
+  const handleUpdateClient = (updatedClient: Client) => {
     setClients(clients.map((client) => (client.id === updatedClient.id ? updatedClient : client)))
     toast({
       title: "Client Updated",
@@ -188,7 +81,7 @@ export function ClientListDashboard() {
     })
   }
 
-  const confirmDelete = (client) => {
+  const confirmDelete = (client: Client) => {
     setClientToDelete(client)
     setShowDeleteDialog(true)
   }
@@ -196,16 +89,14 @@ export function ClientListDashboard() {
   const handleDeleteClient = () => {
     if (!clientToDelete) return
 
-    setClients(clients.filter((client) => client.id !== clientToDelete.id))
-    toast({
-      title: "Client Removed",
-      description: `${clientToDelete.name} has been removed successfully.`,
+    deleteClient(clientToDelete).then(() => {
+      setClientToDelete(null);
+      refetchContext()
     })
-    setClientToDelete(null)
   }
 
   // Handle page change
-  const handlePageChange = (page) => {
+  const handlePageChange = (page: any) => {
     setCurrentPage(page)
   }
 
@@ -272,12 +163,12 @@ export function ClientListDashboard() {
               ) : (
                 currentClients.map((client) => (
                   <TableRow key={client.id}>
-                    <TableCell className="font-medium">{client.id}</TableCell>
+                    <TableCell className="font-medium">{client.clientId}</TableCell>
                     <TableCell>{client.name}</TableCell>
                     <TableCell>{client.clientType}</TableCell>
                     <TableCell>{client.contactPerson}</TableCell>
                     <TableCell>{client.email}</TableCell>
-                    <TableCell>{client.phone}</TableCell>
+                    <TableCell>{client.phoneNumber}</TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
                         <Button
@@ -295,6 +186,7 @@ export function ClientListDashboard() {
                           variant="ghost"
                           size="icon"
                           onClick={() => {
+                            if (!client) return;
                             setSelectedClient(client)
                             setShowDetailsDialog(true)
                           }}

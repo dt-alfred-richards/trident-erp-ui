@@ -11,11 +11,12 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
 import { AddProductDialog } from "./add-product-dialog"
+import { Client } from "@/app/sales/client-list/client-context"
 
 interface ClientViewDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  client: any // Replace 'any' with a more specific type if available
+  client: Client // Replace 'any' with a more specific type if available
 }
 
 // Unit options
@@ -331,7 +332,7 @@ export function ClientViewDialog({ open, onOpenChange, client }: ClientViewDialo
               <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Client ID</p>
-                  <p className="font-medium">{client?.id}</p>
+                  <p className="font-medium">{client?.clientId}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Client Name</p>
@@ -353,13 +354,13 @@ export function ClientViewDialog({ open, onOpenChange, client }: ClientViewDialo
                   <p className="text-sm text-muted-foreground flex items-center gap-1">
                     <PhoneIcon className="h-3 w-3" /> Phone
                   </p>
-                  <p className="font-medium">{client?.phone}</p>
+                  <p className="font-medium">{client?.phoneNumber}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground flex items-center gap-1">
                     <MapPinIcon className="h-3 w-3" /> Address
                   </p>
-                  <p className="font-medium">{client?.address}</p>
+                  <p className="font-medium">{client?.shippingAddress}</p>
                 </div>
               </CardContent>
             </Card>
@@ -377,7 +378,7 @@ export function ClientViewDialog({ open, onOpenChange, client }: ClientViewDialo
                         <Button variant="outline" size="sm" onClick={discardChanges}>
                           <X className="h-4 w-4 mr-2" />
                           Discard
-                        </Button>
+                        </Button>Add New Client
                         <Button variant="default" size="sm" onClick={saveChanges}>
                           <Save className="h-4 w-4 mr-2" />
                           Save Changes

@@ -17,3 +17,14 @@ export const getChildObject = (data: any, path: string, _default?: any) => {
 export const convertDate = (date: Date) => {
     return moment(date).format("LL")
 }
+
+export const removebasicTypes = (refData: any, additionalFields: string[]) => {
+    const basicKeys: string[] = ["createdBy", "modifiedBy", "modifiedOn", "createdOn"]
+    const result = { ...refData } as any
+    for (const key of basicKeys.concat(additionalFields || [])) {
+        if (result.hasOwnProperty(key)) {
+            delete result[key];
+        }
+    }
+    return result;
+}

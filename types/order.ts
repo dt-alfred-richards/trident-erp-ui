@@ -31,7 +31,8 @@ export interface OrderProduct {
   status: ProductStatus
   allocated?: number
   dispatched?: number
-  delivered?: number
+  delivered?: number,
+  salesId?: string,
   // Audit information
   allocatedBy?: string
   allocatedAt?: string
@@ -53,25 +54,24 @@ export interface Order {
   priority: OrderPriority
   status: OrderStatus
   trackingId?: string
-  carrier?: string
+  carrier?: string,
+  clientId: string,
   products: OrderProduct[]
-  // Audit information
   createdBy: string
-  createdAt: string
-  approvedBy?: string
-  approvedAt?: string,
+  createdAt: Date
+  modifiedBy?: string
   poNumber?: string,
   poId?: string,
   poDate?: Date,
-  shippingAddress: Record<string, string>,
-  remarks: string
-  // History of status changes for audit trail
+  shippingAddressId: string,
+  remarks: string,
   statusHistory: {
     timestamp: string
     status: OrderStatus
     user: string
     note?: string
   }[],
+  summary: OrderSummary
 }
 
 // Valid status transitions for products
@@ -134,8 +134,6 @@ export const OrderActionService = {
     const updatedOrder = {
       ...order,
       status: "approved" as OrderStatus,
-      approvedBy: user,
-      approvedAt: new Date().toISOString(),
       statusHistory: [
         ...order.statusHistory,
         {
@@ -425,6 +423,6 @@ export type SalesOrderDetails = {
 }
 
 export type OrderSummary = {
-  subtotal: number, discountType: string, discount: number, taxesEnabled: boolean, taxType: string, taxTotal: number, total: number
+  subtotal: number, discountType: string, discount: number, taxesEnabled?: boolean, taxType: string, taxTotal: number, total: number, taxEnabled?: boolean
 }
 
