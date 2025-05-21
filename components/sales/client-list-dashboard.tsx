@@ -17,7 +17,7 @@ import { Client, useClient } from "@/app/sales/client-list/client-context"
 
 
 export function ClientListDashboard() {
-  const { clientMapper, deleteClient, refetchContext } = useClient();
+  const { clientMapper, deleteClient, refetchContext, clientProposedMapper } = useClient();
   const [clients, setClients] = useState<Client[]>([])
 
   useEffect(() => {
