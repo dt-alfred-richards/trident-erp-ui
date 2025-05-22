@@ -12,9 +12,7 @@ export const metadata: Metadata = {
 export default function OrderBookPage() {
   return (
     <DashboardShell>
-      <OrderProvider>
-        <SalesDashboard />
-      </OrderProvider>
+      <SalesDashboard />
     </DashboardShell>
   )
 }

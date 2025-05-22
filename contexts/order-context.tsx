@@ -403,7 +403,7 @@ export function useOrders() {
   const context = useContext(OrderContext)
 
   if (context === undefined) {
-    throw new Error("useOrders must be used within an OrderProvider")
+    console.log("useOrders must be used within an OrderProvider")
   }
 
   return context
