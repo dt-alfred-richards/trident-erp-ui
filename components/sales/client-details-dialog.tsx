@@ -6,18 +6,16 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Client, useClient } from "@/app/sales/client-list/client-context"
 
 interface ClientDetailsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  client: Partial<Client> // Replace 'any' with a more specific type if available
+  client: any // Replace 'any' with a more specific type if available
   onSave: (updatedClient: any) => void // Replace 'any' with a more specific type if available
 }
 
 export function ClientDetailsDialog({ open, onOpenChange, client, onSave }: ClientDetailsDialogProps) {
   const [editedClient, setEditedClient] = useState(client || {})
-  const { editClient, refetchContext } = useClient()
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -25,19 +23,8 @@ export function ClientDetailsDialog({ open, onOpenChange, client, onSave }: Clie
   }
 
   const handleSave = () => {
-    const payload: Partial<Client> = {
-      phoneNumber: editedClient.phoneNumber,
-      panNumber: editedClient.panNumber,
-      gstNumber: editedClient.gstNumber,
-      shippingAddress: editedClient.shippingAddress,
-      name: editedClient.name,
-      contactPerson: editedClient.contactPerson,
-      email: editedClient.email
-    }
-    editClient(payload, editedClient.id).then(() => {
-      onOpenChange(false)
-      refetchContext()
-    })
+    onSave(editedClient)
+    onOpenChange(false)
   }
 
   return (
@@ -51,7 +38,7 @@ export function ClientDetailsDialog({ open, onOpenChange, client, onSave }: Clie
             <Label htmlFor="client-id" className="text-right">
               Client ID
             </Label>
-            <Input id="client-id" value={editedClient?.clientId || ""} className="col-span-3" readOnly />
+            <Input id="client-id" value={editedClient?.id || ""} className="col-span-3" readOnly />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="client-name" className="text-right">
@@ -91,49 +78,25 @@ export function ClientDetailsDialog({ open, onOpenChange, client, onSave }: Clie
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="phoneNumber" className="text-right">
+            <Label htmlFor="phone" className="text-right">
               Phone
             </Label>
             <Input
-              id="phoneNumber"
-              name="phoneNumber"
-              value={editedClient?.phoneNumber || ""}
+              id="phone"
+              name="phone"
+              value={editedClient?.phone || ""}
               onChange={handleChange}
               className="col-span-3"
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="gstNumber" className="text-right">
-              Gst number
-            </Label>
-            <Input
-              id="gstNumber"
-              name="gstNumber"
-              value={editedClient?.gstNumber || ""}
-              onChange={handleChange}
-              className="col-span-3"
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="panNumber" className="text-right">
-              Pan number
-            </Label>
-            <Input
-              id="panNumber"
-              name="panNumber"
-              value={editedClient?.panNumber || ""}
-              onChange={handleChange}
-              className="col-span-3"
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="shippingAddress" className="text-right">
+            <Label htmlFor="address" className="text-right">
               Address
             </Label>
             <Textarea
-              id="shippingAddress"
-              name="shippingAddress"
-              value={editedClient?.shippingAddress || ""}
+              id="address"
+              name="address"
+              value={editedClient?.address || ""}
               onChange={handleChange}
               className="col-span-3"
               rows={3}

@@ -17,7 +17,6 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useToast } from "@/components/ui/use-toast"
-import { ClientProposedPrice, useClient } from "@/app/sales/client-list/client-context"
 
 // Unit options
 const unitOptions = [
@@ -56,7 +55,6 @@ interface AddProductDialogProps {
 
 export function AddProductDialog({ open, onOpenChange, onAdd, existingIds, clientId }: AddProductDialogProps) {
   const { toast } = useToast()
-  const { addClientProduct, refetchContext } = useClient()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Initialize form
@@ -74,29 +72,32 @@ export function AddProductDialog({ open, onOpenChange, onAdd, existingIds, clien
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true)
 
-    const newProduct: Partial<ClientProposedPrice> = {
-      clientId,
-      name: values.product,
-      price: parseInt(values.price),
-      unit: values.unit,
+    // Format price with ₹ symbol
+    const formattedPrice = values.price.startsWith("₹") ? values.price : `₹${values.price}`
+
+    // Create new product
+    const newProduct = {
+      id: existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1,
+      product: values.product,
       sku: values.sku,
+      price: formattedPrice,
+      unit: values.unit,
+      clientId: clientId,
     }
 
+    // Add product
+    onAdd(newProduct)
 
-    addClientProduct(newProduct).then(() => {
-      // Show success toast
-      toast({
-        title: "Product added",
-        description: `${values.product} has been added to the products list.`,
-      })
-
-      // Reset form and close dialog
-      form.reset()
-      onOpenChange(false)
-      refetchContext()
-    }).finally(() => {
-      setIsSubmitting(false)
+    // Show success toast
+    toast({
+      title: "Product added",
+      description: `${values.product} has been added to the products list.`,
     })
+
+    // Reset form and close dialog
+    form.reset()
+    onOpenChange(false)
+    setIsSubmitting(false)
   }
 
   return (

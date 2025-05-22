@@ -76,7 +76,7 @@ export function OrderTrackingKanban() {
               </Badge>
             </div>
 
-            <div className="flex-1 space-y-3 bg-[#f1f5f8] dark:bg-[#192838] p-3 rounded-lg min-h-[500px] overflow-y-auto shadow-sm">
+            <div className="flex-1 space-y-3 bg-white dark:bg-[#192838] p-3 rounded-lg min-h-[500px] overflow-y-auto shadow-sm">
               {groupedOrders[status].length === 0 ? (
                 <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">No orders</div>
               ) : (

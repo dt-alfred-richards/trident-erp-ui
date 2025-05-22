@@ -26,7 +26,7 @@ export interface OrderProduct {
   id: string
   name: string
   sku: string
-  quantity: number
+  cases: number
   price: number
   status: ProductStatus
   allocated?: number
@@ -50,7 +50,7 @@ export interface Order {
   orderDate: Date
   customer: string
   reference: string
-  deliveryDate: Date
+  deliveryDate?: Date
   priority: OrderPriority
   status: OrderStatus
   trackingId?: string
@@ -423,6 +423,13 @@ export type SalesOrderDetails = {
 }
 
 export type OrderSummary = {
-  subtotal: number, discountType: string, discount: number, taxesEnabled?: boolean, taxType: string, taxTotal: number, total: number, taxEnabled?: boolean
+  subtotal: number,
+  discountType: string,
+  discount: number,
+  taxesEnabled?: boolean,
+  taxType: string,
+  taxTotal: number,
+  total: number,
+  taxEnabled?: boolean
 }
 

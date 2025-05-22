@@ -33,21 +33,9 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
-import { useOrders } from "@/contexts/order-context"
-import { ShippingAddress } from "@/types/order"
+import { ClientProposedProduct, SaleOrderDetail, ShippingAddress, useOrders, V1Sale } from "@/contexts/order-context"
 import { getChildObject } from "../generic"
-import { useGlobalContext } from "@/app/GlobalContext"
-import { Client } from "@/contexts/types"
 
-// Mock data for clients
-
-
-// Mock data for products
-const PRODUCTS = [
-  { id: "P001", name: "dhaara", price: 120.0, taxRate: 18 },
-  { id: "P002", name: "antera", price: 180.0, taxRate: 18 },
-  { id: "P003", name: "paradise", price: 220.0, taxRate: 18 },
-]
 
 // Size SKU options
 const SIZE_SKUS = [
@@ -66,8 +54,7 @@ interface OrderItem {
   pricePerCase: number
   taxRate: number
   basePay: number
-  taxAmount: number,
-  selectedSizeSku: string
+  taxAmount: number
 }
 
 interface CreateSalesOrderDialogProps {
@@ -76,8 +63,31 @@ interface CreateSalesOrderDialogProps {
 }
 
 export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderDialogProps) {
-  const { addOrder, shippingAddress: contextShippingAddress = [], clientMapper, references = [], products = [], refetchContext = () => { } } = useOrders()
-  const { userId } = useGlobalContext();
+  const { addOrder, clientMapper, referenceMapper, shippingAddressMapper, clientProposedProductMapper, addSaleOrder, refetchContext } = useOrders()
+
+  const PRODUCTS = useMemo(() => {
+    return Object.values(clientProposedProductMapper).flat().map((item: ClientProposedProduct) => ({ id: item.productId, name: item.name, price: item.price, taxRate: 18, sku: item.sku, unit: item.unit }))
+  }, [clientProposedProductMapper])
+
+  const CLIENTS = useMemo(() => {
+    return Object.values(clientMapper).map(item => {
+      if (!item.clientId) return;
+      return ({
+        id: item.clientId,
+        name: item.name,
+        gstNumber: item.gstNumber,
+        panNumber: item.panNumber,
+        references: (referenceMapper[item.clientId] || []).map(item => item.name),
+        shippingAddresses: (shippingAddressMapper[item.clientId] || []).map((i: ShippingAddress, idx: number) => ({
+          id: i.addressId,
+          name: i.name,
+          address: i.address,
+          isDefault: idx === 0,
+        })),
+      })
+    }).filter(item => item)
+  }, [clientMapper, referenceMapper, shippingAddressMapper])
+
   // Order header state
   const [orderDate] = useState<Date>(new Date()) // Remove setOrderDate since it's now fixed
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<Date | undefined>(undefined)
@@ -93,7 +103,9 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
   const [gstNumber, setGstNumber] = useState("")
   const [panNumber, setPanNumber] = useState("")
   const [availableReferences, setAvailableReferences] = useState<string[]>([])
-  const [shippingAddresses, setShippingAddresses] = useState<ShippingAddress[]>(contextShippingAddress)
+  const [shippingAddresses, setShippingAddresses] = useState<
+    Array<{ id: string; name: string; address: string; isDefault: boolean }>
+  >([])
   const [selectedShippingAddressId, setSelectedShippingAddressId] = useState("")
 
   // Tax location state
@@ -110,18 +122,6 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
 
   // Order items state
   const [orderItems, setOrderItems] = useState<OrderItem[]>([])
-
-  const PRODUCTS = useMemo(() => products.map(item => ({ ...item, id: item.id + "" })), [products]);
-  const CLIENTS = useMemo(() => {
-    return Object.values(clientMapper).map(item => ({
-      id: item.id,
-      name: item.name,
-      gstNumber: item.gstNumber,
-      panNumber: item.panNumber,
-      references: references.filter(element => element.clientId === item.clientId).map(item => item.referenceId),
-      shippingAddresses: contextShippingAddress.filter(address => address.clientId === item.clientId)
-    } as Partial<Client>))
-  }, [contextShippingAddress, clientMapper, references])
 
   // Order summary state
   const [subtotal, setSubtotal] = useState(0)
@@ -146,26 +146,25 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
   // Update client details when client changes
   useEffect(() => {
     if (clientId) {
-      const selectedClient = CLIENTS.find((client) => client.clientId === clientId)
+      const selectedClient = CLIENTS.find((client) => client?.id === clientId)
       if (selectedClient) {
-        const clientAddresses = contextShippingAddress.filter(item => item.clientId === selectedClient.clientId)
-        setClientName(selectedClient.name || "")
-        setGstNumber(selectedClient.gstNumber || "")
-        setPanNumber(selectedClient.panNumber || "")
-        setAvailableReferences(references.filter(item => item.clientId === selectedClient.clientId).map(item => item.name))
+        setClientName(selectedClient.name)
+        setGstNumber(selectedClient.gstNumber)
+        setPanNumber(selectedClient.panNumber)
+        setAvailableReferences(selectedClient.references)
         setReference("") // Reset reference when client changes
 
         // Set shipping addresses
-        if (clientAddresses.length) {
-          setShippingAddresses(clientAddresses)
+        if (selectedClient.shippingAddresses) {
+          setShippingAddresses(selectedClient.shippingAddresses)
 
           // Auto-select if there's only one address or a default address
-          if (clientAddresses.length === 1) {
-            setSelectedShippingAddressId(clientAddresses[0].addressId + '')
+          if (selectedClient.shippingAddresses.length === 1) {
+            setSelectedShippingAddressId(selectedClient.shippingAddresses[0].id)
           } else {
-            const defaultAddress = clientAddresses.find((addr) => addr.isDefault)
+            const defaultAddress = selectedClient.shippingAddresses.find((addr) => addr.isDefault)
             if (defaultAddress) {
-              setSelectedShippingAddressId(defaultAddress.addressId + '')
+              setSelectedShippingAddressId(defaultAddress.id)
             } else {
               setSelectedShippingAddressId("") // Reset if no default
             }
@@ -186,10 +185,18 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
     }
   }, [clientId])
 
+  useEffect(() => {
+    if (!selectedProductId) return;
+
+    const selected = PRODUCTS.find(item => item.id === selectedProductId)
+    setSelectedSizeSku(selected?.unit || "")
+    console.log({ selectedProductId: PRODUCTS.find(item => item.id === selectedProductId) })
+  }, [selectedProductId])
+
   // Update when shipping address changes
   useEffect(() => {
     if (selectedShippingAddressId) {
-      const selectedAddress = shippingAddresses.find((addr) => addr.addressId === selectedShippingAddressId)
+      const selectedAddress = shippingAddresses.find((addr) => addr.id === selectedShippingAddressId)
       if (selectedAddress) {
         // Check if address contains "Telangana" to determine tax type
         setIsInTelangana(selectedAddress.address.includes("Telangana"))
@@ -245,13 +252,12 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
 
     const newItem: OrderItem = {
       id: `item-${Date.now()}`,
-      productId: product.id,
+      productId: product.id || '',
       productName: `${product.name} (${selectedSizeSku})`,
       cases: quantity,
       pricePerCase: product.price,
       taxRate: product.taxRate,
       basePay,
-      selectedSizeSku,
       taxAmount,
     }
 
@@ -299,89 +305,56 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
   // Handle final submission after confirmation
   const handleConfirmedSubmit = () => {
     // Get the selected shipping address details
-    const selectedAddress = shippingAddresses.find((addr) => addr.id + "" === selectedShippingAddressId)
+    const selectedAddress = shippingAddresses.find((addr) => addr.id === selectedShippingAddressId)
 
-    // Generate a new order ID
-    const newOrderId = generateOrderId()
-
-    // Create the new order with pending_approval status
-    const newOrder = {
-      id: newOrderId,
-      orderDate: orderDate.toISOString(),
-      customer: clientId,
-      reference: reference,
-      deliveryDate: expectedDeliveryDate?.toISOString(),
-      priority: "medium", // Default priority
-      status: "pending_approval", // Set initial status to pending_approval
-      statusHistory: [
-        {
-          timestamp: new Date().toISOString(),
-          status: "pending_approval",
-          user: "Current User",
-          note: "Order created",
-        },
-      ],
-      products: orderItems.map((item) => ({
-        productId: item.productId,
-        sku: item.selectedSizeSku,
-        cases: item.cases,
-        status: "pending"
-      })),
-      // Additional details
-      poNumber: poNumber,
-      poId: poId,
-      poDate: (poDate || new Date())?.toISOString(),
-      remarks: remarks,
-      shippingAddress: selectedAddress
-        ? {
-          id: selectedAddress.id,
-          name: selectedAddress.name,
-          address: selectedAddress.address,
-        }
-        : undefined,
-      summary: {
-        subtotal,
-        discountType,
-        discount,
-        taxesEnabled,
-        taxType: isInTelangana ? "CGST+SGST" : "IGST",
-        taxTotal,
-        total,
-      },
+    const newOrder: Partial<V1Sale> = {
+      clientId: clientId,
+      deliveryDate: expectedDeliveryDate,
+      discount,
+      discountType,
+      orderDate,
+      poDate,
+      poId,
+      poNumber,
+      referenceId: reference,
+      remarks,
+      shippingAddressId: selectedAddress?.id,
+      subtotal,
+      taxesEnabled,
+      taxTotal,
+      taxType: isInTelangana ? "CGST+SGST" : "IGST",
+      total,
+      status: "pending_approval"
     }
 
-    // Add the order to the context (this would be an API call in a real app)
-    // We need to import the useOrders hook at the top of the file
-    try {
-      // Add the order to the context
-      addOrder(newOrder as any).then(response => {
-        const newOrderId = getChildObject(response, "data.0.orderId", "") as string
-        // Show success message
-        alert(`Order ${newOrderId?.toUpperCase()} has been created and is pending approval.`)
+    addOrder(newOrder).then(res => {
+      const saleId = getChildObject(res, "data.0.saleId", "")
+      if (!saleId) {
+        throw new Error("Failed to create order")
+      }
 
-        // Close dialogs
-        setShowConfirmation(false)
-        onOpenChange(false)
+      return Promise.all(
+        orderItems.map(item => {
+          return addSaleOrder({
+            cases: item.cases,
+            saleId,
+            status: "pending",
+            productId: item.productId
+          } as Partial<SaleOrderDetail>)
+        })
+      )
+    }).then(() => {
+      // Close dialogs
+      setShowConfirmation(false)
+      onOpenChange(false)
 
-        // Reset form for next use
-        resetForm()
-      })
-
-      // // Show success message
-      // alert(`Order ${newOrderId} has been created and is pending approval.`)
-
-      // // Close dialogs
-      // setShowConfirmation(false)
-      // onOpenChange(false)
-
-      // // Reset form for next use
-      // resetForm()
-    } catch (error) {
-      console.error("Error adding order:", error)
-      alert("There was an error creating the order. Please try again.")
-    }
+      // Reset form for next use
+      resetForm()
+      refetchContext()
+    }).catch(error => {
+      console.log({ error })
+    })
   }
-
 
   // Reset the form to initial state
   const resetForm = () => {
@@ -403,7 +376,6 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
     setCases("")
     setShippingAddresses([])
     setSelectedShippingAddressId("")
-    refetchContext()
   }
 
   return (
@@ -467,8 +439,8 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                     </SelectTrigger>
                     <SelectContent>
                       {CLIENTS.map((client) => (
-                        <SelectItem key={client.clientId} value={client.clientId}>
-                          {client.name}
+                        <SelectItem key={client?.id || ''} value={client?.id || ""}>
+                          {client?.name || ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -529,7 +501,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                 {/* Client ID (Auto-populated) */}
                 <div className="space-y-2">
                   <Label htmlFor="client-id">Client ID</Label>
-                  <Input id="client-id" value={clientId ? `client-${clientId}` : ""} readOnly className="bg-muted" />
+                  <Input id="client-id" value={clientId} readOnly className="bg-muted" />
                 </div>
 
                 {/* GST Number (Auto-populated) */}
@@ -616,7 +588,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                     type="button"
                     onClick={() => setShowItemForm(true)}
                     size="sm"
-                    className="flex items-center gap-1 bg-[#725af2] hover:bg-[#5e48d0] text-white"
+                    className="flex items-center gap-1"
                   >
                     <Plus className="h-4 w-4" /> Add Item
                   </Button>
@@ -679,18 +651,14 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                       {/* Size SKU Selection - New Dropdown */}
                       <div className="space-y-2">
                         <Label htmlFor="size-sku">Size SKU</Label>
-                        <Select value={selectedSizeSku} onValueChange={setSelectedSizeSku}>
-                          <SelectTrigger id="size-sku">
-                            <SelectValue placeholder="Select size..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {SIZE_SKUS.map((size) => (
-                              <SelectItem key={size.id} value={size.id}>
-                                {size.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Input
+                          id="sku"
+                          type="text"
+                          value={selectedSizeSku}
+                          onChange={(e) => setCases(e.target.value)}
+                          min="1"
+                          placeholder="Select product"
+                        />
                       </div>
 
                       {/* Cases */}
@@ -888,18 +856,13 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
           </div>
 
           <DialogFooter>
-            <Button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="bg-[#f8285a] hover:bg-[#d91e4a] text-white"
-            >
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button
               type="button"
               onClick={handleSubmit}
               disabled={!orderDate || !clientId || !reference || !expectedDeliveryDate || orderItems.length === 0}
-              className="bg-[#1b84ff] hover:bg-[#0a6edf] text-white"
             >
               Add Order
             </Button>

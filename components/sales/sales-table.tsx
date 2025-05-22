@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -31,11 +31,10 @@ import type { OrderStatus } from "@/types/order"
 import { useOrders } from "@/contexts/order-context"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { ConfirmationDialog } from "@/components/common/confirmation-dialog"
-import { convertDate } from "../generic"
 
 export function SalesTable() {
   // Use order context
-  const { orders, approveOrder, rejectOrder, getOrderById, cancelOrder, refetchContext } = useOrders()
+  const { orders, approveOrder, rejectOrder, getOrderById, cancelOrder } = useOrders()
 
   // Filter states
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined)
@@ -68,7 +67,7 @@ export function SalesTable() {
     }
 
     // Search query (across multiple fields)
-    if (searchQuery && order) {
+    if (searchQuery) {
       const query = searchQuery.toLowerCase()
       const matchesId = order.id.toLowerCase().includes(query)
       const matchesCustomer = order.customer.toLowerCase().includes(query)
@@ -180,16 +179,15 @@ export function SalesTable() {
     if (orderToAction) {
       approveOrder(orderToAction).then(() => {
         setOrderToAction(null)
-        refetchContext()
       })
     }
   }
 
   const confirmCancellation = () => {
     if (orderToAction) {
-      cancelOrder(orderToAction).then(() => {
+      rejectOrder(orderToAction).then(() => {
+        cancelOrder(orderToAction)
         setOrderToAction(null)
-        refetchContext()
       })
     }
   }
@@ -380,11 +378,11 @@ export function SalesTable() {
             {filtered.length > 0 ? (
               paginatedOrders.map((order) => (
                 <TableRow key={order.id} className="hover:bg-muted/30 transition-colors">
-                  <TableCell className="py-3">{convertDate(order.orderDate)}</TableCell>
+                  <TableCell className="py-3">{new Date(order.orderDate).toLocaleDateString()}</TableCell>
                   <TableCell className="font-medium text-primary">{order.id}</TableCell>
                   <TableCell>{order.customer}</TableCell>
                   <TableCell>{order.reference}</TableCell>
-                  <TableCell>{convertDate(order.deliveryDate)}</TableCell>
+                  <TableCell>{new Date(order.deliveryDate).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <PriorityIndicator priority={order.priority} />
                   </TableCell>
