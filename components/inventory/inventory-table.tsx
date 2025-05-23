@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -8,6 +8,7 @@ import { Search, ArrowUpDown } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
 import { useRawMaterialsStore } from "@/hooks/use-raw-materials-store"
+import { useInventory } from "@/app/inventory-context"
 
 // Update the interface to include inventoryData
 interface InventoryTableProps {
@@ -24,6 +25,7 @@ interface InventoryTableProps {
 }
 
 export function InventoryTable({ onAllocate, inventoryData: propInventoryData }: InventoryTableProps) {
+  const { inventory = [] } = useInventory()
   const [searchTerm, setSearchTerm] = useState("")
   const [sortColumn, setSortColumn] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
@@ -38,68 +40,14 @@ export function InventoryTable({ onAllocate, inventoryData: propInventoryData }:
   const [itemsPerPage] = useState(10)
 
   // This would come from your API in a real application
-  const defaultInventoryData = [
-    {
-      sku: "500ml",
-      available: 250,
-      reserved: 1000,
-      inProduction: 2000,
-    },
-    {
-      sku: "750ml",
-      available: 1200,
-      reserved: 0,
-      inProduction: 1500,
-    },
-    {
-      sku: "1000ml",
-      available: 200,
-      reserved: 600,
-      inProduction: 1000,
-    },
-    {
-      sku: "2000ml",
-      available: 1000,
-      reserved: 500,
-      inProduction: 500,
-    },
-    {
-      sku: "Custom-A",
-      available: 0,
-      reserved: 0,
-      inProduction: 800,
-    },
-    {
-      sku: "Premium-500ml",
-      available: 350,
-      reserved: 800,
-      inProduction: 1500,
-    },
-    {
-      sku: "Premium-750ml",
-      available: 900,
-      reserved: 200,
-      inProduction: 1200,
-    },
-    {
-      sku: "Premium-1000ml",
-      available: 150,
-      reserved: 400,
-      inProduction: 800,
-    },
-    {
-      sku: "Limited-Edition",
-      available: 50,
-      reserved: 300,
-      inProduction: 200,
-    },
-    {
-      sku: "Gift-Pack",
-      available: 75,
-      reserved: 150,
-      inProduction: 300,
-    },
-  ]
+  const defaultInventoryData = useMemo(() => {
+    return inventory.map(item => ({
+      sku: item.material,
+      available: item.quantity || 0,
+      reserved: item.reserved || 0,
+      inProduction: item.inProduction || 0,
+    }))
+  }, [inventory])
 
   // Process the inventory data when it changes
   useEffect(() => {

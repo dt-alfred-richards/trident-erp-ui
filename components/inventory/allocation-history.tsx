@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -12,6 +12,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
+import { useInventory } from "@/app/inventory-context"
+import { getChildObject } from "../generic"
+import { useOrders } from "@/contexts/order-context"
 
 interface AllocationHistoryProps {
   allocationHistory?: {
@@ -26,6 +29,7 @@ interface AllocationHistoryProps {
 
 export function AllocationHistory({ allocationHistory: propAllocationHistory }: AllocationHistoryProps) {
   const [startDate, setStartDate] = useState<Date>()
+  const { allocations = [] } = useInventory()
   const [endDate, setEndDate] = useState<Date>()
   const [filterSku, setFilterSku] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState<string>("")
@@ -47,65 +51,16 @@ export function AllocationHistory({ allocationHistory: propAllocationHistory }: 
   // Check if any filters are active
   const hasActiveFilters = startDate || endDate || filterSku !== "all" || searchQuery
 
-  // This would come from your API in a real application
-  const defaultAllocationHistory = [
-    {
-      id: "ALLOC-001",
-      timestamp: "2023-10-12T10:15:00",
-      orderId: "SO-1003",
-      customer: "Urgent Pharma",
-      sku: "500ml",
-      allocated: 200,
-    },
-    {
-      id: "ALLOC-002",
-      timestamp: "2023-10-12T10:20:00",
-      orderId: "SO-1001",
-      customer: "ABC Corp",
-      sku: "500ml",
-      allocated: 300,
-    },
-    {
-      id: "ALLOC-003",
-      timestamp: "2023-10-12T10:25:00",
-      orderId: "SO-1002",
-      customer: "XYZ Retail",
-      sku: "500ml",
-      allocated: 300,
-    },
-    {
-      id: "ALLOC-004",
-      timestamp: "2023-10-13T09:30:00",
-      orderId: "SO-1005",
-      customer: "Premium Stores",
-      sku: "750ml",
-      allocated: 400,
-    },
-    {
-      id: "ALLOC-005",
-      timestamp: "2023-10-13T14:45:00",
-      orderId: "SO-1004",
-      customer: "Global Foods",
-      sku: "750ml",
-      allocated: 600,
-    },
-    {
-      id: "ALLOC-006",
-      timestamp: "2023-10-14T11:30:00",
-      orderId: "SO-1006",
-      customer: "Metro Distributors",
-      sku: "1000ml",
-      allocated: 250,
-    },
-    {
-      id: "ALLOC-007",
-      timestamp: "2023-10-14T13:15:00",
-      orderId: "SO-1007",
-      customer: "City Wholesalers",
-      sku: "1000ml",
-      allocated: 350,
-    },
-  ]
+  const defaultAllocationHistory = useMemo(() => {
+    return allocations.map(item => ({
+      id: getChildObject(item, "allocationId", ""),
+      timestamp: getChildObject(item, "createdOn", getChildObject(item, "modifiedOn", "")),
+      orderId: getChildObject(item, "orderId", ""),
+      customer: getChildObject(item, "createdBy", getChildObject(item, "modifiedBy", "")),
+      sku: getChildObject(item, "sku", ""),
+      allocated: getChildObject(item, "allocated", 0)
+    }))
+  }, [allocations])
 
   // Update display history when prop history changes
   useEffect(() => {

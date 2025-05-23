@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import {
   Dialog,
   DialogContent,
@@ -33,16 +33,18 @@ import { Separator } from "@/components/ui/separator"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
-
-interface Order {
+import { useOrders } from "@/contexts/order-context"
+import { Order } from "@/types/order"
+import { convertDate } from "../generic"
+import { useInventory } from "@/app/inventory-context"
+interface AllocationOrder {
   id: string
   customer: string
   dueDate: string
-  priority: "urgent" | "high-value" | "standard"
+  priority: string
   status: string
   products: OrderProduct[]
 }
-
 interface OrderProduct {
   id: string
   name: string
@@ -61,129 +63,6 @@ interface AllocationDialogProps {
 // Create a persistent mock data store
 const STORAGE_KEY = "allocation-dialog-orders"
 
-// Initial mock data
-const initialMockOrders: Order[] = [
-  {
-    id: "SO-1001",
-    customer: "ABC Corp",
-    dueDate: "2023-10-15",
-    priority: "high-value",
-    status: "pending",
-    products: [
-      { id: "P1", name: "Premium Water Bottle", sku: "500ml", quantity: 300, allocated: 100 },
-      { id: "P2", name: "Premium Water Bottle", sku: "750ml", quantity: 200, allocated: 0 },
-      { id: "P3", name: "Premium Water Bottle", sku: "1000ml", quantity: 100, allocated: 50 },
-    ],
-  },
-  {
-    id: "SO-1002",
-    customer: "XYZ Retail",
-    dueDate: "2023-10-20",
-    priority: "standard",
-    status: "pending",
-    products: [
-      { id: "P4", name: "Premium Water Bottle", sku: "500ml", quantity: 150, allocated: 75 },
-      { id: "P5", name: "Premium Water Bottle", sku: "2000ml", quantity: 300, allocated: 150 },
-    ],
-  },
-  {
-    id: "SO-1003",
-    customer: "Urgent Pharma",
-    dueDate: "2023-10-10",
-    priority: "urgent",
-    status: "pending",
-    products: [{ id: "P6", name: "Premium Water Bottle", sku: "750ml", quantity: 200, allocated: 0 }],
-  },
-  {
-    id: "SO-1004",
-    customer: "Global Foods",
-    dueDate: "2023-10-18",
-    priority: "standard",
-    status: "pending",
-    products: [
-      { id: "P7", name: "Premium Water Bottle", sku: "500ml", quantity: 400, allocated: 200 },
-      { id: "P8", name: "Premium Water Bottle", sku: "750ml", quantity: 400, allocated: 400 },
-    ],
-  },
-  {
-    id: "SO-1005",
-    customer: "Premium Stores",
-    dueDate: "2023-10-12",
-    priority: "high-value",
-    status: "pending",
-    products: [{ id: "P9", name: "Premium Water Bottle", sku: "1000ml", quantity: 600, allocated: 300 }],
-  },
-  {
-    id: "SO-1006",
-    customer: "Mega Distributors",
-    dueDate: "2023-10-25",
-    priority: "standard",
-    status: "pending",
-    products: [
-      { id: "P10", name: "Premium Water Bottle", sku: "500ml", quantity: 250, allocated: 50 },
-      { id: "P11", name: "Premium Water Bottle", sku: "750ml", quantity: 350, allocated: 100 },
-    ],
-  },
-  {
-    id: "SO-1007",
-    customer: "Quick Mart",
-    dueDate: "2023-10-08",
-    priority: "urgent",
-    status: "pending",
-    products: [
-      { id: "P12", name: "Premium Water Bottle", sku: "1000ml", quantity: 180, allocated: 80 },
-      { id: "P13", name: "Premium Water Bottle", sku: "2000ml", quantity: 120, allocated: 20 },
-    ],
-  },
-  {
-    id: "SO-1008",
-    customer: "Wholesale Club",
-    dueDate: "2023-10-30",
-    priority: "high-value",
-    status: "pending",
-    products: [
-      { id: "P14", name: "Premium Water Bottle", sku: "500ml", quantity: 500, allocated: 200 },
-      { id: "P15", name: "Premium Water Bottle", sku: "750ml", quantity: 500, allocated: 300 },
-      { id: "P16", name: "Premium Water Bottle", sku: "1000ml", quantity: 300, allocated: 100 },
-    ],
-  },
-  {
-    id: "SO-1009",
-    customer: "City Grocers",
-    dueDate: "2023-11-05",
-    priority: "standard",
-    status: "pending",
-    products: [
-      { id: "P17", name: "Premium Water Bottle", sku: "500ml", quantity: 200, allocated: 0 },
-      { id: "P18", name: "Premium Water Bottle", sku: "2000ml", quantity: 150, allocated: 0 },
-    ],
-  },
-  {
-    id: "SO-1010",
-    customer: "Health Foods Inc",
-    dueDate: "2023-11-10",
-    priority: "standard",
-    status: "pending",
-    products: [
-      { id: "P19", name: "Premium Water Bottle", sku: "750ml", quantity: 300, allocated: 150 },
-      { id: "P20", name: "Premium Water Bottle", sku: "1000ml", quantity: 200, allocated: 100 },
-    ],
-  },
-]
-
-// Helper function to load orders from storage or initialize with default data
-const loadOrders = (): Order[] => {
-  if (typeof window === "undefined") return initialMockOrders
-
-  try {
-    const savedOrders = localStorage.getItem(STORAGE_KEY)
-    return savedOrders ? JSON.parse(savedOrders) : initialMockOrders
-  } catch (error) {
-    console.error("Error loading orders from localStorage:", error)
-    return initialMockOrders
-  }
-}
-
 // Helper function to save orders to storage
 const saveOrders = (orders: Order[]): void => {
   if (typeof window === "undefined") return
@@ -196,20 +75,37 @@ const saveOrders = (orders: Order[]): void => {
 }
 
 export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = null }: AllocationDialogProps) {
+  const { orders: saleOrders, refetchContext } = useOrders()
+  const { updateSaleAllocation, refetchContext: inventoryRefetch } = useInventory()
   const [searchTerm, setSearchTerm] = useState("")
   const [searchType, setSearchType] = useState<"sku" | "order" | "customer">("order")
-  const [orders, setOrders] = useState<Order[]>([])
-  const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [orders, setOrders] = useState<AllocationOrder[]>([])
+  const [filteredOrders, setFilteredOrders] = useState<AllocationOrder[]>([])
+  const [selectedOrder, setSelectedOrder] = useState<AllocationOrder | null>(null)
   const [allocations, setAllocations] = useState<Record<string, number>>({})
   const [priorityFilter, setPriorityFilter] = useState<string>("all")
   const { toast } = useToast()
 
+  const data = useMemo(() => {
+    return saleOrders.map((item) => ({
+      id: item.id,
+      customer: item.customer,
+      dueDate: item.deliveryDate ? convertDate(item.deliveryDate) : "",
+      priority: item.priority,
+      status: item.status,
+      products: item.products.map(item => ({
+        ...item, quantity: item.cases, reserved: item.allocated || 0
+      }))
+    }))
+  }, [saleOrders])
+
+  console.log({filteredOrders})
+
   // Load orders from storage when component mounts
   useEffect(() => {
-    const savedOrders = loadOrders()
+    const savedOrders = data
     setOrders(savedOrders)
-  }, [])
+  }, [data])
 
   // Reset state when dialog opens/closes
   useEffect(() => {
@@ -281,72 +177,14 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
 
   // Handle allocation submission
   const handleSubmitAllocation = () => {
-    if (!selectedOrder) return
+    if (!selectedOrder || !updateSaleAllocation || !inventoryRefetch) return
 
-    // Filter out products with zero allocation
-    const productsToAllocate = Object.entries(allocations)
-      .filter(([_, quantity]) => quantity > 0)
-      .map(([productId, quantity]) => ({ id: productId, quantity }))
-
-    if (productsToAllocate.length === 0) {
-      toast({
-        title: "No allocations specified",
-        description: "Please allocate at least one product before submitting",
-        variant: "destructive",
-      })
-      return
-    }
-
-    // Validate allocations don't exceed remaining quantities
-    const invalidAllocations = productsToAllocate.filter(({ id, quantity }) => {
-      const product = selectedOrder.products.find((p) => p.id === id)
-      if (!product) return true
-      return quantity > getRemainingQuantity(product)
-    })
-
-    if (invalidAllocations.length > 0) {
-      toast({
-        title: "Invalid allocation",
-        description: "Some allocations exceed the remaining quantity",
-        variant: "destructive",
-      })
-      return
-    }
-
-    // Update local state to reflect the allocation
-    const updatedOrders = updateOrdersAfterAllocation(selectedOrder.id, productsToAllocate)
-    setOrders(updatedOrders)
-
-    // Save to persistent storage
-    saveOrders(updatedOrders)
-
-    // Call the onAllocate function with the order ID and products to allocate
-    onAllocate(selectedOrder.id, productsToAllocate)
-
-    // Close the dialog
-    onOpenChange(false)
-  }
-
-  // Add a new function to handle successful allocation
-  const updateOrdersAfterAllocation = (
-    orderId: string,
-    productsToAllocate: { id: string; quantity: number }[],
-  ): Order[] => {
-    return orders.map((order) => {
-      if (order.id === orderId) {
-        const updatedProducts = order.products.map((product) => {
-          const allocation = productsToAllocate.find((p) => p.id === product.id)
-          if (allocation) {
-            return {
-              ...product,
-              allocated: (product.allocated || 0) + allocation.quantity,
-            }
-          }
-          return product
-        })
-        return { ...order, products: updatedProducts }
-      }
-      return order
+    Promise.allSettled(Object.entries(allocations).map(([key, value]) => (
+      updateSaleAllocation({ allocated: value }, key, selectedOrder)
+    ))).then(() => {
+      onOpenChange(false)
+      refetchContext();
+      inventoryRefetch()
     })
   }
 
@@ -359,6 +197,7 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
             Urgent
           </Badge>
         )
+      case "high":
       case "high-value":
         return (
           <Badge variant="default" className="bg-amber-500 ml-2">
@@ -401,16 +240,6 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
       )
     }
     return products.filter((product) => getRemainingQuantity(product) > 0)
-  }
-
-  // Reset mock data button (for testing purposes)
-  const handleResetMockData = () => {
-    setOrders(initialMockOrders)
-    saveOrders(initialMockOrders)
-    toast({
-      title: "Data Reset",
-      description: "Mock order data has been reset to initial values",
-    })
   }
 
   return (

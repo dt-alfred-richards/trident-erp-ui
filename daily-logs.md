@@ -1,11 +1,24 @@
-Date - May 22-2025
+Date - May 23-2025
+
+\*What is completed
+-Inventory module
+
+\*Whats need to be done next
+
+- Logistics module
+
+Discussions
+
+- Discuss on how the allocation and sale orders work
+
+<!-- .................................................................................. -->Date - May 22-2025
 
 \*What is completed
 -Sales module
 
 \*Whats need to be done next
 
-- Production module
+- Inventory module
 
 Discussions
 

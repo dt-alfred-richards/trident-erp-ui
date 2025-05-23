@@ -39,7 +39,7 @@ export interface OrderProduct {
   dispatchedBy?: string
   dispatchedAt?: string
   deliveredBy?: string
-  deliveredAt?: string
+  deliveredAt?: string,
 }
 
 export type OrderPriority = "high" | "medium" | "low"

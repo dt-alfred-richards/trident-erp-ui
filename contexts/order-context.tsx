@@ -95,7 +95,8 @@ export type SaleOrderDetail = {
   saleId: string,
   productId: string,
   cases: number,
-  status: string
+  status: string,
+  allocated: number
 }
 interface OrderContextType {
   orders: Order[]
@@ -116,13 +117,15 @@ interface OrderContextType {
   shippingAddressMapper: Record<string, ShippingAddress[]>,
   clientProposedProductMapper: Record<string, ClientProposedProduct[]>,
   refetchContext: VoidFunction,
-  eventsLogger: EventLogger[]
+  eventsLogger: EventLogger[],
+  saleOrders: SaleOrderDetail[]
 }
 
-const OrderContext = createContext<OrderContextType | undefined>(undefined)
+const OrderContext = createContext<OrderContextType>({})
 
 export function OrderProvider({ children }: { children: ReactNode }) {
   const [orders, setOrders] = useState<Order[]>([])
+  const [saleOrders, setSaleOrders] = useState([])
   const [currentUser, setCurrentUser] = useState<string>("Current User") // In a real app, this would come from authentication
   const [clientMapper, setClientMapper] = useState({})
   const [referenceMapper, setReferenceMapper] = useState({})
@@ -225,12 +228,14 @@ export function OrderProvider({ children }: { children: ReactNode }) {
                 sku: product.sku,
                 cases: i.cases,
                 price: product.price,
-                status: i.status
+                status: i.status,
+                allocated: i.allocated
               })
             }).filter((item: any) => item)
           })
         })
       )
+      setSaleOrders(saleResponse)
       setReferenceMapper(_referenceMapper)
       setShippingAddressMapper(_shippingAddressMapper)
       setClientMapper(_clientMapper)
@@ -394,7 +399,8 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     clientProposedProductMapper,
     addSaleOrder,
     eventsLogger,
-    refetchContext: fetchData
+    refetchContext: fetchData,
+    saleOrders
   }}>{children}</OrderContext.Provider>
 }
 

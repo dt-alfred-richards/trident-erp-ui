@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { DashboardShell } from "@/components/dashboard-shell"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -12,8 +12,20 @@ import { AllocationHistory } from "@/components/inventory/allocation-history"
 import { Separator } from "@/components/ui/separator"
 import { UpdateInventoryDialog } from "@/components/inventory/update-inventory-dialog"
 import { WastageSummaryDialog, type WastageData } from "@/components/inventory/wastage-summary-dialog"
+import { useInventory } from "@/app/inventory-context"
+import { useOrders } from "@/contexts/order-context"
+import { getChildObject } from "@/components/generic"
+
+type Data = {
+  id: string,
+  name: string,
+  quantity: number,
+  reserved: number,
+  type: string,
+}
 
 export default function FinishedGoodsPage() {
+  const { inventory = [], allocations = [] } = useInventory()
   const [showAllocationDialog, setShowAllocationDialog] = useState(false)
   const [showUpdateDialog, setShowUpdateDialog] = useState(false)
   const [showHistory, setShowHistory] = useState(true) // Set to true by default
@@ -23,196 +35,45 @@ export default function FinishedGoodsPage() {
   const [showWastageDialog, setShowWastageDialog] = useState(false)
 
   // Add state to track wastage data
-  const [wastageData, setWastageData] = useState<WastageData[]>([
-    {
-      id: "500ml",
-      product: "500ml",
-      wastage: 0,
-      wastagePercentage: 0,
-      lastUpdated: new Date(2023, 9, 15, 14, 30),
-    },
-    {
-      id: "750ml",
-      product: "750ml",
-      wastage: 0,
-      wastagePercentage: 0,
-      lastUpdated: new Date(2023, 9, 14, 11, 45),
-    },
-    {
-      id: "1000ml",
-      product: "1000ml",
-      wastage: 0,
-      wastagePercentage: 0,
-      lastUpdated: new Date(2023, 9, 13, 9, 20),
-    },
-    {
-      id: "2000ml",
-      product: "2000ml",
-      wastage: 0,
-      wastagePercentage: 0,
-      lastUpdated: new Date(2023, 9, 12, 16, 10),
-    },
-    {
-      id: "custom-a",
-      product: "Custom-A",
-      wastage: 0,
-      wastagePercentage: 0,
-      lastUpdated: new Date(2023, 9, 11, 13, 25),
-    },
-    {
-      id: "premium-500ml",
-      product: "Premium-500ml",
-      wastage: 0,
-      wastagePercentage: 0,
-      lastUpdated: new Date(2023, 9, 10, 10, 15),
-    },
-    {
-      id: "premium-750ml",
-      product: "Premium-750ml",
-      wastage: 0,
-      wastagePercentage: 0,
-      lastUpdated: new Date(2023, 9, 9, 15, 50),
-    },
-    {
-      id: "premium-1000ml",
-      product: "Premium-1000ml",
-      wastage: 0,
-      wastagePercentage: 0,
-      lastUpdated: new Date(2023, 9, 8, 14, 30),
-    },
-    {
-      id: "limited-edition",
-      product: "Limited-Edition",
-      wastage: 0,
-      wastagePercentage: 0,
-      lastUpdated: new Date(2023, 9, 7, 11, 20),
-    },
-    {
-      id: "gift-pack",
-      product: "Gift-Pack",
-      wastage: 0,
-      wastagePercentage: 0,
-      lastUpdated: new Date(2023, 9, 6, 9, 10),
-    },
-  ])
+  const [wastageData, setWastageData] = useState<WastageData[]>([])
 
   // Add state to track inventory data
-  const [inventoryData, setInventoryData] = useState([
-    {
-      id: "500ml",
-      name: "500ml",
-      quantity: 250,
-      reserved: 1000,
-      type: "finished",
-    },
-    {
-      id: "750ml",
-      name: "750ml",
-      quantity: 1200,
-      reserved: 0,
-      type: "finished",
-    },
-    {
-      id: "1000ml",
-      name: "1000ml",
-      quantity: 200,
-      reserved: 600,
-      type: "finished",
-    },
-    {
-      id: "2000ml",
-      name: "2000ml",
-      quantity: 1000,
-      reserved: 500,
-      type: "finished",
-    },
-    {
-      id: "custom-a",
-      name: "Custom-A",
-      quantity: 0,
-      reserved: 0,
-      type: "finished",
-    },
-    {
-      id: "premium-500ml",
-      name: "Premium-500ml",
-      quantity: 350,
-      reserved: 800,
-      type: "finished",
-    },
-    {
-      id: "premium-750ml",
-      name: "Premium-750ml",
-      quantity: 900,
-      reserved: 200,
-      type: "finished",
-    },
-    {
-      id: "premium-1000ml",
-      name: "Premium-1000ml",
-      quantity: 150,
-      reserved: 400,
-      type: "finished",
-    },
-    {
-      id: "limited-edition",
-      name: "Limited-Edition",
-      quantity: 50,
-      reserved: 300,
-      type: "finished",
-    },
-    {
-      id: "gift-pack",
-      name: "Gift-Pack",
-      quantity: 75,
-      reserved: 150,
-      type: "finished",
-    },
-  ])
+  const [inventoryData, setInventoryData] = useState<Data[]>([])
+
+  useEffect(() => {
+    if (inventory.length === 0) return;
+    setInventoryData(
+      inventory.map(item => ({
+        id: item.id + '',
+        name: item.material,
+        quantity: item.quantity,
+        reserved: item.reserved || 0,
+        type: "finished",
+      })))
+    const initialWastageData = inventory.map((material) => ({
+      id: material.id + '',
+      product: material.material,
+      category: material.category,
+      wastage: material.wastage || 0,
+      wastagePercentage: ((material.wastage || 0) / material.quantity) * 100,
+      lastUpdated: material.modifiedOn || material.createdOn
+    } as WastageData))
+    setWastageData(initialWastageData)
+  }, [inventory])
 
   // Update the state to include allocation history
-  const [allocationHistory, setAllocationHistory] = useState([
-    {
-      id: "ALLOC-001",
-      timestamp: "2023-10-12T10:15:00",
-      orderId: "SO-1003",
-      customer: "Urgent Pharma",
-      sku: "500ml",
-      allocated: 200,
-    },
-    {
-      id: "ALLOC-002",
-      timestamp: "2023-10-12T10:20:00",
-      orderId: "SO-1001",
-      customer: "ABC Corp",
-      sku: "500ml",
-      allocated: 300,
-    },
-    {
-      id: "ALLOC-003",
-      timestamp: "2023-10-12T10:25:00",
-      orderId: "SO-1002",
-      customer: "XYZ Retail",
-      sku: "500ml",
-      allocated: 300,
-    },
-    {
-      id: "ALLOC-004",
-      timestamp: "2023-10-13T09:30:00",
-      orderId: "SO-1005",
-      customer: "Premium Stores",
-      sku: "750ml",
-      allocated: 400,
-    },
-    {
-      id: "ALLOC-005",
-      timestamp: "2023-10-13T14:45:00",
-      orderId: "SO-1004",
-      customer: "Global Foods",
-      sku: "750ml",
-      allocated: 600,
-    },
-  ])
+  const [allocationHistory, setAllocationHistory] = useState<any[]>([])
+
+  useEffect(() => {
+    setAllocationHistory(allocations.map(item => ({
+      id: getChildObject(item, "allocationId", ""),
+      timestamp: getChildObject(item, "createdOn", getChildObject(item, "modifiedOn", "")),
+      orderId: getChildObject(item, "orderId", ""),
+      customer: getChildObject(item, "createdBy", getChildObject(item, "modifiedBy", "")),
+      sku: getChildObject(item, "sku", ""),
+      allocated: getChildObject(item, "allocated", 0)
+    })))
+  }, [allocations])
 
   // Get customer name from order ID
   const getCustomerName = (orderId: string) => {
