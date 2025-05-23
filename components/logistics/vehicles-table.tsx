@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -18,6 +18,8 @@ import { useToast } from "@/components/ui/use-toast"
 import { Edit, Plus, Trash2, Search } from "lucide-react"
 import { ConfirmationDialog } from "@/components/common/confirmation-dialog"
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
+import { useVehicleContext, Vehicle } from "./vehicle-context"
+import { getChildObject } from "../generic"
 
 // Sample vehicle data
 const initialVehicles = [
@@ -80,15 +82,25 @@ const initialVehicles = [
 ]
 
 export function VehiclesTable() {
+  const { addVehicle = () => { }, vehicles: contextVehicles, updateVehicle, deleteVehicle } = useVehicleContext()
+
   const [vehicles, setVehicles] = useState(initialVehicles)
+  useEffect(() => {
+    setVehicles(contextVehicles.map((item: Vehicle) => ({
+      id: item.vehicleId,
+      type: item.vehicleType,
+      model: item.model,
+      capacity: item.capacity,
+      registrationNumber: item.registrationNumber,
+    })))
+  }, [contextVehicles])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [selectedVehicle, setSelectedVehicle] = useState<any>(null)
   const [vehicleToDelete, setVehicleToDelete] = useState<string | null>(null)
   const [newVehicle, setNewVehicle] = useState({
-    id: "",
-    type: "",
+    vehicleType: "",
     model: "",
     capacity: "",
     registrationNumber: "",
@@ -124,34 +136,43 @@ export function VehiclesTable() {
     setCurrentPage(page)
   }
 
+  console.log(newVehicle)
+
   const handleAddVehicle = () => {
+    if (!addVehicle) return;
+
     // Generate a new ID
-    const newId = `VEH${(vehicles.length + 1).toString().padStart(3, "0")}`
-    const vehicleToAdd = { ...newVehicle, id: newId }
+    addVehicle(newVehicle).then((res: any) => {
+      setNewVehicle({
+        vehicleType: "",
+        model: "",
+        capacity: "",
+        registrationNumber: "",
+      })
+      setIsAddDialogOpen(false)
 
-    setVehicles([...vehicles, vehicleToAdd])
-    setNewVehicle({
-      id: "",
-      type: "",
-      model: "",
-      capacity: "",
-      registrationNumber: "",
-    })
-    setIsAddDialogOpen(false)
-
-    toast({
-      title: "Vehicle Added",
-      description: `Vehicle ${newId} has been added successfully.`,
+      toast({
+        title: "Vehicle Added",
+        description: `Vehicle ${getChildObject(res, "data.0.vehicleId")} has been added successfully.`,
+      })
     })
   }
 
   const handleEditVehicle = () => {
-    setVehicles(vehicles.map((vehicle) => (vehicle.id === selectedVehicle.id ? selectedVehicle : vehicle)))
-    setIsEditDialogOpen(false)
-
-    toast({
-      title: "Vehicle Updated",
-      description: `Vehicle ${selectedVehicle.id} has been updated successfully.`,
+    const payload = {
+      capacity: selectedVehicle.capacity,
+      model: selectedVehicle.model,
+      registrationNumber: selectedVehicle.registrationNumber,
+      vehicleType: selectedVehicle.type
+    } as Partial<Vehicle>
+    delete payload["id"]
+    updateVehicle(selectedVehicle.id, payload).then(() => {
+      setIsEditDialogOpen(false)
+      setSelectedVehicle(null)
+      toast({
+        title: "Vehicle Updated",
+        description: `Vehicle ${selectedVehicle.id} has been updated successfully.`,
+      })
     })
   }
 
@@ -163,15 +184,15 @@ export function VehiclesTable() {
   const handleDeleteVehicle = () => {
     if (!vehicleToDelete) return
 
-    setVehicles(vehicles.filter((vehicle) => vehicle.id !== vehicleToDelete))
-    setIsDeleteDialogOpen(false)
-
-    toast({
-      title: "Vehicle Deleted",
-      description: `Vehicle ${vehicleToDelete} has been deleted successfully.`,
+    deleteVehicle(vehicleToDelete).then(() => {
+      setIsDeleteDialogOpen(false)
+      toast({
+        title: "Vehicle Deleted",
+        description: `Vehicle ${vehicleToDelete} has been deleted successfully.`,
+      })
+      setVehicleToDelete(null)
     })
 
-    setVehicleToDelete(null)
   }
 
   const openEditDialog = (vehicle: any) => {
@@ -215,8 +236,8 @@ export function VehiclesTable() {
                     <Label htmlFor="type">Vehicle Type</Label>
                     <Input
                       id="type"
-                      value={newVehicle.type}
-                      onChange={(e) => setNewVehicle({ ...newVehicle, type: e.target.value })}
+                      value={newVehicle.vehicleType}
+                      onChange={(e) => setNewVehicle({ ...newVehicle, vehicleType: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">

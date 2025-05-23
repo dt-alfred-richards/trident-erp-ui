@@ -28,3 +28,10 @@ export const removebasicTypes = (refData: any, additionalFields: string[]) => {
     }
     return result;
 }
+
+
+export const excludeKeys = (data: Record<string, any>, keys: string[]) => {
+    return Object.fromEntries(
+        Object.entries(data).filter(([key]) => !keys.includes(key))
+    )
+}

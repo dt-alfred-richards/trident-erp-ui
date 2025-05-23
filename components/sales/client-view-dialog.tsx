@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,11 +11,13 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
 import { AddProductDialog } from "./add-product-dialog"
+import { Client, useClient } from "@/app/sales/client-list/client-context"
+import { getChildObject } from "../generic"
 
 interface ClientViewDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  client: any // Replace 'any' with a more specific type if available
+  client: Client // Replace 'any' with a more specific type if available
 }
 
 // Unit options
@@ -73,11 +75,14 @@ const initialProducts = [
   },
 ]
 
-// Global products state (simulating a database)
-let globalProducts = [...initialProducts]
-
 export function ClientViewDialog({ open, onOpenChange, client }: ClientViewDialogProps) {
   const { toast } = useToast()
+  const { clientProposedPriceMapper, updateClientProduct, refetchContext, deleteClientProduct } = useClient()
+
+  const globalProducts = useMemo(() => {
+    return getChildObject(clientProposedPriceMapper, client.clientId, [])
+  }, [clientProposedPriceMapper, client])
+
   const [localProducts, setLocalProducts] = useState<any[]>([])
   const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false)
   const [selectedProducts, setSelectedProducts] = useState<number[]>([])
@@ -106,10 +111,11 @@ export function ClientViewDialog({ open, onOpenChange, client }: ClientViewDialo
     return () => {
       isMounted.current = false
     }
-  }, [open])
+  }, [open, clientProposedPriceMapper])
+
 
   // Get products for this client
-  const clientProducts = localProducts.filter((product) => product.clientId === client?.id)
+  const clientProducts = localProducts.filter((product) => product.clientId === client?.clientId)
 
   // Get all product IDs for validation
   const allProductIds = localProducts.map((product) => product.id)
@@ -220,13 +226,18 @@ export function ClientViewDialog({ open, onOpenChange, client }: ClientViewDialo
       return product
     })
 
-    setLocalProducts(updatedProducts)
-    setHasUnsavedChanges(false)
-    setIsDataSaved(false)
+    Promise.allSettled([
+      updatedProducts.filter(item => selectedProducts.includes(item.id)).map(item => updateClientProduct({ key: 'product_id', value: item.productId }, { price: item.price, unit: item.unit }))
+    ]).then(() => {
+      setLocalProducts(updatedProducts)
+      setHasUnsavedChanges(false)
+      setIsDataSaved(false)
 
-    toast({
-      title: "Product details updated",
-      description: "Product prices and units have been successfully updated. Don't forget to save all changes.",
+      toast({
+        title: "Product details updated",
+        description: "Product prices and units have been successfully updated. Don't forget to save all changes.",
+      })
+      refetchContext()
     })
   }
 
@@ -252,40 +263,46 @@ export function ClientViewDialog({ open, onOpenChange, client }: ClientViewDialo
   const handleBulkDelete = () => {
     if (selectedProducts.length === 0) return
 
-    setLocalProducts((prev) => prev.filter((product) => !selectedProducts.includes(product.id)))
-    setIsDataSaved(false)
+    Promise.allSettled(
+      localProducts.filter(item => selectedProducts.includes(item.id))
+        .map(item => deleteClientProduct({ key: 'product_id', value: item.productId }))
+    ).then(_ => {
+      setLocalProducts((prev) => prev.filter((product) => !selectedProducts.includes(product.id)))
+      setIsDataSaved(false)
 
-    toast({
-      title: "Products deleted",
-      description: `${selectedProducts.length} product(s) have been removed. Don't forget to save all changes.`,
+      toast({
+        title: "Products deleted",
+        description: `${selectedProducts.length} product(s) have been removed. Don't forget to save all changes.`,
+      })
+
+      setSelectedProducts([])
+      setEditedPrices({})
+      setEditedUnits({})
+      setHasUnsavedChanges(false)
+      refetchContext();
     })
-
-    setSelectedProducts([])
-    setEditedPrices({})
-    setEditedUnits({})
-    setHasUnsavedChanges(false)
   }
 
   // Save all changes to the global products state
   const saveAllChanges = () => {
     // Update the global products state
-    globalProducts = [...localProducts]
+    // globalProducts = [...localProducts]
 
-    setIsDataSaved(true)
-    setShowSaveSuccess(true)
+    // setIsDataSaved(true)
+    // setShowSaveSuccess(true)
 
-    // Hide success message after 3 seconds
-    setTimeout(() => {
-      if (isMounted.current) {
-        setShowSaveSuccess(false)
-      }
-    }, 3000)
+    // // Hide success message after 3 seconds
+    // setTimeout(() => {
+    //   if (isMounted.current) {
+    //     setShowSaveSuccess(false)
+    //   }
+    // }, 3000)
 
-    toast({
-      title: "Changes saved",
-      description: "All changes have been successfully saved.",
-      variant: "default",
-    })
+    // toast({
+    //   title: "Changes saved",
+    //   description: "All changes have been successfully saved.",
+    //   variant: "default",
+    // })
   }
 
   // Check if there are any unsaved changes (either price/unit edits or added/deleted products)
@@ -331,7 +348,7 @@ export function ClientViewDialog({ open, onOpenChange, client }: ClientViewDialo
               <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Client ID</p>
-                  <p className="font-medium">{client?.id}</p>
+                  <p className="font-medium">{client?.clientId}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Client Name</p>
@@ -353,13 +370,13 @@ export function ClientViewDialog({ open, onOpenChange, client }: ClientViewDialo
                   <p className="text-sm text-muted-foreground flex items-center gap-1">
                     <PhoneIcon className="h-3 w-3" /> Phone
                   </p>
-                  <p className="font-medium">{client?.phone}</p>
+                  <p className="font-medium">{client?.phoneNumber}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground flex items-center gap-1">
                     <MapPinIcon className="h-3 w-3" /> Address
                   </p>
-                  <p className="font-medium">{client?.address}</p>
+                  <p className="font-medium">{client?.shippingAddress}</p>
                 </div>
               </CardContent>
             </Card>
@@ -435,7 +452,7 @@ export function ClientViewDialog({ open, onOpenChange, client }: ClientViewDialo
                                 aria-label={`Select ${product.product}`}
                               />
                             </TableCell>
-                            <TableCell className="font-medium">{product.product}</TableCell>
+                            <TableCell className="font-medium">{product.name}</TableCell>
                             <TableCell>{product.sku}</TableCell>
                             <TableCell>
                               {selectedProducts.includes(product.id) ? (
@@ -510,14 +527,6 @@ export function ClientViewDialog({ open, onOpenChange, client }: ClientViewDialo
             >
               Close
             </Button>
-            <Button
-              onClick={saveAllChanges}
-              disabled={isDataSaved && !hasUnsavedChanges}
-              className={!isDataSaved || hasUnsavedChanges ? "bg-green-600 hover:bg-green-700" : ""}
-            >
-              <Save className="h-4 w-4 mr-2" />
-              Save Changes
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -527,7 +536,7 @@ export function ClientViewDialog({ open, onOpenChange, client }: ClientViewDialo
         onOpenChange={setIsAddProductDialogOpen}
         onAdd={handleAddProduct}
         existingIds={allProductIds}
-        clientId={client?.id}
+        clientId={client?.clientId}
       />
     </>
   )

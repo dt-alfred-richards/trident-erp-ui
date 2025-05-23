@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -18,6 +18,8 @@ import { useToast } from "@/components/ui/use-toast"
 import { Edit, Plus, Trash2, Search } from "lucide-react"
 import { ConfirmationDialog } from "@/components/common/confirmation-dialog"
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
+import { Driver, useVehicleContext } from "./vehicle-context"
+import { convertDate, excludeKeys } from "../generic"
 
 // Sample driver data
 const initialDrivers = [
@@ -88,7 +90,21 @@ const initialDrivers = [
 ]
 
 export function DriversTable() {
-  const [drivers, setDrivers] = useState(initialDrivers)
+  const { addDriver, deleteDriver, updateDriver, drivers: contextDrivers } = useVehicleContext()
+  const [drivers, setDrivers] = useState<any[]>([])
+
+  useEffect(() => {
+    setDrivers(contextDrivers.map(item => (
+      {
+        id: item.driverId,
+        name: item.fullName,
+        licenseNumber: item.licenseNumber,
+        contactNumber: item.contactNumber,
+        address: item.address,
+        joiningDate: convertDate(item.joiningDate),
+      }
+    )))
+  }, [contextDrivers])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -133,35 +149,41 @@ export function DriversTable() {
   }
 
   const handleAddDriver = () => {
-    // Generate a new ID
-    const newId = `DRV${(drivers.length + 1).toString().padStart(3, "0")}`
-    const driverToAdd = { ...newDriver, id: newId }
+    const newId = newDriver.id
+    addDriver({
+      fullName: newDriver.name,
+      ...excludeKeys(newDriver, ["id", "name"]),
+    }).then(() => {
+      setNewDriver({
+        id: "",
+        name: "",
+        licenseNumber: "",
+        contactNumber: "",
+        address: "",
+        joiningDate: "",
+      })
+      setIsAddDialogOpen(false)
 
-    setDrivers([...drivers, driverToAdd])
-    setNewDriver({
-      id: "",
-      name: "",
-      licenseNumber: "",
-      contactNumber: "",
-      address: "",
-      joiningDate: "",
-    })
-    setIsAddDialogOpen(false)
-
-    toast({
-      title: "Driver Added",
-      description: `Driver ${newId} has been added successfully.`,
+      toast({
+        title: "Driver Added",
+        description: `Driver ${newId} has been added successfully.`,
+      })
     })
   }
 
   const handleEditDriver = () => {
-    setDrivers(drivers.map((driver) => (driver.id === selectedDriver.id ? selectedDriver : driver)))
-    setIsEditDialogOpen(false)
+    updateDriver(selectedDriver.id, {
+      fullName: selectedDriver.name,
+      ...excludeKeys(selectedDriver, ["id", "name"]),
+    }).then(() => {
+      setIsEditDialogOpen(false)
 
-    toast({
-      title: "Driver Updated",
-      description: `Driver ${selectedDriver.id} has been updated successfully.`,
+      toast({
+        title: "Driver Updated",
+        description: `Driver ${selectedDriver.id} has been updated successfully.`,
+      })
     })
+
   }
 
   const confirmDelete = (id: string) => {
@@ -172,15 +194,16 @@ export function DriversTable() {
   const handleDeleteDriver = () => {
     if (!driverToDelete) return
 
-    setDrivers(drivers.filter((driver) => driver.id !== driverToDelete))
-    setIsDeleteDialogOpen(false)
+    deleteDriver(driverToDelete).then(() => {
+      setIsDeleteDialogOpen(false)
 
-    toast({
-      title: "Driver Deleted",
-      description: `Driver ${driverToDelete} has been deleted successfully.`,
+      toast({
+        title: "Driver Deleted",
+        description: `Driver ${driverToDelete} has been deleted successfully.`,
+      })
+
+      setDriverToDelete(null)
     })
-
-    setDriverToDelete(null)
   }
 
   const openEditDialog = (driver: any) => {

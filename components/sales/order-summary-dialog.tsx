@@ -16,9 +16,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import type { Order, OrderProduct } from "@/types/order"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
+import moment from "moment"
 import { convertDate } from "../generic"
-import { useOrders } from "@/contexts/order-context"
-import { useMemo } from "react"
 
 interface OrderSummaryDialogProps {
   open: boolean
@@ -28,11 +27,7 @@ interface OrderSummaryDialogProps {
 
 export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDialogProps) {
   // Calculate order totals
-  const { referenceMapper } = useOrders();
-  const refName = useMemo(() => {
-    return Object.values(referenceMapper).flat().find(item => item.referenceId === order.reference)?.name || ""
-  }, [referenceMapper])
-  const subtotal = order.products.reduce((sum, product) => sum + product.price * product.cases, 0)
+  const subtotal = order.products.reduce((sum, product) => sum + product.price * product.quantity, 0)
   const discount = subtotal * 0.05 // Assuming 5% discount, adjust as needed
   const taxableAmount = subtotal - discount
   const cgst = taxableAmount * 0.09
@@ -45,16 +40,8 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
   }
 
   // Format date for display
-  const convertDate = (dateString: string | Date) => {
-    if (!dateString) return "—"
-    const date = new Date(dateString)
-    return new Intl.DateTimeFormat("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(date)
+  const formatDate = (date: Date) => {
+    return moment(date).format("LL")
   }
 
   return (
@@ -63,7 +50,7 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
         <DialogHeader>
           <DialogTitle className="text-xl">Order Summary</DialogTitle>
           <DialogDescription>
-            Order details for <span className="font-medium">{order.id}</span>
+            Order details for <span className="font-medium">{`ORDER-${order.id}`}</span>
           </DialogDescription>
         </DialogHeader>
 
@@ -114,7 +101,7 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
                     </div>
                     <div className="grid grid-cols-2">
                       <span className="text-sm text-muted-foreground">Delivery Date:</span>
-                      <span className="text-sm">{order.deliveryDate ? convertDate(order.deliveryDate) : ""}</span>
+                      <span className="text-sm">{formatDate(order.deliveryDate)}</span>
                     </div>
                     <div className="grid grid-cols-2">
                       <span className="text-sm text-muted-foreground">Order ID:</span>
@@ -122,7 +109,7 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
                     </div>
                     <div className="grid grid-cols-2">
                       <span className="text-sm text-muted-foreground">Reference:</span>
-                      <span className="text-sm">{refName}</span>
+                      <span className="text-sm">{order.reference}</span>
                     </div>
                     <div className="grid grid-cols-2">
                       <span className="text-sm text-muted-foreground">Created By:</span>
@@ -161,9 +148,9 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
                             <div className="text-sm text-muted-foreground">{product.sku}</div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right">{product.cases.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">{product.quantity.toLocaleString()}</TableCell>
                         <TableCell className="text-right">₹{product.price.toFixed(2)}</TableCell>
-                        <TableCell className="text-right">₹{(product.cases * product.price).toFixed(2)}</TableCell>
+                        <TableCell className="text-right">₹{(product.quantity * product.price).toFixed(2)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -301,7 +288,7 @@ India`}
                         <StatusBadge status={entry.status} />
                         <span className="ml-2 font-medium">{entry.user}</span>
                       </div>
-                      <span className="text-sm text-muted-foreground">{convertDate(entry.timestamp)}</span>
+                      <span className="text-sm text-muted-foreground">{formatDate(entry.timestamp)}</span>
                     </div>
                     {entry.note && <p className="text-sm text-muted-foreground mt-1">{entry.note}</p>}
                     {index < order.statusHistory.length - 1 && <Separator className="mt-4" />}

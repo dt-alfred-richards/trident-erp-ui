@@ -7,6 +7,7 @@ import { CreateSalesOrderDialog } from "@/components/sales/create-sales-order-di
 import { useState } from "react"
 import { PlusCircle } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useSales } from "../context/Sales/sales-context"
 
 export function SalesDashboard() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)

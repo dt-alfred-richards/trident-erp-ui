@@ -25,8 +25,9 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
-import type { Order } from "@/types/order"
-import { ClientProposedProduct, SaleOrderDetail, useOrders, V1Sale } from "@/contexts/order-context"
+import type { Order, Product, ProductStatus, ShippingAddress } from "@/types/order"
+import { useOrders } from "@/contexts/order-context"
+import { convertDate } from "../generic"
 
 // Mock shipping addresses database
 const customerAddresses: Record<string, { id: string; name: string; address: string; isDefault?: boolean }[]> = {
@@ -58,6 +59,7 @@ const customerAddresses: Record<string, { id: string; name: string; address: str
   ],
 }
 
+
 interface OrderItem {
   id: string
   productId: string
@@ -67,7 +69,8 @@ interface OrderItem {
   taxRate: number
   basePay: number
   taxAmount: number
-  status: string
+  status: string,
+  salesId: string
 }
 
 interface EditOrderDialogProps {
@@ -77,22 +80,19 @@ interface EditOrderDialogProps {
 }
 
 export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogProps) {
-  const { updateOrder, clientMapper, addSaleOrder, clientProposedProductMapper, refetchContext, referenceMapper } = useOrders()
+  const { updateOrder, clientMapper, shippingAddress: contextShippingAddress, references, products } = useOrders()
 
-  const { gstNumber, panNumber, name: customer } = useMemo(() => {
-    return clientMapper[order.clientId]
-  }, [order])
-
-  const productCatalog = useMemo(() => {
-    return Object.values(clientProposedProductMapper).flat().map((item: ClientProposedProduct) => ({ id: item.productId, name: item.name, price: item.price, taxRate: 18, sku: item.sku, unit: item.unit }))
-  }, [clientProposedProductMapper])
+  const productCatalog = useMemo<Product[]>(() => {
+    return products;
+  }, [products])
 
   // Order header state (non-editable)
   const [orderDate] = useState<Date>(order.orderDate ? new Date(order.orderDate) : new Date())
-  const [poNumber, setPoNumber] = useState(order.poNumber || "")
-  const [poId, setPoId] = useState(order.poId || "")
-  const [poDate, setPoDate] = useState<Date | undefined>(order.poDate ? new Date(order.poDate) : undefined)
-  const [remarks, setRemarks] = useState(order.remarks || "")
+  const [customer] = useState(clientMapper[order.clientId]?.clientName || "")
+  const [poNumber] = useState(order.poNumber || "")
+  const [poId] = useState(order.poId || "")
+  const [poDate] = useState<Date | undefined>(order.poDate ? new Date(order.poDate) : undefined)
+  const [remarks] = useState(order.remarks || "")
 
   // Editable fields
   const [reference, setReference] = useState(order.reference)
@@ -100,12 +100,8 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
     order.deliveryDate ? new Date(order.deliveryDate) : undefined,
   )
 
-  const [availableReferences, setAvailableReferences] = useState<string[]>([])
-  const [shippingAddresses, setShippingAddresses] = useState<
-    Array<{ id: string; name: string; address: string; isDefault?: boolean }>
-  >([])
-  const [selectedShippingAddressId, setSelectedShippingAddressId] = useState(order.shippingAddressId || "")
-
+  const [shippingAddresses, setShippingAddresses] = useState<ShippingAddress[]>([])
+  const [selectedShippingAddressId, setSelectedShippingAddressId] = useState(order.shippingAddress || "")
   // Tax location state
   const [isInTelangana, setIsInTelangana] = useState(true)
 
@@ -124,50 +120,42 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
   const [subtotal, setSubtotal] = useState(0)
   const [taxTotal, setTaxTotal] = useState(0)
   const [discount, setDiscount] = useState(order.summary?.discount || 0)
-  const [discountType, setDiscountType] = useState<"percentage" | "amount">(order.summary?.discountType || "amount")
+  const [discountType, setDiscountType] = useState<string>(order.summary?.discountType || "amount")
   const [taxesEnabled, setTaxesEnabled] = useState(order.summary?.taxesEnabled !== false)
   const [total, setTotal] = useState(0)
 
-  // Initialize order items from order products
-  // useEffect(() => {
-  //   if (open && order.products) {
-  //     const items: OrderItem[] = order.products.map((product) => ({
-  //       id: product.id,
-  //       productId: product.sku,
-  //       productName: product.name,
-  //       cases: product.cases,
-  //       pricePerCase: product.price,
-  //       taxRate: 18, // Default tax rate
-  //       basePay: product.price * product.cases,
-  //       taxAmount: 0, // Will be calculated in useEffect
-  //       status: product.status,
-  //     }))
-  //     setOrderItems(items)
-  //   }
-  // }, [open, order])
-
-  // Update available addresses when customer changes
   useEffect(() => {
-    const addresses = customerAddresses[customer] || []
-    setShippingAddresses(addresses)
-
-    if (selectedShippingAddressId && !addresses.find((addr) => addr.id === selectedShippingAddressId)) {
-      // If current selected address is not available for this customer
-      const defaultAddress = addresses.find((addr) => addr.isDefault)
-      if (defaultAddress) {
-        setSelectedShippingAddressId(defaultAddress.id)
-      } else if (addresses.length > 0) {
-        setSelectedShippingAddressId(addresses[0].id)
-      } else {
-        setSelectedShippingAddressId("")
-      }
+    setShippingAddresses(contextShippingAddress.filter(item => item.clientId === order.clientId))
+    const selectedAddress = contextShippingAddress.find(item => item.addressId === order.shippingAddress)
+    if (selectedAddress) {
+      setSelectedShippingAddressId(selectedAddress.addressId)
     }
-  }, [customer, selectedShippingAddressId])
+  }, [order, contextShippingAddress])
+  // Initialize order items from order products
+  useEffect(() => {
+    if (open && order.products) {
+      const items: OrderItem[] = order.products.map((product) => ({
+        id: product.id,
+        productId: product.sku,
+        productName: product.name,
+        cases: product.quantity,
+        pricePerCase: product.price,
+        taxRate: 18, // Default tax rate
+        basePay: product.price * product.quantity,
+        taxAmount: 0, // Will be calculated in useEffect
+        status: product.status,
+        salesId: product.salesId || ""
+      }))
+      setOrderItems(items)
+    }
+  }, [open, order])
+
+  console.log({ order })
 
   // Update when shipping address changes
   useEffect(() => {
     if (selectedShippingAddressId) {
-      const selectedAddress = shippingAddresses.find((addr) => addr.id === selectedShippingAddressId)
+      const selectedAddress = contextShippingAddress.find((addr) => addr.id + "" === selectedShippingAddressId)
       if (selectedAddress) {
         // Check if address contains "Telangana" to determine tax type
         setIsInTelangana(selectedAddress.address.includes("Telangana"))
@@ -206,25 +194,8 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
     setTaxTotal(newTaxTotal)
     setTotal(discountedSubtotal + newTaxTotal)
 
-    // REMOVED: Don't update orderItems here as it causes an infinite loop
-    // This was the problematic part:
-    // setOrderItems(prevItems =>
-    //   prevItems.map(item => {
-    //     const itemDiscountRatio = item.basePay / (newSubtotal || 1)
-    //     const itemDiscountAmount = discountAmount * itemDiscountRatio
-    //     const discountedItemAmount = item.basePay - itemDiscountAmount
-    //     const taxAmount = taxesEnabled ? (discountedItemAmount * item.taxRate) / 100 : 0
-    //
-    //     return {
-    //       ...item,
-    //       taxAmount
-    //     }
-    //   })
-    // )
   }, [orderItems, discount, discountType, taxesEnabled])
 
-  // Add a separate useEffect to calculate tax amounts for display purposes
-  // This doesn't update the orderItems state, just calculates values for display
   useEffect(() => {
     if (orderItems.length === 0) return
 
@@ -265,7 +236,9 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
       return
     }
 
-    const product = productCatalog.find((p) => p.id === selectedProductId)
+    const product = productCatalog.find((p) => p.productId === selectedProductId)
+
+    console.log({ product, productCatalog, selectedProductId })
     if (!product) return
 
     const quantity = Number(cases)
@@ -273,7 +246,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
 
     const newItem: OrderItem = {
       id: `item-${Date.now()}`,
-      productId: product.id,
+      productId: product.productId,
       productName: product.name,
       cases: quantity,
       pricePerCase: product.price,
@@ -281,6 +254,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
       basePay,
       taxAmount: 0, // Will be calculated in useEffect
       status: "pending",
+      salesId: order.salesId || ""
     }
 
     setOrderItems([...orderItems, newItem])
@@ -313,29 +287,29 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
     )
   }
 
+  console.log({ orderItems })
+
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Get the selected shipping address details
-    const selectedAddress = shippingAddresses.find((addr) => addr.id === selectedShippingAddressId)
-
     // Create updated products array
-    const updatedProducts = orderItems.map(item => {
-      return addSaleOrder({
-        cases: item.cases,
-        saleId: order.id,
-        status: "pending",
-        productId: item.productId
-      } as Partial<SaleOrderDetail>)
-    })
+    const updatedProducts = orderItems.map((item) => ({
+      name: item.productName,
+      sku: item.productId,
+      cases: item.cases,
+      price: item.pricePerCase,
+      status: item.status as ProductStatus,
+      salesId: item.salesId
+    }))
 
-    Promise.all([
-      ...updatedProducts,
-      updateOrder(order.id, {
-        referenceId: reference,
-        deliveryDate: expectedDeliveryDate,
-        shippingAddressId: selectedAddress?.id || "",
+    // Create the updated order
+    const updatedOrder: Partial<Order> = {
+      reference,
+      deliveryDate: expectedDeliveryDate,
+      products: updatedProducts as any,
+      shippingAddress: selectedShippingAddressId,
+      summary: {
         subtotal,
         discountType,
         discount,
@@ -343,11 +317,14 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
         taxType: isInTelangana ? "CGST+SGST" : "IGST",
         taxTotal,
         total,
-      })
-    ]).then(() => {
-      // Update the order
-      onOpenChange(false)
-      refetchContext()
+      },
+    }
+
+    // Update the order
+    updateOrder(order.id, updatedOrder).then(() => {
+      // onOpenChange(false)
+    }).catch((error) => {
+      console.log({ error })
     })
   }
 
@@ -419,9 +396,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
                   </SelectTrigger>
                   <SelectContent>
                     {
-                      (referenceMapper[order.clientId] || []).map(item => (
-                        <SelectItem key={item.id} value={item.referenceId}>{item.name}</SelectItem>
-                      ))
+                      references.map(item => <SelectItem key={item.referenceId + ""} value={item.referenceId}>{item.name}</SelectItem>)
                     }
                   </SelectContent>
                 </Select>
@@ -447,7 +422,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
                 <Label htmlFor="po-date">Purchase Order Date</Label>
                 <Input
                   id="po-date"
-                  value={poDate ? format(poDate, "PPP") : "Not specified"}
+                  value={poDate ? convertDate(poDate) : "Not specified"}
                   readOnly
                   className="bg-muted"
                 />
@@ -472,7 +447,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
                   </SelectTrigger>
                   <SelectContent>
                     {shippingAddresses.map((address) => (
-                      <SelectItem key={address.id} value={address.id}>
+                      <SelectItem key={address.id} value={address.addressId + ''}>
                         {address.name} {address.isDefault && "(Default)"}
                       </SelectItem>
                     ))}
@@ -480,7 +455,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
                 </Select>
                 {selectedShippingAddressId && (
                   <div className="mt-2 text-xs text-muted-foreground whitespace-pre-line border p-2 rounded">
-                    {shippingAddresses.find((addr) => addr.id === selectedShippingAddressId)?.address}
+                    {shippingAddresses.find((addr) => addr.addressId + '' === selectedShippingAddressId)?.address}
                   </div>
                 )}
               </div>
@@ -526,7 +501,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
                             className="w-full justify-between"
                           >
                             {selectedProductId
-                              ? productCatalog.find((product) => product.id === selectedProductId)?.name
+                              ? productCatalog.find((product) => product.productId === selectedProductId)?.name
                               : "Select product..."}
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
@@ -540,7 +515,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
                                 {productCatalog.map((product) => (
                                   <CommandItem
                                     key={product.id}
-                                    value={product.id}
+                                    value={product.productId}
                                     onSelect={(currentValue) => {
                                       setSelectedProductId(currentValue === selectedProductId ? "" : currentValue)
                                       setOpenCombobox(false)
@@ -549,10 +524,10 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
                                     <Check
                                       className={cn(
                                         "mr-2 h-4 w-4",
-                                        selectedProductId === product.id ? "opacity-100" : "opacity-0",
+                                        selectedProductId === product.productId ? "opacity-100" : "opacity-0",
                                       )}
                                     />
-                                    {product.name} ({product.sku}) - ₹{product.price}
+                                    {product.name} - ₹{product.price}
                                   </CommandItem>
                                 ))}
                               </CommandGroup>
