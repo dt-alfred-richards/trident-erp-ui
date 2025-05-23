@@ -9,6 +9,7 @@ import { Search } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
+import { Inventory, useInventory } from "@/app/inventory-context"
 
 interface InventoryItem {
   id: string
@@ -16,6 +17,7 @@ interface InventoryItem {
   quantity: number
   type: string
   category?: string
+  wastage: number
 }
 
 interface WastageUpdate {
@@ -39,6 +41,7 @@ export function UpdateInventoryDialog({
   items,
   onUpdateInventory,
 }: UpdateInventoryDialogProps) {
+  const { updateInventory } = useInventory()
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedItems, setSelectedItems] = useState<InventoryItem[]>([])
   const [updatedItems, setUpdatedItems] = useState<InventoryItem[]>([])
@@ -88,8 +91,8 @@ export function UpdateInventoryDialog({
   }
 
   // Handle quantity change
-  const handleQuantityChange = (itemId: string, newQuantity: number) => {
-    setUpdatedItems(updatedItems.map((item) => (item.id === itemId ? { ...item, quantity: newQuantity } : item)))
+  const handleQuantityChange = (itemId: string, newQuantity: number, wastage: number) => {
+    setUpdatedItems(updatedItems.map((item) => (item.id === itemId ? { ...item, quantity: newQuantity, wastage } : item)))
   }
 
   const handleWastageChange = (itemId: string, value: string) => {
@@ -99,38 +102,28 @@ export function UpdateInventoryDialog({
       setWastageValues((prev) => ({ ...prev, [itemId]: numValue }))
 
       // Find the original item to get its current quantity
-      const originalItem = items.find((item) => item.id === item.id)
+      const originalItem = items.find(i => i.id === itemId)
       if (originalItem) {
         // Calculate new quantity based on wastage
         const newQuantity = Math.max(0, originalItem.quantity - numValue)
-        handleQuantityChange(itemId, newQuantity)
+        handleQuantityChange(itemId, newQuantity, numValue)
       }
     }
   }
 
   // Handle save
   const handleSave = () => {
-    // Create wastage updates array
-    const wastageUpdates: WastageUpdate[] = Object.entries(wastageValues)
-      .filter(([_, value]) => value > 0) // Only include items with wastage
-      .map(([id, wastage]) => {
-        const item = items.find((item) => item.id === id)
-        return {
-          id,
-          name: item?.name || id,
-          wastage,
-        }
+    if (!updateInventory) return;
+    const payload = updatedItems.map(item => ({ id: parseInt(item.id), quantity: item.quantity, wastage: item.wastage } as Partial<Inventory>))
+    Promise.allSettled(
+      payload.map(item => updateInventory(item))
+    ).then(() => {
+      toast({
+        title: "Inventory updated",
+        description: `Successfully updated ${updatedItems.length} item${updatedItems.length !== 1 ? "s" : ""}`,
       })
-
-    // In a real app, this would call an API to update the inventory
-    onUpdateInventory(updatedItems, wastageUpdates)
-
-    toast({
-      title: "Inventory updated",
-      description: `Successfully updated ${updatedItems.length} item${updatedItems.length !== 1 ? "s" : ""}`,
+      onOpenChange(false)
     })
-
-    onOpenChange(false)
   }
 
   return (

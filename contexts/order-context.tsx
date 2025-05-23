@@ -194,7 +194,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       }, {});
       const _eventsLogger = getChildObject(response, "6.value.data", [])
       setEventsLogger(_eventsLogger)
-      console.log({ saleResponse })
+
       setOrders(
         saleResponse.map((item: V1Sale) => {
           const client: Client = _clientMapper[item?.clientId || ""]

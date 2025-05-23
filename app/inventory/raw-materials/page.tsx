@@ -14,6 +14,7 @@ import { UpdateInventoryDialog } from "@/components/inventory/update-inventory-d
 import { useToast } from "@/hooks/use-toast"
 import { useRawMaterialsStore } from "@/hooks/use-raw-materials-store"
 import { RawMaterialsWastageDialog, type WastageData } from "@/components/inventory/raw-materials-wastage-dialog"
+import { useInventory } from "@/app/inventory-context"
 
 interface WastageUpdate {
   id: string
@@ -22,6 +23,7 @@ interface WastageUpdate {
 }
 
 export default function RawMaterialsPage() {
+  const { inventory: rawMaterials = [] } = useInventory()
   const [searchTerm, setSearchTerm] = useState("")
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [showUpdateDialog, setShowUpdateDialog] = useState(false)
@@ -29,7 +31,7 @@ export default function RawMaterialsPage() {
   const { toast } = useToast()
 
   // Use the raw materials store
-  const { rawMaterials, updateRawMaterialQuantity } = useRawMaterialsStore()
+  const { updateRawMaterialQuantity } = useRawMaterialsStore()
 
   // State for tracking wastage data
   const [wastageData, setWastageData] = useState<WastageData[]>([])
@@ -40,32 +42,24 @@ export default function RawMaterialsPage() {
     (a, b) => categoryOrder.indexOf(a) - categoryOrder.indexOf(b),
   )
 
-  // Set default active category to first category on initial load
   useEffect(() => {
-    if (!activeCategory && categories.length > 0) {
-      setActiveCategory(categories[0])
-    }
-
-    // Initialize wastage data if empty
-    if (wastageData.length === 0) {
-      const initialWastageData = rawMaterials.map((material) => ({
-        id: material.id,
-        material: material.type,
-        category: material.category,
-        wastage: 0,
-        wastagePercentage: 0,
-        lastUpdated: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000), // Random date within last 30 days
-      }))
-      setWastageData(initialWastageData)
-    }
-  }, [categories, activeCategory, rawMaterials, wastageData.length])
+    const initialWastageData = rawMaterials.map((material) => ({
+      id: material.id + '',
+      material: material.material,
+      category: material.category,
+      wastage: material.wastage || 0,
+      wastagePercentage: ((material.wastage || 0) / material.quantity) * 100,
+      lastUpdated: material.modifiedOn || material.createdOn
+    }))
+    setWastageData(initialWastageData)
+  }, [rawMaterials])
 
   // Filter raw materials based on search term and active category
   const filteredMaterials = rawMaterials.filter(
     (material) =>
       (activeCategory === null || material.category === activeCategory) &&
       (material.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        material.type.toLowerCase().includes(searchTerm.toLowerCase())),
+        material.material.toLowerCase().includes(searchTerm.toLowerCase())),
   )
 
   // Calculate summary metrics
@@ -132,8 +126,8 @@ export default function RawMaterialsPage() {
   // Format raw materials for the update dialog
   const formatRawMaterialsForUpdate = () => {
     return rawMaterials.map((material) => ({
-      id: material.id,
-      name: material.type,
+      id: material.id + '',
+      name: material.material,
       quantity: material.quantity,
       type: "raw",
       category: material.category,
@@ -145,7 +139,8 @@ export default function RawMaterialsPage() {
     updatedItems.forEach((updatedItem) => {
       const material = rawMaterials.find((m) => m.id === updatedItem.id)
       if (material) {
-        updateRawMaterialQuantity(material.category, material.type, updatedItem.quantity)
+        console.log({ material, wastageData })
+        // updateRawMaterialQuantity(material.category, material.material, updatedItem.quantity)
       }
     })
 
@@ -158,7 +153,7 @@ export default function RawMaterialsPage() {
 
         wastageUpdates.forEach((update) => {
           // Find the material to get its current quantity for percentage calculation
-          const material = rawMaterials.find((m) => m.id === update.id)
+          const material = rawMaterials.find((m) => m.id + '' === update.id)
           if (!material) return
 
           // Calculate wastage percentage based on original quantity + wastage
@@ -179,11 +174,11 @@ export default function RawMaterialsPage() {
             }
           } else {
             // Create new entry
-            const material = rawMaterials.find((m) => m.id === update.id)
+            const material = rawMaterials.find((m) => m.id + '' === update.id)
             if (material) {
               newWastageData.push({
                 id: update.id,
-                material: material.type,
+                material: material.material,
                 category: material.category,
                 wastage: update.wastage,
                 wastagePercentage: wastagePercentage,
@@ -355,10 +350,10 @@ export default function RawMaterialsPage() {
 
                       return (
                         <TableRow
-                          key={`${material.category}-${material.type}-${index}`}
+                          key={`${material.category}-${material.material}-${index}`}
                           className="hover:bg-muted/20 transition-colors"
                         >
-                          <TableCell className="font-medium">{material.type}</TableCell>
+                          <TableCell className="font-medium">{material.material}</TableCell>
                           <TableCell className="text-right font-medium">{material.quantity.toLocaleString()}</TableCell>
                           <TableCell className="text-right">
                             <Badge
