@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
+import { useProcurement } from "@/app/procurement/procurement-context"
 
 // List of available units
 const unitOptions = [
@@ -59,6 +60,7 @@ interface AddMaterialDialogProps {
 
 export function AddMaterialDialog({ open, onOpenChange, onAdd, existingIds, supplierId }: AddMaterialDialogProps) {
   const { toast } = useToast()
+  const { addMaterial } = useProcurement()
   const [materialId, setMaterialId] = useState("")
   const [materialName, setMaterialName] = useState("")
   const [materialType, setMaterialType] = useState("")
@@ -68,12 +70,6 @@ export function AddMaterialDialog({ open, onOpenChange, onAdd, existingIds, supp
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
-
-    if (!materialId) {
-      newErrors.materialId = "Material ID is required"
-    } else if (existingIds.includes(materialId)) {
-      newErrors.materialId = "Material ID already exists"
-    }
 
     if (!materialName) {
       newErrors.materialName = "Material name is required"
@@ -100,7 +96,6 @@ export function AddMaterialDialog({ open, onOpenChange, onAdd, existingIds, supp
   const handleSubmit = () => {
     if (validateForm()) {
       const newMaterial = {
-        id: materialId,
         name: materialName,
         type: materialType,
         price: Number.parseFloat(price),
@@ -108,22 +103,24 @@ export function AddMaterialDialog({ open, onOpenChange, onAdd, existingIds, supp
         supplierId: supplierId,
       }
 
-      onAdd(newMaterial)
+      addMaterial(newMaterial)
+        .then(() => {
+          toast({
+            title: "Material added",
+            description: `${materialName} has been added to the supplier's materials.`,
+          })
 
-      toast({
-        title: "Material added",
-        description: `${materialName} has been added to the supplier's materials.`,
-      })
+          // Reset form
+          setMaterialId("")
+          setMaterialName("")
+          setMaterialType("")
+          setPrice("")
+          setUnit("per unit")
+          setErrors({})
 
-      // Reset form
-      setMaterialId("")
-      setMaterialName("")
-      setMaterialType("")
-      setPrice("")
-      setUnit("per unit")
-      setErrors({})
+          onOpenChange(false)
+        })
 
-      onOpenChange(false)
     }
   }
 
@@ -135,19 +132,6 @@ export function AddMaterialDialog({ open, onOpenChange, onAdd, existingIds, supp
           <DialogDescription>Add a new material for this supplier. Fill in all the required fields.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="material-id">
-              Material ID <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="material-id"
-              placeholder="e.g., MAT005"
-              value={materialId}
-              onChange={(e) => setMaterialId(e.target.value)}
-              className={errors.materialId ? "border-red-500" : ""}
-            />
-            {errors.materialId && <p className="text-red-500 text-sm">{errors.materialId}</p>}
-          </div>
 
           <div className="grid gap-2">
             <Label htmlFor="material-name">

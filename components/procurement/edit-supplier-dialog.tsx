@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
+import { Suppliers, useProcurement } from "@/app/procurement/procurement-context"
 
 interface EditSupplierDialogProps {
   supplier: any
@@ -22,6 +23,7 @@ interface EditSupplierDialogProps {
 }
 
 export function EditSupplierDialog({ supplier, open, onOpenChange, onSave }: EditSupplierDialogProps) {
+  const { updateSupplier } = useProcurement()
   const [contactPerson, setContactPerson] = useState(supplier.contactPerson)
   const [email, setEmail] = useState(supplier.email)
   const [phone, setPhone] = useState(supplier.phone)
@@ -60,13 +62,21 @@ export function EditSupplierDialog({ supplier, open, onOpenChange, onSave }: Edi
       address,
     }
 
-    // Call onSave with updated supplier
-    onSave(updatedSupplier)
+    const payload: Partial<Suppliers> = {
+      address,
+      contactPerson,
+      email,
+      phoneNumber: phone,
+      name: updatedSupplier.name
+    }
 
-    // Show success toast
-    toast({
-      title: "Supplier updated",
-      description: `${supplier.name} information has been updated.`,
+    updateSupplier(updatedSupplier.id, payload).then(() => {
+      // Show success toast
+      onOpenChange(false)
+      toast({
+        title: "Supplier updated",
+        description: `${supplier.name} information has been updated.`,
+      })
     })
   }
 

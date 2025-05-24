@@ -1,3 +1,21 @@
+Date - May 24 -2025
+
+\*What is completed
+
+- Logistics partially completed
+- Supplier module completed
+
+  \*Whats need to be done next
+
+- Procurement module (Purchase order)
+
+Discussions
+
+- How does logistics shipment actually related to sale order
+- How does procurement receive work .Discuss on case where the received is partial!!!
+- Discuss on bill of materials where the bill is generated on client proposed price or any random details are fine?
+<!-- .................................................................................. -->
+
 Date - May 23-2025
 
 \*What is completed
@@ -11,7 +29,9 @@ Discussions
 
 - Discuss on how the allocation and sale orders work
 
-<!-- .................................................................................. -->Date - May 22-2025
+<!-- .................................................................................. -->
+
+Date - May 22-2025
 
 \*What is completed
 -Sales module

@@ -1,8 +1,11 @@
 "use client"
 
+import { DataByTableName } from "@/components/api"
+import { getChildObject } from "@/components/generic"
+import { useOrders } from "@/contexts/order-context"
 import type React from "react"
 
-import { useState, useEffect, createContext, useContext } from "react"
+import { useState, useEffect, createContext, useContext, useRef } from "react"
 
 interface LogisticsOrder {
   id: string
@@ -19,6 +22,19 @@ interface LogisticsOrder {
   contactNumber?: string
 }
 
+type ShipmenTracking = {
+  id: number,
+  shipmentId: string,
+  vehicleId: string,
+  driverName: string,
+  contactNumber: string,
+  deliveryAddress: string,
+  deliveryNote: string,
+  saleId: string,
+  saleOrderId: string,
+  createdOn: Date
+}
+
 // Create a context to share state between components
 interface LogisticsContextType {
   orders: LogisticsOrder[]
@@ -27,10 +43,28 @@ interface LogisticsContextType {
 
 const LogisticsContext = createContext<LogisticsContextType>({
   orders: [],
-  updateOrderStatus: () => {},
+  updateOrderStatus: () => { },
 })
 
 export const LogisticsProvider = ({ children }: { children: React.ReactNode }) => {
+  const { orders: saleOrders } = useOrders()
+  const fetchRef = useRef(true)
+  const shipmentInstance = new DataByTableName("v1_shipment_tracking")
+
+  const fetchData = () => {
+    Promise.allSettled([
+      shipmentInstance.get()
+    ]).then(response => {
+      const shipmentResponse = getChildObject(response, "0.value.data", [])
+
+    })
+  }
+
+  useEffect(() => {
+    if (!!fetchRef.current) return;
+    fetchRef.current = false
+    fetchData()
+  }, [])
   const [orders, setOrders] = useState<LogisticsOrder[]>([
     {
       id: "SO-0995",

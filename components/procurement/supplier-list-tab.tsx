@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -18,101 +18,28 @@ import { useToast } from "@/components/ui/use-toast"
 import { AddSupplierDialog } from "./add-supplier-dialog"
 import { ViewSupplierDialog } from "./view-supplier-dialog"
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
-
-// Mock data for suppliers
-const mockSuppliers = [
-  {
-    id: "SUP001",
-    name: "ABC Materials",
-    materialName: "Steel Sheets",
-    materialType: "Metal",
-    price: 450,
-    unit: "per ton",
-    contactPerson: "John Doe",
-    email: "john@abcmaterials.com",
-    phone: "+1-555-123-4567",
-  },
-  {
-    id: "SUP002",
-    name: "XYZ Chemicals",
-    materialName: "Industrial Adhesive",
-    materialType: "Chemical",
-    price: 75,
-    unit: "per liter",
-    contactPerson: "Jane Smith",
-    email: "jane@xyzchemicals.com",
-    phone: "+1-555-987-6543",
-  },
-  {
-    id: "SUP003",
-    name: "Global Plastics",
-    materialName: "PVC Pipes",
-    materialType: "Plastic",
-    price: 120,
-    unit: "per meter",
-    contactPerson: "Robert Johnson",
-    email: "robert@globalplastics.com",
-    phone: "+1-555-456-7890",
-  },
-  {
-    id: "SUP004",
-    name: "Timber Industries",
-    materialName: "Plywood Sheets",
-    materialType: "Wood",
-    price: 35,
-    unit: "per sheet",
-    contactPerson: "Sarah Williams",
-    email: "sarah@timberindustries.com",
-    phone: "+1-555-234-5678",
-  },
-  {
-    id: "SUP005",
-    name: "Fabric World",
-    materialName: "Cotton Fabric",
-    materialType: "Textile",
-    price: 8,
-    unit: "per yard",
-    contactPerson: "Michael Brown",
-    email: "michael@fabricworld.com",
-    phone: "+1-555-345-6789",
-  },
-  {
-    id: "SUP006",
-    name: "Metal Works",
-    materialName: "Aluminum Rods",
-    materialType: "Metal",
-    price: 200,
-    unit: "per kg",
-    contactPerson: "David Wilson",
-    email: "david@metalworks.com",
-    phone: "+1-555-567-8901",
-  },
-  {
-    id: "SUP007",
-    name: "Eco Packaging",
-    materialName: "Cardboard Boxes",
-    materialType: "Paper",
-    price: 2.5,
-    unit: "per unit",
-    contactPerson: "Lisa Taylor",
-    email: "lisa@ecopackaging.com",
-    phone: "+1-555-678-9012",
-  },
-  {
-    id: "SUP008",
-    name: "Tech Components",
-    materialName: "Circuit Boards",
-    materialType: "Electronic",
-    price: 45,
-    unit: "per piece",
-    contactPerson: "James Anderson",
-    email: "james@techcomponents.com",
-    phone: "+1-555-789-0123",
-  },
-]
+import { useProcurement } from "@/app/procurement/procurement-context"
 
 export function SupplierListTab() {
-  const [suppliers, setSuppliers] = useState(mockSuppliers)
+  const { suppliers: contextSuppliers, deleteSupplier } = useProcurement();
+  const [suppliers, setSuppliers] = useState<any[]>([])
+
+  useEffect(() => {
+    setSuppliers(
+      contextSuppliers.map(item => ({
+        id: item.supplierId,
+        name: item.name,
+        materialName: "",
+        materialType: "",
+        address: item.address,
+        price: 0,
+        unit: "",
+        contactPerson: item.contactPerson,
+        email: item.email,
+        phone: item.phoneNumber,
+      }))
+    )
+  }, [contextSuppliers])
   const [searchQuery, setSearchQuery] = useState("")
 
   // For edit dialog
@@ -192,14 +119,14 @@ export function SupplierListTab() {
   // Handle confirm deletion
   const handleConfirmDelete = () => {
     if (supplierToDelete) {
-      setSuppliers(suppliers.filter((supplier) => supplier.id !== supplierToDelete.id))
-      setIsDeleteDialogOpen(false)
-      setSupplierToDelete(null)
-
-      // Show success toast
-      toast({
-        title: "Supplier deleted",
-        description: `${supplierToDelete.name} has been removed from the supplier list.`,
+      deleteSupplier(supplierToDelete.id).then(() => {
+        setIsDeleteDialogOpen(false)
+        setSupplierToDelete(null)
+        // Show success toast
+        toast({
+          title: "Supplier deleted",
+          description: `${supplierToDelete.name} has been removed from the supplier list.`,
+        })
       })
     }
   }

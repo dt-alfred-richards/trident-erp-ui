@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
+import { Suppliers, useProcurement } from "@/app/procurement/procurement-context"
 
 interface AddSupplierDialogProps {
   open: boolean
@@ -22,6 +23,7 @@ interface AddSupplierDialogProps {
 }
 
 export function AddSupplierDialog({ open, onOpenChange, onAdd, existingIds }: AddSupplierDialogProps) {
+  const { addSupplier } = useProcurement()
   const [formData, setFormData] = useState({
     id: "",
     name: "",
@@ -45,13 +47,6 @@ export function AddSupplierDialog({ open, onOpenChange, onAdd, existingIds }: Ad
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
 
-    // Validate supplier ID
-    if (!formData.id.trim()) {
-      newErrors.id = "Supplier ID is required"
-    } else if (existingIds.includes(formData.id)) {
-      newErrors.id = "This Supplier ID already exists"
-    }
-
     // Validate supplier name
     if (!formData.name.trim()) {
       newErrors.name = "Supplier name is required"
@@ -74,40 +69,34 @@ export function AddSupplierDialog({ open, onOpenChange, onAdd, existingIds }: Ad
   const handleSubmit = () => {
     if (validateForm()) {
       // Create new supplier object
-      const newSupplier = {
-        id: formData.id,
+      const newSupplier: Partial<Suppliers> = {
         name: formData.name,
         contactPerson: formData.contactPerson,
         email: formData.email,
-        phone: formData.phone,
+        phoneNumber: formData.phone,
         address: formData.address,
-        // Keep these fields in the data model but they won't be displayed in the table
-        materialName: "",
-        materialType: "",
-        price: 0,
-        unit: "",
       }
 
-      // Call onAdd with new supplier
-      onAdd(newSupplier)
+      addSupplier(newSupplier).then(() => {
+        // Reset form
+        setFormData({
+          id: "",
+          name: "",
+          contactPerson: "",
+          email: "",
+          phone: "",
+          address: "",
+        })
 
-      // Reset form
-      setFormData({
-        id: "",
-        name: "",
-        contactPerson: "",
-        email: "",
-        phone: "",
-        address: "",
-      })
+        // Close dialog
+        onOpenChange(false)
 
-      // Close dialog
-      onOpenChange(false)
+        // Show success toast
+        toast({
+          title: "Supplier added",
+          description: `${newSupplier.name} has been added to the supplier list.`,
+        })
 
-      // Show success toast
-      toast({
-        title: "Supplier added",
-        description: `${newSupplier.name} has been added to the supplier list.`,
       })
     }
   }
@@ -120,20 +109,6 @@ export function AddSupplierDialog({ open, onOpenChange, onAdd, existingIds }: Ad
           <DialogDescription>Enter supplier details to add a new supplier to the system.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="supplier-id" className="text-right">
-              Supplier ID*
-            </Label>
-            <div className="col-span-3 space-y-1">
-              <Input
-                id="supplier-id"
-                value={formData.id}
-                onChange={(e) => handleChange("id", e.target.value)}
-                className={errors.id ? "border-destructive" : ""}
-              />
-              {errors.id && <p className="text-sm text-destructive">{errors.id}</p>}
-            </div>
-          </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="supplier-name" className="text-right">
               Supplier Name*

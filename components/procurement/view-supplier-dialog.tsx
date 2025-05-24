@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Trash, Save, X, Check } from "lucide-react"
 import { AddMaterialDialog } from "./add-material-dialog"
 import { useToast } from "@/components/ui/use-toast"
+import { useProcurement } from "@/app/procurement/procurement-context"
 
 // List of available units
 const unitOptions = [
@@ -75,7 +76,6 @@ const initialMaterials = [
 
 // Global materials state (simulating a database)
 // Using a variable outside the component to persist between renders
-let globalMaterials = [...initialMaterials]
 
 interface ViewSupplierDialogProps {
   supplier: any
@@ -85,6 +85,17 @@ interface ViewSupplierDialogProps {
 
 export function ViewSupplierDialog({ supplier, open, onOpenChange }: ViewSupplierDialogProps) {
   const { toast } = useToast()
+  const { materials, deleteMaterial, refetch } = useProcurement()
+  const globalMaterials = useMemo(() => {
+    return materials.map(item => ({
+      id: item.materialId,
+      name: item.name,
+      type: item.type,
+      price: item.price,
+      unit: item.unit,
+      supplierId: item.supplierId,
+    }))
+  }, [materials])
   const [localMaterials, setLocalMaterials] = useState<any[]>([])
   const [isAddMaterialDialogOpen, setIsAddMaterialDialogOpen] = useState(false)
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([])
@@ -126,7 +137,7 @@ export function ViewSupplierDialog({ supplier, open, onOpenChange }: ViewSupplie
       setIsDataSaved(true)
       setShowSaveSuccess(false)
     }
-  }, [open])
+  }, [open, globalMaterials])
 
   // Get materials for this supplier
   const supplierMaterials = localMaterials.filter((material) => material.supplierId === supplier.id)
@@ -297,44 +308,23 @@ export function ViewSupplierDialog({ supplier, open, onOpenChange }: ViewSupplie
   const handleBulkDelete = () => {
     if (selectedMaterials.length === 0) return
 
-    setLocalMaterials((prev) => prev.filter((material) => !selectedMaterials.includes(material.id)))
-    setIsDataSaved(false)
+    Promise.allSettled(
+      selectedMaterials.map(materialId =>
+        deleteMaterial(materialId)
+      )
+    ).then(() => {
+      refetch()
+      setIsDataSaved(false)
+      toast({
+        title: "Materials deleted",
+        description: `${selectedMaterials.length} material(s) have been removed. Don't forget to save all changes.`,
+      })
 
-    toast({
-      title: "Materials deleted",
-      description: `${selectedMaterials.length} material(s) have been removed. Don't forget to save all changes.`,
-    })
+      setSelectedMaterials([])
+      setEditedPrices({})
+      setEditedUnits({})
+      setHasUnsavedChanges(false)
 
-    setSelectedMaterials([])
-    setEditedPrices({})
-    setEditedUnits({})
-    setHasUnsavedChanges(false)
-  }
-
-  // Save all changes to the global materials state
-  const saveAllChanges = () => {
-    console.log("Saving all changes to global state")
-    console.log("Local materials before save:", localMaterials)
-
-    // Update the global materials state
-    globalMaterials = [...localMaterials]
-
-    console.log("Global materials after save:", globalMaterials)
-
-    setIsDataSaved(true)
-    setShowSaveSuccess(true)
-
-    // Hide success message after 3 seconds
-    setTimeout(() => {
-      if (isMounted.current) {
-        setShowSaveSuccess(false)
-      }
-    }, 3000)
-
-    toast({
-      title: "Changes saved",
-      description: "All changes have been successfully saved.",
-      variant: "default",
     })
   }
 
@@ -537,14 +527,6 @@ export function ViewSupplierDialog({ supplier, open, onOpenChange }: ViewSupplie
               variant="outline"
             >
               Close
-            </Button>
-            <Button
-              onClick={saveAllChanges}
-              disabled={isDataSaved && !hasUnsavedChanges}
-              className={!isDataSaved || hasUnsavedChanges ? "bg-green-600 hover:bg-green-700" : ""}
-            >
-              <Save className="h-4 w-4 mr-2" />
-              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>
