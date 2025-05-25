@@ -7,12 +7,13 @@ Date - May 25 -2025
 - Attendance module completed
 
   \*Whats need to be done next
-
 -Payroll module
+-profile
 
 Discussions
 - How does payroll should be created .on first of every month or manual
 - what should show if the payroll is not yet generated?
+-I need s3 url to update documents
 
 <!-- .................................................................................. -->
 
