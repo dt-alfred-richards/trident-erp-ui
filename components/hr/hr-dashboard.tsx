@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { EmployeeManagement } from "@/components/hr/employee-management"
@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button"
 import { AddEmployeeDialog } from "@/components/hr/add-employee-dialog"
 import { AddAttendanceDialog } from "@/components/hr/add-attendance-dialog"
 import { useToast } from "@/hooks/use-toast"
+import { useHrContext } from "@/app/hr/hr-context"
 
 // Sample employee data with added aadharImageUrl field
 export const initialEmployees = [
@@ -209,46 +210,27 @@ export interface AttendanceData {
 
 export function HRDashboard() {
   const { toast } = useToast()
-  const [employees, setEmployees] = useState(initialEmployees)
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceData[]>([
-    {
-      id: 1,
-      employeeId: "EMP001",
-      employeeName: "Rajesh Kumar",
-      date: "2023-10-26",
-      checkIn: "09:00",
-      checkOut: "17:30",
-      totalHours: "8:30",
-      status: "present",
-    },
-    {
-      id: 2,
-      employeeId: "EMP002",
-      employeeName: "Priya Sharma",
-      date: "2023-10-26",
-      checkIn: "09:15",
-      checkOut: "17:45",
-      totalHours: "8:30",
-      status: "present",
-    },
-    {
-      id: 3,
-      employeeId: "EMP003",
-      employeeName: "Amit Patel",
-      date: "2023-10-26",
-      status: "absent",
-    },
-    {
-      id: 4,
-      employeeId: "EMP004",
-      employeeName: "Sneha Gupta",
-      date: "2023-10-26",
-      checkIn: "10:00",
-      checkOut: "18:00",
-      totalHours: "8:00",
-      status: "present",
-    },
-  ])
+  const { employees, dailyAttendance } = useHrContext()
+  const employeeMapper = useMemo(() => {
+    return employees.reduce((acc: Record<string, string>, curr) => {
+      if (!acc[curr.id]) {
+        acc[curr.id] = `${curr.firstName} ${curr.lastName}`
+      }
+      return acc;
+    }, {})
+  }, [employees])
+  const attendanceRecords = useMemo(() => {
+    return dailyAttendance.map(item => ({
+      id: item.id,
+      employeeId: item.employeeId,
+      employeeName: employeeMapper[item.employeeId] || "",
+      date: item.date,
+      checkIn: item.checkIn,
+      checkOut: item.checkOut,
+      totalHours: item.totalHours,
+      status: item.status,
+    }))
+  }, [employeeMapper, dailyAttendance])
 
   // Add state to track the current tab
   const [activeTab, setActiveTab] = useState("employees")
@@ -265,7 +247,6 @@ export function HRDashboard() {
   // Function to add a new attendance record
   const addAttendanceRecord = (newRecord: Omit<AttendanceData, "id">) => {
     const newId = Math.max(0, ...attendanceRecords.map((record) => record.id)) + 1
-    setAttendanceRecords((prev) => [{ ...newRecord, id: newId }, ...prev])
   }
 
   // Function to add a new employee
@@ -281,9 +262,6 @@ export function HRDashboard() {
       id: newEmpId,
       aadharImageUrl: "/placeholder.svg?height=300&width=500", // Placeholder for demo
     }
-
-    // Add the new employee to the beginning of the array
-    setEmployees((prev) => [employeeToAdd, ...prev])
 
     // Show a success toast
     toast({
@@ -434,7 +412,7 @@ export function HRDashboard() {
         <TabsContent value="employees" className="space-y-6">
           <Card>
             <CardContent className="p-0">
-              <EmployeeManagement employees={employees} setEmployees={setEmployees} />
+              <EmployeeManagement />
             </CardContent>
           </Card>
         </TabsContent>
@@ -442,7 +420,7 @@ export function HRDashboard() {
         <TabsContent value="attendance" className="space-y-6">
           <Card className="border-0 shadow-none bg-transparent">
             <CardContent className="p-0">
-              <AttendanceTracking attendanceData={attendanceRecords} setAttendanceRecords={setAttendanceRecords} />
+              <AttendanceTracking attendanceData={[]} setAttendanceRecords={() => { }} />
             </CardContent>
           </Card>
         </TabsContent>

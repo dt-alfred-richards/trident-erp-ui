@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { DashboardShell } from "@/components/dashboard-shell"
 import { HRDashboard } from "@/components/hr/hr-dashboard"
+import { HrProvider } from "./hr-context"
 
 export const metadata: Metadata = {
   title: "Human Resources",
@@ -9,8 +10,10 @@ export const metadata: Metadata = {
 
 export default function HRPage() {
   return (
-    <DashboardShell>
-      <HRDashboard />
-    </DashboardShell>
+    <HrProvider>
+      <DashboardShell>
+        <HRDashboard />
+      </DashboardShell>
+    </HrProvider>
   )
 }

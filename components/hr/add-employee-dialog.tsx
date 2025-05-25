@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import { Eye, EyeOff } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Employee, useHrContext } from "@/app/hr/hr-context"
 
 interface AddEmployeeDialogProps {
   open: boolean
@@ -28,6 +29,7 @@ interface AddEmployeeDialogProps {
 
 export function AddEmployeeDialog({ open, onOpenChange, onAddEmployee }: AddEmployeeDialogProps) {
   const { toast } = useToast()
+  const { addEmployee } = useHrContext()
   const [activeTab, setActiveTab] = useState("personal")
   // Update the formData state to include aadhaarImage
   const [formData, setFormData] = useState({
@@ -222,13 +224,12 @@ export function AddEmployeeDialog({ open, onOpenChange, onAddEmployee }: AddEmpl
     // Remove confirmPassword from the final object as it's not needed for storage
     delete newEmployee.confirmPassword
 
-    // Call the onAddEmployee callback if provided
-    if (onAddEmployee) {
-      onAddEmployee(newEmployee)
-    } else {
-      console.log("New employee data:", newEmployee)
+    if (!addEmployee) return
+
+    addEmployee(newEmployee as any).then(() => {
       onOpenChange(false)
-    }
+    })
+    console.log({ newEmployee })
   }
 
   return (

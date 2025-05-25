@@ -1,3 +1,21 @@
+Date - May 25 -2025
+
+\*What is completed
+
+- Hr partially completed
+- Employees module completed
+- Attendance module completed
+
+  \*Whats need to be done next
+
+-Payroll module
+
+Discussions
+
+- How does payroll should be created .on first of every month or manual
+- what should show if the payroll is not yet generated?
+<!-- .................................................................................. -->
+
 Date - May 24 -2025
 
 \*What is completed
@@ -14,6 +32,9 @@ Discussions
 - How does logistics shipment actually related to sale order
 - How does procurement receive work .Discuss on case where the received is partial!!!
 - Discuss on bill of materials where the bill is generated on client proposed price or any random details are fine?
+- discuss on reference for sales which shows as relation with client on creation of sale order
+- Discuss on how the priority works for sales table
+
 <!-- .................................................................................. -->
 
 Date - May 23-2025

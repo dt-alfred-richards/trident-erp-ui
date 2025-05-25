@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
+import { useHrContext } from "@/app/hr/hr-context"
 
 // Sample payroll data
 const payrollData = [
@@ -230,6 +231,7 @@ const getPayrollStatusBadgeClass = (status: string) => {
 }
 
 export function PayrollManagement() {
+  const { employees } = useHrContext()
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("all")
   const [selectedMonth, setSelectedMonth] = useState(getMaxMonth())
@@ -244,6 +246,24 @@ export function PayrollManagement() {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
 
+  // const payrollData = useMemo(() => {
+  //   return employees.map(item => (
+  //     {
+  //       id: item.id,
+  //       name: `${item.firstName} ${item.lastName}`,
+  //       department: item,
+  //       role: "System Administrator",
+  //       salary: 50000,
+  //       attendance: 20,
+  //       overtime: 8,
+  //       bonus: 1500,
+  //       deductions: 1200,
+  //       netPay: 51800,
+  //       status: "Pending",
+  //       month: "2025-03",
+  //     }
+  //   ))
+  // }, [employees])
   // Filter payroll data based on search query, selected filters, and month
   const filteredPayroll = useMemo(
     () =>
@@ -410,8 +430,8 @@ export function PayrollManagement() {
             <div class="row total">
               <span>Total Earnings</span>
               <span>₹${(
-                viewPayslip.salary + viewPayslip.bonus + viewPayslip.overtime * (viewPayslip.salary / 176)
-              ).toLocaleString()}</span>
+        viewPayslip.salary + viewPayslip.bonus + viewPayslip.overtime * (viewPayslip.salary / 176)
+      ).toLocaleString()}</span>
             </div>
           </div>
           
@@ -505,8 +525,8 @@ export function PayrollManagement() {
           </thead>
           <tbody>
             ${filteredPayroll
-              .map(
-                (employee) => `
+        .map(
+          (employee) => `
               <tr>
                 <td>${employee.id}</td>
                 <td>${employee.name}</td>
@@ -518,8 +538,8 @@ export function PayrollManagement() {
                 <td>${employee.status}</td>
               </tr>
             `,
-              )
-              .join("")}
+        )
+        .join("")}
           </tbody>
         </table>
         <div class="footer">

@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useHrContext } from "@/app/hr/hr-context"
 
 interface AttendanceRecord {
   id: number
@@ -32,6 +33,7 @@ interface EditAttendanceDialogProps {
 }
 
 export function EditAttendanceDialog({ open, onOpenChange, attendance, onUpdate }: EditAttendanceDialogProps) {
+  const { updateAttendance, refetch } = useHrContext()
   const [formData, setFormData] = useState<AttendanceRecord>({
     id: 0,
     employeeId: "",
@@ -85,7 +87,24 @@ export function EditAttendanceDialog({ open, onOpenChange, attendance, onUpdate 
   }
 
   const handleSubmit = () => {
-    onUpdate(formData)
+    updateAttendance(attendance.id + '', {
+      checkIn: formData.checkIn,
+      checkOut: formData.checkOut,
+      totalHours: formData.totalHours
+    }).then(() => {
+      refetch()
+      setFormData({
+        id: 0,
+        employeeId: "",
+        employeeName: "",
+        date: "",
+        checkIn: "",
+        checkOut: "",
+        totalHours: "",
+        status: "present",
+      })
+      onOpenChange(false)
+    })
   }
 
   return (

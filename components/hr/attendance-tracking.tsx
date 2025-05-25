@@ -18,144 +18,14 @@ import { EditAttendanceDialog } from "./edit-attendance-dialog"
 import { AttendanceCalendar } from "./attendance-calendar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import type { AttendanceData } from "./hr-dashboard"
-
-// Sample leave balance data
-const leaveBalanceData = [
-  {
-    id: 1,
-    employeeId: "EMP001",
-    employeeName: "Rajesh Kumar",
-    earnedLeave: 20,
-    usedLeave: 10,
-    remainingLeave: 10,
-  },
-  {
-    id: 2,
-    employeeId: "EMP002",
-    employeeName: "Priya Sharma",
-    earnedLeave: 20,
-    usedLeave: 6,
-    remainingLeave: 14,
-  },
-  {
-    id: 3,
-    employeeId: "EMP003",
-    employeeName: "Amit Patel",
-    earnedLeave: 20,
-    usedLeave: 12,
-    remainingLeave: 8,
-  },
-  {
-    id: 4,
-    employeeId: "EMP004",
-    employeeName: "Sneha Gupta",
-    earnedLeave: 20,
-    usedLeave: 4,
-    remainingLeave: 16,
-  },
-  {
-    id: 5,
-    employeeId: "EMP005",
-    employeeName: "Vikram Singh",
-    earnedLeave: 20,
-    usedLeave: 18,
-    remainingLeave: 2,
-  },
-  {
-    id: 6,
-    employeeId: "EMP006",
-    employeeName: "Neha Verma",
-    earnedLeave: 20,
-    usedLeave: 8,
-    remainingLeave: 12,
-  },
-  {
-    id: 7,
-    employeeId: "EMP007",
-    employeeName: "Rahul Mehta",
-    earnedLeave: 20,
-    usedLeave: 5,
-    remainingLeave: 15,
-  },
-  {
-    id: 8,
-    employeeId: "EMP008",
-    employeeName: "Sonia Gupta",
-    earnedLeave: 20,
-    usedLeave: 7,
-    remainingLeave: 13,
-  },
-  {
-    id: 9,
-    employeeId: "EMP009",
-    employeeName: "Rohit Srivastava",
-    earnedLeave: 20,
-    usedLeave: 9,
-    remainingLeave: 11,
-  },
-  {
-    id: 10,
-    employeeId: "EMP010",
-    employeeName: "Ananya Joshi",
-    earnedLeave: 20,
-    usedLeave: 2,
-    remainingLeave: 18,
-  },
-  {
-    id: 11,
-    employeeId: "EMP011",
-    employeeName: "Suresh Reddy",
-    earnedLeave: 20,
-    usedLeave: 15,
-    remainingLeave: 5,
-  },
-  {
-    id: 12,
-    employeeId: "EMP012",
-    employeeName: "Divya Rao",
-    earnedLeave: 20,
-    usedLeave: 3,
-    remainingLeave: 17,
-  },
-]
-
-// Sample past leaves data
-const pastLeavesData = {
-  EMP001: [
-    { date: "2023-09-15", reason: "Personal" },
-    { date: "2023-08-22", reason: "Sick" },
-    { date: "2023-07-10", reason: "Family Function" },
-  ],
-  EMP002: [
-    { date: "2023-09-05", reason: "Medical Emergency" },
-    { date: "2023-08-18", reason: "Personal" },
-  ],
-  EMP003: [
-    { date: "2023-09-25", reason: "Sick" },
-    { date: "2023-09-10", reason: "Family Emergency" },
-    { date: "2023-08-05", reason: "Personal" },
-    { date: "2023-07-15", reason: "Vacation" },
-  ],
-  EMP004: [{ date: "2023-08-30", reason: "Personal" }],
-  EMP005: [
-    { date: "2023-09-28", reason: "Sick" },
-    { date: "2023-09-20", reason: "Sick" },
-    { date: "2023-09-05", reason: "Personal" },
-    { date: "2023-08-15", reason: "Family Function" },
-    { date: "2023-08-01", reason: "Vacation" },
-    { date: "2023-07-20", reason: "Personal" },
-  ],
-  EMP006: [
-    { date: "2023-09-12", reason: "Personal" },
-    { date: "2023-08-08", reason: "Sick" },
-    { date: "2023-07-05", reason: "Family Function" },
-  ],
-}
+import { useHrContext } from "@/app/hr/hr-context"
+import { convertDate } from "../generic"
 
 export function AttendanceTracking({
-  attendanceData,
+  attendanceData: x,
   setAttendanceRecords,
 }: { attendanceData: AttendanceData[]; setAttendanceRecords: Dispatch<SetStateAction<AttendanceData[]>> }) {
+  const { employees, employeeLeaves: pastLeavesData, dailyAttendance: attendanceData, updateAttendance } = useHrContext()
   const [date, setDate] = useState<Date | undefined>(new Date())
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("all")
@@ -188,6 +58,17 @@ export function AttendanceTracking({
       }),
     [attendanceData, searchQuery, selectedStatus],
   )
+
+  const leaveBalanceData = useMemo(() => {
+    return employees.map(item => ({
+      id: item.id,
+      employeeId: item.id,
+      employeeName: `${item.firstName} ${item.lastName}`,
+      earnedLeave: item.leaves,
+      usedLeave: item.usedleaves || pastLeavesData[item.id].length || 0,
+      remainingLeave: item.leaves - (item.usedleaves || pastLeavesData[item.id].length || 0)
+    }))
+  }, [employees])
 
   // Filter leave balance data based on search query
   const filteredLeaveBalance = useMemo(
@@ -749,7 +630,7 @@ export function AttendanceTracking({
                   {selectedEmployee &&
                     pastLeavesData[selectedEmployee]?.map((leave, index) => (
                       <TableRow key={index}>
-                        <TableCell>{new Date(leave.date).toLocaleDateString()}</TableCell>
+                        <TableCell>{convertDate(leave.date)}</TableCell>
                         <TableCell>{leave.reason}</TableCell>
                       </TableRow>
                     ))}

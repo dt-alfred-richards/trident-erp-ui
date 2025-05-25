@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -22,6 +22,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/components/ui/use-toast"
 import type { AttendanceData } from "./hr-dashboard"
+import { DailyAttendance, useHrContext } from "@/app/hr/hr-context"
 
 // Sample employees data for the combobox
 const employees = [
@@ -45,14 +46,19 @@ interface AddAttendanceDialogProps {
 
 export function AddAttendanceDialog({ open, onOpenChange, onAddAttendance }: AddAttendanceDialogProps) {
   const { toast } = useToast()
+  const { employees: contextEmployee, addAttendance } = useHrContext()
   const [openCombobox, setOpenCombobox] = useState(false)
   const [openDatePicker, setOpenDatePicker] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
 
+  const employees = useMemo(() => {
+    return contextEmployee.map(item => ({ value: item.id, label: `${item.id} - ${item.firstName} ${item.lastName}` }))
+  }, [contextEmployee])
+
   const [formData, setFormData] = useState({
     employeeId: "",
     employeeName: "",
-    date: format(new Date(), "yyyy-MM-dd"),
+    date: new Date(),
     checkIn: "",
     checkOut: "",
   })
@@ -80,7 +86,7 @@ export function AddAttendanceDialog({ open, onOpenChange, onAddAttendance }: Add
       }
 
       setSelectedDate(date)
-      setFormData((prev) => ({ ...prev, date: format(date, "yyyy-MM-dd") }))
+      setFormData((prev) => ({ ...prev, date }))
 
       // Clear date error if it exists
       if (errors.date) {
@@ -147,8 +153,10 @@ export function AddAttendanceDialog({ open, onOpenChange, onAddAttendance }: Add
     // Extract just the name part from "EMPXXX - Name"
     const employeeName = selectedEmployee.label.split(" - ")[1]
 
+    if (!formData.date) return;
+
     // Create new attendance record
-    const newAttendance: Omit<AttendanceData, "id"> = {
+    const newAttendance: Partial<DailyAttendance> = {
       employeeId: formData.employeeId,
       employeeName,
       date: formData.date,
@@ -158,25 +166,26 @@ export function AddAttendanceDialog({ open, onOpenChange, onAddAttendance }: Add
       status: "present",
     }
 
-    // Add the new attendance record
-    onAddAttendance(newAttendance)
+    addAttendance(newAttendance).then(() => {
+      // Show success toast
+      toast({
+        title: "Attendance Added",
+        description: `Attendance for ${employeeName} has been recorded successfully.`,
+      })
 
-    // Show success toast
-    toast({
-      title: "Attendance Added",
-      description: `Attendance for ${employeeName} has been recorded successfully.`,
+      // Reset form and close dialog
+      setFormData({
+        employeeId: "",
+        employeeName: "",
+        date: new Date(),
+        checkIn: "",
+        checkOut: "",
+      })
+      setSelectedDate(new Date())
+      onOpenChange(false)
     })
 
-    // Reset form and close dialog
-    setFormData({
-      employeeId: "",
-      employeeName: "",
-      date: format(new Date(), "yyyy-MM-dd"),
-      checkIn: "",
-      checkOut: "",
-    })
-    setSelectedDate(new Date())
-    onOpenChange(false)
+
   }
 
   return (

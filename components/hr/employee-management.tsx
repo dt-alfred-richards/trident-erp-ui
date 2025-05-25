@@ -19,8 +19,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/u
 import { EditEmployeeDialog } from "./edit-employee-dialog"
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
+import { Employee, useHrContext } from "@/app/hr/hr-context"
 
-export function EmployeeManagement({ employees, setEmployees }) {
+export function EmployeeManagement({ }) {
+  const { employees, updateEmployee, refetch, deleteEmployee } = useHrContext()
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedEmployeeType, setSelectedEmployeeType] = useState("all")
   const [selectedDepartment, setSelectedDepartment] = useState("all")
@@ -55,12 +57,12 @@ export function EmployeeManagement({ employees, setEmployees }) {
   // Filter employees based on search query and selected filters
   const filteredEmployees = useMemo(
     () =>
-      employees.filter((employee) => {
+      employees.filter((employee: Employee) => {
         const matchesSearch =
           employee.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
           employee.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          employee.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (employee.email && employee.email.toLowerCase().includes(searchQuery.toLowerCase()))
+          (employee.id).toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (employee.emailId && employee.emailId.toLowerCase().includes(searchQuery.toLowerCase()))
 
         const matchesEmployeeType = selectedEmployeeType === "all" || employee.employeeType === selectedEmployeeType
 
@@ -105,8 +107,10 @@ export function EmployeeManagement({ employees, setEmployees }) {
     setShowEditDialog(true)
   }
 
-  const handleSaveEmployee = (updatedEmployee) => {
-    setEmployees(employees.map((emp) => (emp.id === updatedEmployee.id ? updatedEmployee : emp)))
+  const handleSaveEmployee = (updatedEmployee: Employee) => {
+    updateEmployee(updatedEmployee.id, updatedEmployee).then(() => {
+      refetch()
+    })
   }
 
   const employee = selectedEmployee ? employees.find((e) => e.id === selectedEmployee) : null
@@ -130,10 +134,12 @@ export function EmployeeManagement({ employees, setEmployees }) {
   }
 
   const confirmDeleteEmployee = () => {
-    if (selectedEmployee) {
-      setEmployees(employees.filter((emp) => emp.id !== selectedEmployee))
-      setShowDeleteConfirmation(false)
-      setSelectedEmployee(null)
+    if (selectedEmployee && deleteEmployee) {
+      deleteEmployee(selectedEmployee).then(() => {
+        setShowDeleteConfirmation(false)
+        setSelectedEmployee(null)
+        refetch()
+      })
     }
   }
 
