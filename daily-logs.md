@@ -11,9 +11,9 @@ Date - May 25 -2025
 -Payroll module
 
 Discussions
-
 - How does payroll should be created .on first of every month or manual
 - what should show if the payroll is not yet generated?
+
 <!-- .................................................................................. -->
 
 Date - May 24 -2025
