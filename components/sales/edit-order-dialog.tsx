@@ -53,10 +53,10 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
 
   const productCatalog = useMemo<Product[]>(() => {
     return Object.values(clientProposedProductMapper).flat().map(item => ({
-      id: `${item.id || ""}`,
+      id: item.id,
       name: item.name,
       price: item.price,
-      productId: item.productId,
+      productId: item.productId || "",
       taxRate: "18"
     }));
   }, [clientProposedProductMapper])
@@ -74,6 +74,8 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<Date | undefined>(
     order.deliveryDate ? new Date(order.deliveryDate) : undefined,
   )
+
+  console.log({ order, reference })
 
   const [shippingAddresses, setShippingAddresses] = useState<ShippingAddress[]>([])
   const [selectedShippingAddressId, setSelectedShippingAddressId] = useState(order.shippingAddressId || "")
@@ -550,7 +552,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
                         id="price"
                         value={
                           selectedProductId
-                            ? `₹${productCatalog.find((p) => p.id === selectedProductId)?.price.toFixed(2) || "0.00"}`
+                            ? `₹${productCatalog.find((p) => (p.productId) === selectedProductId)?.price.toFixed(2) || "0.00"}`
                             : ""
                         }
                         readOnly

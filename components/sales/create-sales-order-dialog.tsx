@@ -63,7 +63,7 @@ interface CreateSalesOrderDialogProps {
 }
 
 export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderDialogProps) {
-  const { addOrder, clientMapper, shippingAddressMapper, clientProposedProductMapper } = useOrders()
+  const { addOrder, clientMapper, shippingAddressMapper, clientProposedProductMapper, referenceMapper } = useOrders()
 
   const PRODUCTS = useMemo(() => {
     return Object.values(clientProposedProductMapper).flat().map(item => ({ id: item.productId, name: item.name, price: item.price, taxRate: 18 }))
@@ -75,7 +75,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
       name: item.name,
       gstNumber: item.gstNumber,
       panNumber: item.panNumber,
-      references: ["REF-T001", "REF-T002", "REF-T003", "REF-T004"],
+      references: (referenceMapper[item?.clientId || ""] || []).map(item => item.referenceId),
       shippingAddresses: getChildObject(shippingAddressMapper, item?.clientId || "", []).map((item: ShippingAddress) => ({
         id: item.addressId,
         name: item.name,
