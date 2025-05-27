@@ -25,40 +25,9 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
-import type { Order, Product, ProductStatus, ShippingAddress } from "@/types/order"
-import { useOrders } from "@/contexts/order-context"
+import type { Order, Product, ProductStatus } from "@/types/order"
+import { ClientReference, SaleOrderDetail, ShippingAddress, useOrders } from "@/contexts/order-context"
 import { convertDate } from "../generic"
-
-// Mock shipping addresses database
-const customerAddresses: Record<string, { id: string; name: string; address: string; isDefault?: boolean }[]> = {
-  "Acme Corp": [
-    { id: "addr1", name: "Headquarters", address: "123 Main St, New York, NY 10001", isDefault: true },
-    { id: "addr2", name: "Warehouse", address: "456 Industrial Blvd, Newark, NJ 07101" },
-    { id: "addr3", name: "Distribution Center", address: "789 Logistics Way, Philadelphia, PA 19019" },
-  ],
-  "Globex Industries": [
-    { id: "addr4", name: "Main Office", address: "100 Tech Drive, San Francisco, CA 94105", isDefault: true },
-    { id: "addr5", name: "Manufacturing Plant", address: "200 Factory Lane, Oakland, CA 94621" },
-  ],
-  "Stark Enterprises": [
-    { id: "addr6", name: "Tower", address: "200 Park Avenue, New York, NY 10166", isDefault: true },
-    { id: "addr7", name: "Research Facility", address: "300 Innovation Dr, Malibu, CA 90265" },
-  ],
-  "Wayne Enterprises": [
-    { id: "addr8", name: "Corporate HQ", address: "1007 Mountain Drive, Gotham, NJ 07101", isDefault: true },
-    { id: "addr9", name: "R&D Center", address: "1939 Kane Street, Gotham, NJ 07101" },
-  ],
-  "Umbrella Corporation": [
-    { id: "addr10", name: "Main Campus", address: "500 Raccoon Rd, Raccoon City, MI 48226", isDefault: true },
-  ],
-  "Oscorp Industries": [
-    { id: "addr11", name: "Science Tower", address: "888 Broadway, New York, NY 10003", isDefault: true },
-  ],
-  "Cyberdyne Systems": [
-    { id: "addr12", name: "Research HQ", address: "18144 El Camino Real, Sunnyvale, CA 94087", isDefault: true },
-  ],
-}
-
 
 interface OrderItem {
   id: string
@@ -80,15 +49,21 @@ interface EditOrderDialogProps {
 }
 
 export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogProps) {
-  const { updateOrder, clientMapper, shippingAddress: contextShippingAddress, references, products } = useOrders()
+  const { updateOrder, clientMapper, shippingAddressMapper = {}, referenceMapper = {}, clientProposedProductMapper, deleteSaleOrder, refetchContext } = useOrders()
 
   const productCatalog = useMemo<Product[]>(() => {
-    return products;
-  }, [products])
+    return Object.values(clientProposedProductMapper).flat().map(item => ({
+      id: `${item.id || ""}`,
+      name: item.name,
+      price: item.price,
+      productId: item.productId,
+      taxRate: "18"
+    }));
+  }, [clientProposedProductMapper])
 
   // Order header state (non-editable)
   const [orderDate] = useState<Date>(order.orderDate ? new Date(order.orderDate) : new Date())
-  const [customer] = useState(clientMapper[order.clientId]?.clientName || "")
+  const [customer] = useState(clientMapper[order.clientId]?.clientId || "")
   const [poNumber] = useState(order.poNumber || "")
   const [poId] = useState(order.poId || "")
   const [poDate] = useState<Date | undefined>(order.poDate ? new Date(order.poDate) : undefined)
@@ -101,7 +76,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
   )
 
   const [shippingAddresses, setShippingAddresses] = useState<ShippingAddress[]>([])
-  const [selectedShippingAddressId, setSelectedShippingAddressId] = useState(order.shippingAddress || "")
+  const [selectedShippingAddressId, setSelectedShippingAddressId] = useState(order.shippingAddressId || "")
   // Tax location state
   const [isInTelangana, setIsInTelangana] = useState(true)
 
@@ -115,7 +90,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
 
   // Order items state
   const [orderItems, setOrderItems] = useState<OrderItem[]>([])
-
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set(""))
   // Order summary state
   const [subtotal, setSubtotal] = useState(0)
   const [taxTotal, setTaxTotal] = useState(0)
@@ -124,9 +99,15 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
   const [taxesEnabled, setTaxesEnabled] = useState(order.summary?.taxesEnabled !== false)
   const [total, setTotal] = useState(0)
 
+  const contextShippingAddress = useMemo(() => {
+    return Object.values(shippingAddressMapper).flat();
+  }, [shippingAddressMapper])
+
   useEffect(() => {
-    setShippingAddresses(contextShippingAddress.filter(item => item.clientId === order.clientId))
-    const selectedAddress = contextShippingAddress.find(item => item.addressId === order.shippingAddress)
+    setShippingAddresses(
+      shippingAddressMapper[order.clientId] ?? []
+    )
+    const selectedAddress = contextShippingAddress.find(item => item.addressId === order.shippingAddressId)
     if (selectedAddress) {
       setSelectedShippingAddressId(selectedAddress.addressId)
     }
@@ -138,10 +119,10 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
         id: product.id,
         productId: product.sku,
         productName: product.name,
-        cases: product.quantity,
+        cases: product.cases,
         pricePerCase: product.price,
         taxRate: 18, // Default tax rate
-        basePay: product.price * product.quantity,
+        basePay: product.price * product.cases,
         taxAmount: 0, // Will be calculated in useEffect
         status: product.status,
         salesId: product.salesId || ""
@@ -149,8 +130,6 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
       setOrderItems(items)
     }
   }, [open, order])
-
-  console.log({ order })
 
   // Update when shipping address changes
   useEffect(() => {
@@ -238,7 +217,6 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
 
     const product = productCatalog.find((p) => p.productId === selectedProductId)
 
-    console.log({ product, productCatalog, selectedProductId })
     if (!product) return
 
     const quantity = Number(cases)
@@ -253,8 +231,8 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
       taxRate: product.taxRate,
       basePay,
       taxAmount: 0, // Will be calculated in useEffect
-      status: "pending",
-      salesId: order.salesId || ""
+      status: "pending_approval",
+      salesId: order.id || ""
     }
 
     setOrderItems([...orderItems, newItem])
@@ -265,8 +243,13 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
     setShowItemForm(false)
   }
 
+
   // Handle removing an item from the order
   const handleRemoveItem = (itemId: string) => {
+    setDeletedIds(p => {
+      p.add(itemId)
+      return p
+    })
     setOrderItems(orderItems.filter((item) => item.id !== itemId))
   }
 
@@ -287,42 +270,51 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
     )
   }
 
-  console.log({ orderItems })
-
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
     // Create updated products array
-    const updatedProducts = orderItems.map((item) => ({
-      name: item.productName,
-      sku: item.productId,
+
+    const oldIds = order.products.map(item => item.id)
+    const newEntries = orderItems.filter(item => !oldIds.includes(item.id)).map(item => ({
+      allocated: 0,
       cases: item.cases,
-      price: item.pricePerCase,
+      productId: item.productId,
+      saleId: order.id,
+      status: "pending_approval",
+    } as Partial<SaleOrderDetail>))
+
+    const updatedProducts = orderItems.filter(item => oldIds.includes(item.id)).map((item) => ({
+      cases: item.cases,
       status: item.status as ProductStatus,
-      salesId: item.salesId
+      id: item.id
     }))
-
-    // Create the updated order
-    const updatedOrder: Partial<Order> = {
-      reference,
-      deliveryDate: expectedDeliveryDate,
-      products: updatedProducts as any,
-      shippingAddress: selectedShippingAddressId,
-      summary: {
-        subtotal,
-        discountType,
-        discount,
-        taxesEnabled,
-        taxType: isInTelangana ? "CGST+SGST" : "IGST",
-        taxTotal,
-        total,
-      },
+    const updatedOrder = {
+      deliveryDate: expectedDeliveryDate ? expectedDeliveryDate : undefined,
+      discount: discount,
+      discountType,
+      orderDate,
+      poDate,
+      poId,
+      poNumber,
+      remarks,
+      shippingAddressId: selectedShippingAddressId,
+      referenceId: reference,
+      status: "pending_approval",
+      subtotal,
+      taxTotal,
+      taxesEnabled,
+      taxType: isInTelangana ? "CGST+SGST" : "IGST",
+      total
     }
-
     // Update the order
-    updateOrder(order.id, updatedOrder).then(() => {
-      // onOpenChange(false)
+    updateOrder(order.id, updatedOrder, updatedProducts, newEntries).then(() => {
+      onOpenChange(false)
+    }).then(() => {
+      return deleteSaleOrder(Array.from(deletedIds))
+    }).then(() => {
+      refetchContext()
     }).catch((error) => {
       console.log({ error })
     })
@@ -396,7 +388,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
                   </SelectTrigger>
                   <SelectContent>
                     {
-                      references.map(item => <SelectItem key={item.referenceId + ""} value={item.referenceId}>{item.name}</SelectItem>)
+                      Object.values(referenceMapper).flat().map((item: any, index: number) => <SelectItem key={`${item.referenceId}-${index}`} value={item.referenceId}>{item.name}</SelectItem>)
                     }
                   </SelectContent>
                 </Select>
@@ -612,7 +604,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
                       <TableRow key={item.id}>
                         <TableCell>{item.productName}</TableCell>
                         <TableCell className="text-right">
-                          {item.status === "pending" ? (
+                          {item.status === "pending_approval" ? (
                             <div className="flex items-center justify-end space-x-2">
                               <Button
                                 type="button"
@@ -651,7 +643,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
                         <TableCell className="text-right">{item.taxRate}%</TableCell>
                         <TableCell className="text-right">₹{item.taxAmount.toFixed(2)}</TableCell>
                         <TableCell className="text-center">
-                          <Badge variant={item.status === "pending" ? "outline" : "secondary"}>
+                          <Badge variant={item.status === "pending_approval" ? "outline" : "secondary"}>
                             {item.status.replace("_", " ")}
                           </Badge>
                         </TableCell>
@@ -662,7 +654,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
                             size="icon"
                             onClick={() => handleRemoveItem(item.id)}
                             className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                            disabled={item.status !== "pending"}
+                            disabled={item.status !== "pending_approval"}
                           >
                             <Trash2 className="h-4 w-4" />
                             <span className="sr-only">Delete</span>

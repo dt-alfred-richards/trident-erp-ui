@@ -1,10 +1,11 @@
 "use client"
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react"
-import { type Order, type OrderStatus, OrderActionService } from "@/types/order"
+import { type Order, type OrderStatus, OrderActionService, SalesOrderDetails } from "@/types/order"
 import type { ProductStatus } from "@/types/product"
 import { DataByTableName } from "@/components/api"
-import { createType, getChildObject } from "@/components/generic"
+import { createType, getChildObject, getPriority, removebasicTypes } from "@/components/generic"
+import { any } from "zod"
 
 export type EventLogger = {
   id: number,
@@ -34,7 +35,7 @@ export type Client = {
   modifiedBy: Date
 }
 
-type ClientReference = {
+export type ClientReference = {
   id?: number,
   referenceId: string,
   clientId: string,
@@ -46,7 +47,8 @@ export type ShippingAddress = {
   addressId: string,
   name: string,
   address: string,
-  clientId: string
+  clientId: string,
+  isDefault: boolean
 }
 
 export type ClientProposedProduct = {
@@ -67,7 +69,7 @@ export type V1Sale = {
   id: number,
   saleId: string,
   clientId: string,
-  deliveryDate: Date,
+  deliveryDate?: Date,
   poId: string,
   remarks: string,
   subtotal: number,
@@ -108,8 +110,8 @@ interface OrderContextType {
   dispatchProducts: (orderId: string, productId: string, quantity: number) => void
   deliverProducts: (orderId: string, productId: string, quantity: number) => void
   getOrderById: (orderId: string) => Order | undefined
-  updateOrder: (orderId: string, updatedOrder: any) => Promise<void>,
-  addOrder: (order: Partial<V1Sale>) => Promise<void>,
+  updateOrder: (orderId: string, updatedOrder: any, updatedProducts: any, newEntries: Partial<SaleOrderDetail>[]) => Promise<any>,
+  addOrder: (order: Partial<V1Sale>, saleOrder: Partial<SaleOrderDetail>[]) => Promise<void>,
   addSaleOrder: (saleOrder: Partial<SaleOrderDetail>) => Promise<void>,
   cancelOrder: (orderId: string) => void,
   clientMapper: Record<string, Client>
@@ -118,10 +120,35 @@ interface OrderContextType {
   clientProposedProductMapper: Record<string, ClientProposedProduct[]>,
   refetchContext: VoidFunction,
   eventsLogger: EventLogger[],
-  saleOrders: SaleOrderDetail[]
+  saleOrders: SaleOrderDetail[],
+  deleteSaleOrder: (orderId: string[]) => Promise<PromiseSettledResult<any>[]>
 }
 
-const OrderContext = createContext<OrderContextType>({})
+const emptyFunction = (props: any) => "" as any
+
+const OrderContext = createContext<OrderContextType>({
+  orders: [],
+  currentUser: "",
+  filteredOrders: emptyFunction,
+  approveOrder: (orderId: string) => Promise.resolve(),
+  rejectOrder: (orderId: string) => Promise.resolve(),
+  allocateInventory: (orderId: string, productId: string, quantity: number) => { },
+  dispatchProducts: (orderId: string, productId: string, quantity: number) => { },
+  deliverProducts: (orderId: string, productId: string, quantity: number) => { },
+  getOrderById: emptyFunction,
+  updateOrder: (orderId: string, updatedOrder: any, updatedProducts: any, x: any[]) => Promise.resolve(),
+  addOrder: (order: Partial<V1Sale>, saleOrder: Partial<SaleOrderDetail>[]) => Promise.resolve(),
+  addSaleOrder: (saleOrder: Partial<SaleOrderDetail>) => Promise.resolve(),
+  cancelOrder: (orderId: string) => { },
+  clientMapper: {},
+  referenceMapper: {},
+  shippingAddressMapper: {},
+  clientProposedProductMapper: {},
+  refetchContext: () => { },
+  eventsLogger: [],
+  saleOrders: [],
+  deleteSaleOrder: (orderId: string[]) => Promise.resolve(Promise.allSettled([]))
+})
 
 export function OrderProvider({ children }: { children: ReactNode }) {
   const [orders, setOrders] = useState<Order[]>([])
@@ -138,7 +165,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const clientReferenceInstance = new DataByTableName("client_references");
   const shippingAddressInstance = new DataByTableName("shipping_addresses");
   const clientProposedProducts = new DataByTableName("client_proposed_products");
-  const saleOrderDetailInstance = new DataByTableName("sales_order_details");
+  const saleOrderDetailInstance = new DataByTableName("v1_sales_order_details");
   const eventLoggerInstance = new DataByTableName("events_logger");
 
   const fetchData = () => {
@@ -188,7 +215,6 @@ export function OrderProvider({ children }: { children: ReactNode }) {
         acc[curr.saleId].push(curr)
         return acc;
       }, {});
-
       const _products = getChildObject(response, "4.value.data", []).reduce((acc: Record<string, ClientProposedProduct>, curr: ClientProposedProduct) => {
         if (!acc[curr?.productId || ""]) {
           acc[curr?.productId || ""] = curr
@@ -197,44 +223,42 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       }, {});
       const _eventsLogger = getChildObject(response, "6.value.data", [])
       setEventsLogger(_eventsLogger)
-
-      setOrders(
-        saleResponse.map((item: V1Sale) => {
-          const client: Client = _clientMapper[item?.clientId || ""]
-          if (!client) return;
-          return ({
-            id: item.saleId,
-            orderDate: item.orderDate,
-            customer: client.name,
-            reference: item.referenceId,
-            deliveryDate: item.deliveryDate,
-            priority: "high",
-            status: item.status,
-            createdBy: item.createdBy,
-            createdAt: item.createdOn,
-            clientId: item.clientId,
-            statusHistory: _eventsLogger.filter((i: EventLogger) => i.tableName === "v1_sales" && i.tableId === item.id).map((item: EventLogger) => ({
-              timestamp: item.createdOn,
-              status: item.fieldValue,
-              user: item.createdBy,
-              note: item.fieldValue,
-            })),
-            products: (_saleOrderDetailInstance[item.saleId] || []).map((i: SaleOrderDetail) => {
-              const product: ClientProposedProduct = _products[i.productId]
-              if (!product) return;
-              return ({
-                id: i.productId,
-                name: product?.name || "",
-                sku: product.sku,
-                cases: i.cases,
-                price: product.price,
-                status: i.status,
-                allocated: i.allocated
-              })
-            }).filter((item: any) => item)
-          })
+      const _orders = saleResponse.map((item: V1Sale) => {
+        const client: Client = _clientMapper[item?.clientId || ""]
+        if (!client) return;
+        return ({
+          id: item.saleId,
+          orderDate: item.orderDate,
+          customer: client.name,
+          reference: item.referenceId,
+          deliveryDate: item.deliveryDate,
+          priority: getPriority(item.deliveryDate),
+          status: item.status,
+          createdBy: item.createdBy,
+          createdAt: item.createdOn,
+          clientId: item.clientId,
+          statusHistory: _eventsLogger.filter((i: EventLogger) => i.tableName === "v1_sales" && i.tableId === item.id).map((item: EventLogger) => ({
+            timestamp: item.createdOn,
+            status: item.fieldValue,
+            user: item.createdBy,
+            note: item.fieldValue,
+          })),
+          products: (_saleOrderDetailInstance[item.saleId] || []).map((i: SaleOrderDetail) => {
+            const product: ClientProposedProduct = _products[i.productId]
+            if (!product) return;
+            return ({
+              id: i.orderId,
+              name: product?.name || "",
+              sku: product.sku,
+              cases: i.cases,
+              price: product.price,
+              status: i.status,
+              allocated: i.allocated
+            })
+          }).filter((item: any) => item)
         })
-      )
+      })
+      setOrders(_orders)
       setSaleOrders(saleResponse)
       setReferenceMapper(_referenceMapper)
       setShippingAddressMapper(_shippingAddressMapper)
@@ -360,10 +384,19 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   }
 
   // Add a new order
-  const addOrder = (order: Partial<V1Sale>) => {
-    return saleInstance.post(order).catch(error => {
-      console.log({ error })
-    })
+  const addOrder = (order: Partial<V1Sale>, saleOrders: Partial<SaleOrderDetail>[]) => {
+    return saleInstance.post(order)
+      .then(res => {
+        const saleId = getChildObject(res, "data.0.saleId", "")
+        if (!saleId) {
+          throw new Error("Sale order creation failed")
+        }
+        return Promise.allSettled(saleOrders.map(item => saleOrderDetailInstance.post({ ...item, saleId })))
+      }).then(() => {
+        fetchData()
+      }).catch(error => {
+        console.log({ error })
+      })
   }
 
 
@@ -374,10 +407,30 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   }
 
   // Update an order
-  const updateOrder = (orderId: string, updatedOrder: any) => {
-    return saleInstance.patch({ key: "sale_id", value: orderId }, updatedOrder).catch(error => {
+  const updateOrder = (orderId: string, updatedOrder: Partial<V1Sale>, saleOrrders: Partial<SaleOrderDetail>[], newEntries: Partial<SaleOrderDetail>[]) => {
+    return saleInstance.patch({ key: "sale_id", value: orderId }, updatedOrder).then(() => {
+      return Promise.allSettled(
+        saleOrrders.map(item => {
+          const id = item.id, payload = removebasicTypes(item, ["id", "salesId"])
+          return saleOrderDetailInstance.patch({
+            key: "order_id",
+            value: id
+          }, payload)
+        })
+      )
+    }).then(() => {
+      return newEntries.map(item => addSaleOrder(item))
+    }).catch(error => {
       console.log({ error })
     })
+  }
+
+  const deleteSaleOrder = (orderIds: string[]) => {
+    return Promise.allSettled(
+      orderIds.map(id =>
+        saleOrderDetailInstance.deleteById({ key: "order_id", value: id })
+      )
+    )
   }
 
   return <OrderContext.Provider value={{
@@ -400,7 +453,8 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     addSaleOrder,
     eventsLogger,
     refetchContext: fetchData,
-    saleOrders
+    saleOrders,
+    deleteSaleOrder
   }}>{children}</OrderContext.Provider>
 }
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { format } from "date-fns"
 import { CalendarIcon, Plus, Trash2, Check, ChevronsUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -33,96 +33,9 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
-import { useOrders } from "@/contexts/order-context"
-
-// Mock data for clients
-const CLIENTS = [
-  {
-    id: "CL001",
-    name: "ABC Corp",
-    gstNumber: "29ABCDE1234F1Z5",
-    panNumber: "ABCDE1234F",
-    references: ["REF-A001", "REF-A002", "REF-A003"],
-    shippingAddresses: [
-      {
-        id: "ADDR-001",
-        name: "ABC Corp Headquarters",
-        address: "123 Business Park, Industrial Area\nBangalore, Karnataka 560001\nIndia",
-        isDefault: true,
-      },
-      {
-        id: "ADDR-002",
-        name: "ABC Corp Warehouse",
-        address: "456 Logistics Zone, Outer Ring Road\nBangalore, Karnataka 560037\nIndia",
-        isDefault: false,
-      },
-    ],
-  },
-  {
-    id: "CL002",
-    name: "XYZ Industries",
-    gstNumber: "27FGHIJ5678G1Z3",
-    panNumber: "FGHIJ5678G",
-    references: ["REF-X001", "REF-X002"],
-    shippingAddresses: [
-      {
-        id: "ADDR-003",
-        name: "XYZ Industries Main Office",
-        address: "789 Tech Park, Electronic City\nBangalore, Karnataka 560100\nIndia",
-        isDefault: true,
-      },
-    ],
-  },
-  {
-    id: "CL003",
-    name: "Global Foods",
-    gstNumber: "24KLMNO9012H1Z8",
-    panNumber: "KLMNO9012H",
-    references: ["REF-G001"],
-    shippingAddresses: [
-      {
-        id: "ADDR-004",
-        name: "Global Foods Distribution Center",
-        address: "101 Food Processing Zone\nMumbai, Maharashtra 400001\nIndia",
-        isDefault: true,
-      },
-      {
-        id: "ADDR-005",
-        name: "Global Foods Regional Office",
-        address: "202 Business Hub\nDelhi, Delhi 110001\nIndia",
-        isDefault: false,
-      },
-      {
-        id: "ADDR-006",
-        name: "Global Foods Storage Facility",
-        address: "303 Cold Storage Complex\nChennai, Tamil Nadu 600001\nIndia",
-        isDefault: false,
-      },
-    ],
-  },
-  {
-    id: "CL004",
-    name: "TechStart Inc",
-    gstNumber: "06PQRST3456I1Z2",
-    panNumber: "PQRST3456I",
-    references: ["REF-T001", "REF-T002", "REF-T003", "REF-T004"],
-    shippingAddresses: [
-      {
-        id: "ADDR-007",
-        name: "TechStart Inc Office",
-        address: "404 Innovation Center\nPune, Maharashtra 411001\nIndia",
-        isDefault: true,
-      },
-    ],
-  },
-]
-
+import { SaleOrderDetail, ShippingAddress, useOrders, V1Sale } from "@/contexts/order-context"
+import { getChildObject } from "../generic"
 // Mock data for products
-const PRODUCTS = [
-  { id: "P001", name: "dhaara", price: 120.0, taxRate: 18 },
-  { id: "P002", name: "antera", price: 180.0, taxRate: 18 },
-  { id: "P003", name: "paradise", price: 220.0, taxRate: 18 },
-]
 
 // Size SKU options
 const SIZE_SKUS = [
@@ -150,8 +63,27 @@ interface CreateSalesOrderDialogProps {
 }
 
 export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderDialogProps) {
-  const { addOrder } = useOrders()
+  const { addOrder, clientMapper, shippingAddressMapper, clientProposedProductMapper } = useOrders()
+
+  const PRODUCTS = useMemo(() => {
+    return Object.values(clientProposedProductMapper).flat().map(item => ({ id: item.productId, name: item.name, price: item.price, taxRate: 18 }))
+  }, [clientProposedProductMapper])
   // Order header state
+  const CLIENTS = useMemo(() => {
+    return Object.values(clientMapper).map(item => ({
+      id: item.clientId,
+      name: item.name,
+      gstNumber: item.gstNumber,
+      panNumber: item.panNumber,
+      references: ["REF-T001", "REF-T002", "REF-T003", "REF-T004"],
+      shippingAddresses: getChildObject(shippingAddressMapper, item?.clientId || "", []).map((item: ShippingAddress) => ({
+        id: item.addressId,
+        name: item.name,
+        address: item.address,
+        isDefault: item.isDefault,
+      })),
+    }))
+  }, [clientMapper, shippingAddressMapper])
   const [orderDate] = useState<Date>(new Date()) // Remove setOrderDate since it's now fixed
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<Date | undefined>(undefined)
   const [clientId, setClientId] = useState("")
@@ -365,75 +297,50 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
     // Generate a new order ID
     const newOrderId = generateOrderId()
 
-    // Create the new order with pending_approval status
-    const newOrder = {
-      id: newOrderId,
-      orderDate: format(orderDate, "yyyy-MM-dd"),
-      customer: clientName,
-      reference: reference,
-      deliveryDate: expectedDeliveryDate ? format(expectedDeliveryDate, "yyyy-MM-dd") : "",
-      priority: "medium", // Default priority
-      status: "pending_approval", // Set initial status to pending_approval
-      createdBy: "Current User", // This would come from authentication in a real app
-      createdAt: new Date().toISOString(),
-      statusHistory: [
-        {
-          timestamp: new Date().toISOString(),
-          status: "pending_approval",
-          user: "Current User",
-          note: "Order created",
-        },
-      ],
-      products: orderItems.map((item) => ({
-        id: item.id,
-        name: item.productName,
-        sku: item.productId,
-        quantity: item.cases,
-        price: item.pricePerCase,
-        status: "pending",
-      })),
-      // Additional details
-      poNumber: poNumber,
-      poId: poId,
-      poDate: poDate ? format(poDate, "yyyy-MM-dd") : "",
-      remarks: remarks,
-      shippingAddress: selectedAddress
-        ? {
-            id: selectedAddress.id,
-            name: selectedAddress.name,
-            address: selectedAddress.address,
-          }
-        : undefined,
-      summary: {
-        subtotal,
-        discountType,
-        discount,
-        taxesEnabled,
-        taxType: isInTelangana ? "CGST+SGST" : "IGST",
-        taxTotal,
-        total,
-      },
+    const newOrder: Partial<V1Sale> = {
+      clientId,
+      deliveryDate: expectedDeliveryDate ? expectedDeliveryDate : undefined,
+      discount: discount,
+      discountType,
+      orderDate,
+      poDate,
+      poId,
+      poNumber,
+      remarks,
+      shippingAddressId: selectedAddress?.id,
+      referenceId: reference,
+      status: "pending_approval",
+      subtotal,
+      taxTotal,
+      taxesEnabled,
+      taxType: isInTelangana ? "CGST+SGST" : "IGST",
+      total
     }
+
+    const saleOrder: Partial<SaleOrderDetail>[] = orderItems.map((item: OrderItem) => ({
+      allocated: 0,
+      cases: item.cases,
+      productId: item.productId,
+      saleId: "",
+      status: "pending_approval",
+    }))
 
     // Add the order to the context (this would be an API call in a real app)
     // We need to import the useOrders hook at the top of the file
-    try {
-      // Add the order to the context
-      addOrder(newOrder)
-
+    // Add the order to the context
+    addOrder(newOrder, saleOrder).then(() => {
       // Show success message
       alert(`Order ${newOrderId} has been created and is pending approval.`)
 
       // Close dialogs
       setShowConfirmation(false)
       onOpenChange(false)
-
       // Reset form for next use
       resetForm()
-    } catch (error) {
+    }).catch(error => {
       console.error("Error adding order:", error)
       alert("There was an error creating the order. Please try again.")
-    }
+    })
   }
 
   // Reset the form to initial state

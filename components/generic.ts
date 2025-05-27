@@ -14,7 +14,8 @@ export const getChildObject = (data: any, path: string, _default?: any) => {
 }
 
 
-export const convertDate = (date: Date) => {
+export const convertDate = (date?: Date) => {
+    if (!date) return ""
     return moment(date).format("LL")
 }
 
@@ -34,4 +35,35 @@ export const excludeKeys = (data: Record<string, any>, keys: string[]) => {
     return Object.fromEntries(
         Object.entries(data).filter(([key]) => !keys.includes(key))
     )
+}
+
+
+const getDateDifference = (givenDate: Date) => {
+    // Parse the given date
+    const targetDate: Date = new Date(givenDate);
+
+    // Get today's date without time
+    const today: Date = new Date();
+    today.setHours(0, 0, 0, 0);
+    targetDate.setHours(0, 0, 0, 0);
+
+    // Calculate the difference in milliseconds
+    const diffInMs = targetDate.getTime() - today.getTime();
+
+    // Convert milliseconds to days
+    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+    return diffInDays;
+}
+
+export const getPriority = (givenDate?: Date) => {
+    if (!givenDate) return ""
+    const diff = getDateDifference(givenDate)
+    if (diff <= 2) {
+        return "high"
+    } else if (diff >= 2 && diff <= 5) {
+        return "medium"
+    } else {
+        return "low"
+    }
 }

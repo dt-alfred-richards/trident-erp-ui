@@ -27,7 +27,7 @@ interface OrderSummaryDialogProps {
 
 export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDialogProps) {
   // Calculate order totals
-  const subtotal = order.products.reduce((sum, product) => sum + product.price * product.quantity, 0)
+  const subtotal = order.products.reduce((sum, product) => sum + product.price * product.cases, 0)
   const discount = subtotal * 0.05 // Assuming 5% discount, adjust as needed
   const taxableAmount = subtotal - discount
   const cgst = taxableAmount * 0.09
@@ -148,9 +148,9 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
                             <div className="text-sm text-muted-foreground">{product.sku}</div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right">{product.quantity.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">{product.cases.toLocaleString()}</TableCell>
                         <TableCell className="text-right">₹{product.price.toFixed(2)}</TableCell>
-                        <TableCell className="text-right">₹{(product.quantity * product.price).toFixed(2)}</TableCell>
+                        <TableCell className="text-right">₹{(product.cases * product.price).toFixed(2)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

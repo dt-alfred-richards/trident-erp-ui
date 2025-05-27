@@ -391,17 +391,6 @@ export const OrderActionService = {
   },
 }
 
-
-export type ShippingAddress = {
-  id: number,
-  addressId: string,
-  name: string,
-  address: string,
-  isDefault: boolean,
-  clientId: string
-}
-
-
 export type Product = {
   id: number,
   productId: string,

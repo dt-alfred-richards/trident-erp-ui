@@ -35,7 +35,7 @@ import { convertDate } from "../generic"
 
 export function SalesTable() {
   // Use order context
-  const { orders, approveOrder, rejectOrder, getOrderById, cancelOrder, refetchContext } = useOrders()
+  const { orders = [], approveOrder, rejectOrder, getOrderById, cancelOrder, refetchContext } = useOrders()
 
   // Filter states
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined)
@@ -62,6 +62,7 @@ export function SalesTable() {
 
   // Apply filters to orders
   const filtered = orders.filter((order) => {
+    if (!order) return false;
     // Status filter
     if (statusFilter !== "all" && order.status !== statusFilter) {
       return false
@@ -380,8 +381,8 @@ export function SalesTable() {
             {filtered.length > 0 ? (
               paginatedOrders.map((order) => (
                 <TableRow key={order.id} className="hover:bg-muted/30 transition-colors">
-                  <TableCell className="py-3">{convertDate(order.orderDate)}</TableCell>
-                  <TableCell className="font-medium text-primary">{order.id}</TableCell>
+                  <TableCell className="py-3">{convertDate(order?.orderDate)}</TableCell>
+                  <TableCell className="font-medium text-primary">{order?.id || ""}</TableCell>
                   <TableCell>{order.customer}</TableCell>
                   <TableCell>{order.reference}</TableCell>
                   <TableCell>{convertDate(order.deliveryDate)}</TableCell>
