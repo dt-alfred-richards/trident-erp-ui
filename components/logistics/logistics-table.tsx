@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { StatusBadge } from "@/components/common/status-badge"
@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/components/ui/use-toast"
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
+import { useOrders } from "@/contexts/order-context"
+import { convertDate } from "../generic"
 
 interface LogisticsTableProps {
   status: "all" | "ready" | "dispatched" | "delivered"
@@ -35,9 +37,24 @@ export function LogisticsTable({ status }: LogisticsTableProps) {
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
+  const { orders } = useOrders()
+
+  // const filteredOrders = useMemo(() => {
+  //   return orders.map(item => ({
+  //     id: item.id,
+  //     customer: item.customer,
+  //     sku: "",
+  //     quantity: item.products.reduce((acc, curr) => {
+  //       acc += curr.cases
+  //       return acc;
+  //     }, 0),
+  //     status: item.status === "approved" ? "ready" : "",
+  //     date: convertDate(item.modifiedOn || item.createdAt)
+  //   }))
+  // }, [orders])
 
   // Get logistics data from custom hook with shared context
-  const { filteredOrders, updateOrderStatus } = useLogisticsData(status)
+  const { updateOrderStatus, filteredOrders } = useLogisticsData(status)
 
   // Calculate pagination
   const indexOfLastItem = currentPage * itemsPerPage

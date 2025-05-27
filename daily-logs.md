@@ -1,3 +1,11 @@
+Date - May 27 -2025
+
+- Sales module completed
+
+Discussions
+- Where we will get assign to ?
+- Discuss on production flow with fardeen
+
 Date - May 25 -2025
 
 \*What is completed

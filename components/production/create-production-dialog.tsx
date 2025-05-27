@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { format } from "date-fns"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { AlertCircle, Info, CalendarIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -28,6 +28,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent } from "@/components/ui/card"
 import { useRawMaterialsStore } from "@/hooks/use-raw-materials-store"
 import { useToast } from "@/components/ui/use-toast"
+import { useOrders } from "@/contexts/order-context"
 
 interface CreateProductionDialogProps {
   open: boolean
@@ -53,6 +54,7 @@ const materialCategoryMap: Record<string, string> = {
 }
 
 export function CreateProductionDialog({ open, onOpenChange, sku, deficit }: CreateProductionDialogProps) {
+  const { clientProposedProductMapper } = useOrders()
   const [quantity, setQuantity] = useState("")
   const [selectedSku, setSelectedSku] = useState("")
   const [assignedTo, setAssignedTo] = useState("")
@@ -74,14 +76,9 @@ export function CreateProductionDialog({ open, onOpenChange, sku, deficit }: Cre
   const { toast } = useToast()
 
   // Updated SKU options as requested
-  const availableSkus = [
-    { value: "2000ml", label: "2000ml" },
-    { value: "1000ml", label: "1000ml" },
-    { value: "750ml", label: "750ml" },
-    { value: "500ml", label: "500ml" },
-    { value: "250ml", label: "250ml" },
-    { value: "Custom-A", label: "Custom-A" },
-  ]
+  const availableSkus = useMemo(() => {
+    return Object.values(clientProposedProductMapper).flat().map(item => ({ value: item.productId, label: item.name }))
+  }, [clientProposedProductMapper])
 
   const existingProduction = selectedSku === "500ml" ? 2000 : selectedSku === "1000ml" ? 1000 : 0
   const teamMembers = ["John D.", "Sarah M.", "Mike T.", "Lisa R.", "David K."]
@@ -203,50 +200,50 @@ export function CreateProductionDialog({ open, onOpenChange, sku, deficit }: Cre
     }
 
     // Deduct materials from inventory
-    let allDeductionsSuccessful = true
-    const deductionResults = bomComponents
-      .filter((component) => component.isSelected)
-      .map((component) => {
-        const requiredQty = component.quantity * Number(quantity)
-        if (component.category && component.type) {
-          const success = deductRawMaterialQuantity(component.category, component.type, requiredQty)
-          if (!success) {
-            allDeductionsSuccessful = false
-          }
-          return { component, success, requiredQty }
-        }
-        return { component, success: false, requiredQty }
-      })
+    // let allDeductionsSuccessful = true
+    // const deductionResults = bomComponents
+    //   .filter((component) => component.isSelected)
+    //   .map((component) => {
+    //     const requiredQty = component.quantity * Number(quantity)
+    //     if (component.category && component.type) {
+    //       const success = deductRawMaterialQuantity(component.category, component.type, requiredQty)
+    //       if (!success) {
+    //         allDeductionsSuccessful = false
+    //       }
+    //       return { component, success, requiredQty }
+    //     }
+    //     return { component, success: false, requiredQty }
+    //   })
 
-    if (!allDeductionsSuccessful) {
-      // Show error toast
-      toast({
-        title: "Inventory Update Failed",
-        description: "Some materials could not be deducted from inventory. Please check availability.",
-        variant: "destructive",
-      })
-      setIsSubmitting(false)
-      return
-    }
+    // if (!allDeductionsSuccessful) {
+    //   // Show error toast
+    //   toast({
+    //     title: "Inventory Update Failed",
+    //     description: "Some materials could not be deducted from inventory. Please check availability.",
+    //     variant: "destructive",
+    //   })
+    //   setIsSubmitting(false)
+    //   return
+    // }
 
     // Create the production order
-    createProductionOrder({
-      sku: selectedSku,
-      quantity: Number.parseInt(quantity),
-      deadline: date.toISOString(),
-      assignedTo,
-      bomId,
-    })
+    // createProductionOrder({
+    //   sku: selectedSku,
+    //   quantity: Number.parseInt(quantity),
+    //   deadline: date.toISOString(),
+    //   assignedTo,
+    //   bomId,
+    // })
 
-    // Show success toast
-    toast({
-      title: "Production Order Created",
-      description: `Successfully created production order for ${quantity} units of ${selectedSku} and updated inventory.`,
-      variant: "default",
-    })
+    // // Show success toast
+    // toast({
+    //   title: "Production Order Created",
+    //   description: `Successfully created production order for ${quantity} units of ${selectedSku} and updated inventory.`,
+    //   variant: "default",
+    // })
 
-    setIsSubmitting(false)
-    onOpenChange(false)
+    // setIsSubmitting(false)
+    // onOpenChange(false)
   }
 
   return (
@@ -434,7 +431,7 @@ export function CreateProductionDialog({ open, onOpenChange, sku, deficit }: Cre
           <DialogFooter className="mt-6">
             <Button
               type="submit"
-              disabled={!selectedSku || !allComponentsSelected || !date || !assignedTo || !quantity || isSubmitting}
+              disabled={!selectedSku || !date || !assignedTo || !quantity}
               className="bg-[#1b84ff] text-white hover:bg-[#0a6edf]"
             >
               {isSubmitting ? "Creating Order..." : "Create Production Order"}

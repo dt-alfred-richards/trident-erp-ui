@@ -65,6 +65,7 @@ export interface Order {
   poDate?: Date,
   shippingAddressId: string,
   remarks: string,
+  modifiedOn: Date,
   statusHistory: {
     timestamp: string
     status: OrderStatus

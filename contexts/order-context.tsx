@@ -236,6 +236,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
           status: item.status,
           createdBy: item.createdBy,
           createdAt: item.createdOn,
+          modifiedOn: item.modifiedOn,
           clientId: item.clientId,
           statusHistory: _eventsLogger.filter((i: EventLogger) => i.tableName === "v1_sales" && i.tableId === item.id).map((item: EventLogger) => ({
             timestamp: item.createdOn,
