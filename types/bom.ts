@@ -4,7 +4,9 @@ export interface BomComponentType {
   materialName: string
   quantity: number
   unit: string
-  cost: number
+  cost: number,
+  materialId: string,
+  bomCompId?: string
 }
 
 export interface BomType {

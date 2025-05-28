@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -20,44 +20,38 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
+import { BomAndComponent, BomComponent, useBomContext } from "./bom-context"
+import { useInventory } from "@/app/inventory-context"
+import { useOrders } from "@/contexts/order-context"
+import { getChildObject } from "../generic"
 
 export function BomTable() {
-  const { boms, deleteBom } = useBomStore()
+  const { clientProposedProductMapper } = useOrders()
+  // const { boms, deleteBom } = useBomStore()
+  const { bom: boms = [], deleteBom, refetch = () => { } } = useBomContext()
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedBomId, setSelectedBomId] = useState<string | null>(null)
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [displayBoms, setDisplayBoms] = useState(boms)
+  const [displayBoms, setDisplayBoms] = useState<BomAndComponent[]>([])
+
+  useEffect(() => {
+    setDisplayBoms(boms)
+  }, [boms])
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
 
-  // Update the first five product names when the component mounts
-  useEffect(() => {
-    const updatedBoms = [...boms]
-    const productNames = ["2000ml", "1000ml", "750ml", "500ml", "250ml"]
-
-    // Update only the first 5 rows or fewer if there are less than 5 boms
-    const rowsToUpdate = Math.min(5, updatedBoms.length)
-
-    for (let i = 0; i < rowsToUpdate; i++) {
-      updatedBoms[i] = {
-        ...updatedBoms[i],
-        productName: productNames[i],
-      }
-    }
-
-    setDisplayBoms(updatedBoms)
-  }, [boms])
-
   // Filter BOMs based on search term
-  const filteredBoms = displayBoms.filter(
-    (bom) =>
-      bom.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      bom.bomCode.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  const filteredBoms = useMemo(() => {
+    return displayBoms.filter(
+      (bom) =>
+        bom.productName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        bom.bomId.toLowerCase().includes(searchTerm.toLowerCase()),
+    )
+  }, [displayBoms])
 
   // Calculate pagination
   const indexOfLastItem = currentPage * itemsPerPage
@@ -80,13 +74,16 @@ export function BomTable() {
   }
 
   const confirmDelete = () => {
-    if (selectedBomId) {
-      deleteBom(selectedBomId)
-      setDeleteDialogOpen(false)
+    if (selectedBomId && deleteBom) {
+      deleteBom(selectedBomId).then(() => {
+        setDeleteDialogOpen(false)
+      }).then(() => {
+        refetch()
+      })
     }
   }
 
-  const selectedBom = selectedBomId ? displayBoms.find((bom) => bom.id === selectedBomId) : null
+  const selectedBom = selectedBomId ? displayBoms.find((bom) => bom.bomId === selectedBomId) : null
 
   return (
     <div className="space-y-4">
@@ -117,39 +114,40 @@ export function BomTable() {
           </TableHeader>
           <TableBody>
             {paginatedBoms.length > 0 ? (
-              paginatedBoms.map((bom) => (
-                <TableRow key={bom.id}>
-                  <TableCell className="font-medium">{bom.bomCode}</TableCell>
+              paginatedBoms.map((bom) => {
+                if (!bom) return null;
+                return <TableRow key={bom.id}>
+                  <TableCell className="font-medium">{bom.bomId}</TableCell>
                   <TableCell>{bom.productName}</TableCell>
                   <TableCell>{bom.components.length}</TableCell>
-                  <TableCell>₹{bom.unitCost.toFixed(2)}</TableCell>
+                  <TableCell>₹{bom.unitCost}</TableCell>
                   <TableCell>
                     <Badge
-                      variant={bom.status === "active" ? "default" : "secondary"}
+                      variant={bom.status ? "default" : "secondary"}
                       className={
-                        bom.status === "active"
+                        bom.status
                           ? "bg-green-100 hover:bg-green-100 text-green-700 border border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-900"
                           : "bg-amber-100 hover:bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-900"
                       }
                     >
-                      {bom.status === "active" ? "Active" : "Inactive"}
+                      {bom.status ? "Active" : "Inactive"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => handleViewDetails(bom.id)}>
+                      <Button variant="ghost" size="icon" onClick={() => handleViewDetails(bom.bomId)}>
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(bom.id)}>
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(bom.bomId)}>
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(bom.id)}>
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(bom.bomId)}>
                         <Trash2 className="h-4 w-4 text-red-500 hover:text-red-700" />
                       </Button>
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
+              })
             ) : (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">

@@ -15,31 +15,38 @@ import { Separator } from "@/components/ui/separator"
 import type { BomType } from "@/types/bom"
 import { useInventoryStore } from "@/hooks/use-inventory-store"
 import { Download } from "lucide-react"
+import { BomAndComponent, BomComponent } from "./bom-context"
+import { useCallback, useMemo } from "react"
+import { useInventory } from "@/app/inventory-context"
 
 interface BomDetailsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  bom: BomType
+  bom: BomAndComponent
 }
 
 export function BomDetailsDialog({ open, onOpenChange, bom }: BomDetailsDialogProps) {
-  const { getInventoryItemByName } = useInventoryStore()
+  const { inventory = [] } = useInventory()
+
+  const getInventoryItemByName = useCallback((materialId?: string) => {
+    return inventory.find(item => item.inventoryId === materialId);
+  }, [inventory])
 
   const handleExport = () => {
     // Format BOM data for export
     const exportData = {
-      bomCode: bom.bomCode,
+      bomCode: bom.bomId,
       productName: bom.productName,
       status: bom.status,
       unitCost: bom.unitCost,
       components: bom.components.map((component) => ({
-        materialName: component.materialName,
+        materialId: component.materialId,
         type: component.type || "Standard",
         quantity: component.quantity,
         unit: component.unit,
         cost: component.cost,
-        stockStatus: getInventoryItemByName(component.materialName)
-          ? getInventoryItemByName(component.materialName).quantity >= component.quantity
+        stockStatus: getInventoryItemByName(component.materialId)
+          ? (getInventoryItemByName(component.materialId)?.quantity || 0) >= component.quantity
             ? "In Stock"
             : "Low Stock"
           : "Not Found",
@@ -58,7 +65,7 @@ export function BomDetailsDialog({ open, onOpenChange, bom }: BomDetailsDialogPr
       headers.join(","),
       ...exportData.components.map((comp) =>
         [
-          `"${comp.materialName}"`,
+          `"${comp.materialId}"`,
           `"${comp.type}"`,
           comp.quantity,
           comp.unit,
@@ -80,17 +87,23 @@ export function BomDetailsDialog({ open, onOpenChange, bom }: BomDetailsDialogPr
     document.body.removeChild(link)
   }
 
+  const inventoryMapper = useMemo(() => {
+    return inventory.reduce((acc: Record<string, string>, curr) => {
+      if (!acc[curr.inventoryId]) acc[curr.inventoryId] = curr.material
+      return acc;
+    }, {})
+  }, [inventory])
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {bom.productName}
-            <Badge variant={bom.status === "active" ? "default" : "secondary"}>
-              {bom.status === "active" ? "Active" : "Inactive"}
+            <Badge variant={bom.status ? "default" : "secondary"}>
+              {bom.status ? "Active" : "Inactive"}
             </Badge>
           </DialogTitle>
-          <DialogDescription>BOM Code: {bom.bomCode}</DialogDescription>
+          <DialogDescription>BOM Code: {bom.bomId}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
@@ -122,7 +135,7 @@ export function BomDetailsDialog({ open, onOpenChange, bom }: BomDetailsDialogPr
               </TableHeader>
               <TableBody>
                 {bom.components.map((component, index) => {
-                  const inventoryItem = getInventoryItemByName(component.materialName)
+                  const inventoryItem = getInventoryItemByName(component.materialId)
                   const stockStatus = inventoryItem
                     ? inventoryItem.quantity >= component.quantity
                       ? "In Stock"
@@ -131,11 +144,11 @@ export function BomDetailsDialog({ open, onOpenChange, bom }: BomDetailsDialogPr
 
                   return (
                     <TableRow key={index}>
-                      <TableCell className="font-medium">{component.materialName}</TableCell>
+                      <TableCell className="font-medium">{inventoryMapper[component.materialId] || ""}</TableCell>
                       <TableCell>{component.type || "Standard"}</TableCell>
                       <TableCell>{component.quantity}</TableCell>
                       <TableCell>{component.unit}</TableCell>
-                      <TableCell>₹{component.cost.toFixed(2)}</TableCell>
+                      <TableCell>₹{component.cost?.toFixed(2)}</TableCell>
                       <TableCell>
                         <Badge
                           variant={

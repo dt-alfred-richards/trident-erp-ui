@@ -8,6 +8,8 @@ export type Inventory = {
     category: string,
     createdOn: Date,
     id: number,
+    unit: string,
+    price: number,
     createdBy: string,
     inventoryId: string,
     modifiedOn: Date,
@@ -16,7 +18,8 @@ export type Inventory = {
     status: string,
     wastage?: number,
     reserved: number,
-    inProduction: number
+    inProduction: number,
+    type: string
 }
 
 type InventoryContext = {

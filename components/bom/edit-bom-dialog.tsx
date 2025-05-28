@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import {
   Dialog,
   DialogContent,
@@ -19,6 +19,9 @@ import { PlusCircle, Trash2 } from "lucide-react"
 import { useBomStore } from "@/hooks/use-bom-store"
 import { useInventoryStore } from "@/hooks/use-inventory-store"
 import type { BomType, BomComponentType } from "@/types/bom"
+import { Bom, BomAndComponent, BomComponent, useBomContext } from "./bom-context"
+import { useOrders } from "@/contexts/order-context"
+import { removebasicTypes } from "../generic"
 
 // Extended component type to include the type field
 interface ExtendedBomComponentType extends BomComponentType {
@@ -28,16 +31,17 @@ interface ExtendedBomComponentType extends BomComponentType {
 interface EditBomDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  bom: BomType
+  bom: BomAndComponent
 }
 
 export function EditBomDialog({ open, onOpenChange, bom }: EditBomDialogProps) {
-  const { updateBom } = useBomStore()
-  const { inventoryItems } = useInventoryStore()
-
-  const [productName, setProductName] = useState(bom.productName)
-  const [bomCode, setBomCode] = useState(bom.bomCode)
-  const [isActive, setIsActive] = useState(bom.status === "active")
+  const { editBom, editBomComponent, addBomComponent, deleteBomComponent, materialOptions = [], unitOptions = [], typeOptionsMap = {}, refetch = () => { } } = useBomContext()
+  const { clientProposedProductMapper } = useOrders()
+  const [selectedProduct, setSelectedProduct] = useState<string | undefined>(bom.productId)
+  const [productId, setProductId] = useState(bom.productId || "")
+  const [bomCode, setBomCode] = useState(bom.bomId)
+  const [isActive, setIsActive] = useState(bom.status)
+  const [deletedMaterialIds, setDeletedMaterialIds] = useState<string[]>([])
   const [components, setComponents] = useState<ExtendedBomComponentType[]>(() => {
     // Initialize components with type field if not present
     return bom.components.map((comp) => ({
@@ -47,25 +51,10 @@ export function EditBomDialog({ open, onOpenChange, bom }: EditBomDialogProps) {
   })
   const [error, setError] = useState<string | null>(null)
 
-  // Define the fixed material options
-  const materialOptions = [
-    { name: "Preform", unit: "Pcs", cost: 2.5 },
-    { name: "Caps", unit: "Pcs", cost: 0.75 },
-    { name: "Labels", unit: "Pcs", cost: 1.25 },
-    { name: "Shrink", unit: "Gms", cost: 0.5 },
-  ]
 
-  // Define unit options
-  const unitOptions = ["Pcs", "Gms"]
-
-  // Define type options based on material
-  const typeOptionsMap = {
-    Preform: ["9.3", "12.5", "19", "32", "26"],
-    Caps: ["Red", "White", "Black", "Pink", "Yellow", "Blue", "Orange"],
-    Labels: ["500ml Standard", "1L Premium", "2L Economy", "750ml Special", "330ml Mini"],
-    Shrink: ["480mm", "530mm"],
-    default: ["Standard", "Premium", "Economy", "Custom"],
-  }
+  const existingComponentIds = useMemo(() => {
+    return bom.components.map(item => item.materialId)
+  }, [bom])
 
   // Get type options based on selected material
   const getTypeOptions = (materialName: string) => {
@@ -74,9 +63,9 @@ export function EditBomDialog({ open, onOpenChange, bom }: EditBomDialogProps) {
 
   // Update form when BOM changes
   useEffect(() => {
-    setProductName(bom.productName)
-    setBomCode(bom.bomCode)
-    setIsActive(bom.status === "active")
+    setProductId(bom.productId || "")
+    setBomCode(bom.bomId)
+    setIsActive(bom.status)
     // Initialize components with type field if not present
     setComponents(
       bom.components.map((comp) => ({
@@ -90,6 +79,7 @@ export function EditBomDialog({ open, onOpenChange, bom }: EditBomDialogProps) {
     setComponents([
       ...components,
       {
+        materialId: "",
         materialName: "",
         quantity: 0,
         unit: "Pcs", // Default unit
@@ -99,8 +89,12 @@ export function EditBomDialog({ open, onOpenChange, bom }: EditBomDialogProps) {
     ])
   }
 
-  const handleRemoveComponent = (index: number) => {
-    setComponents(components.filter((_, i) => i !== index))
+  const handleRemoveComponent = (materialId: string) => {
+    setDeletedMaterialIds(p => {
+      p.concat(materialId)
+      return p;
+    })
+    setComponents(components.filter((i) => i.materialId !== materialId))
   }
 
   const handleComponentChange = (index: number, field: keyof ExtendedBomComponentType, value: string | number) => {
@@ -153,7 +147,7 @@ export function EditBomDialog({ open, onOpenChange, bom }: EditBomDialogProps) {
 
   const handleSubmit = () => {
     // Validation
-    if (!productName.trim()) {
+    if (!productId.trim()) {
       setError("Product name is required")
       return
     }
@@ -169,30 +163,46 @@ export function EditBomDialog({ open, onOpenChange, bom }: EditBomDialogProps) {
     }
 
     for (const component of components) {
-      if (!component.materialName || component.quantity <= 0) {
+      if (!component.materialId || component.quantity <= 0) {
         setError("All components must have a material name and quantity greater than zero")
         return
       }
     }
 
-    // Update BOM - strip out the type field if it's not in the original type
-    const updatedComponents = components.map(({ type, ...rest }) => {
-      // Include type in the saved data
-      return { ...rest, type } as BomComponentType
-    })
+    const bomPayload: Partial<Bom> = {
+      productId,
+      status: isActive
+    }, existingBomComponents = components.filter(item => existingComponentIds.includes(item.materialId)).map(item => ({
+      bomCompId: item.bomCompId,
+      cost: item.cost,
+      materialId: item.materialId,
+      quantity: item.quantity,
+      type: item.type,
+      unit: item.unit
+    } as Partial<BomComponent>)), newBomComponents = components.filter(item => existingComponentIds.includes(item.materialId)).map(item => ({
+      cost: item.cost,
+      materialId: item.materialId,
+      quantity: item.quantity,
+      type: item.type,
+      unit: item.unit
+    })), deletedBomComponents = components.filter(item => deletedMaterialIds.includes(item.materialId) && item.bomCompId).map(item => item.bomCompId)
+    if (!editBom || !editBomComponent || !addBomComponent || !deleteBomComponent) return;
 
-    updateBom({
-      ...bom,
-      productName,
-      bomCode,
-      status: isActive ? "active" : "inactive",
-      components: updatedComponents,
-      unitCost: calculateTotalCost(),
-    })
-
-    setError(null)
-    onOpenChange(false)
+    Promise.allSettled([
+      editBom(bom.bomId, bomPayload),
+      ...existingBomComponents.map(item => editBomComponent(item.bomCompId || "", removebasicTypes(item, ["bomCompId"]))),
+      ...newBomComponents.map(item => addBomComponent(bom.bomId, removebasicTypes(item, ["id", "bomCompId"]))),
+      ...deletedBomComponents.map(item => deleteBomComponent(item || ""))]).then(() => {
+        setError(null)
+        onOpenChange(false)
+        refetch()
+      })
   }
+
+  const selectedProductOption: any = useMemo(() => {
+    return Object.values(clientProposedProductMapper).flat().find(item => item.productId === selectedProduct)?.productId || ""
+  }, [clientProposedProductMapper, selectedProduct])
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -208,7 +218,23 @@ export function EditBomDialog({ open, onOpenChange, bom }: EditBomDialogProps) {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="product-name">Product Name</Label>
-              <Input id="product-name" value={productName} onChange={(e) => setProductName(e.target.value)} />
+              <Select
+                value={selectedProductOption}
+                onValueChange={(value) => {
+                  setSelectedProduct(value)
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Product" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.values(clientProposedProductMapper).flat().map((item) => (
+                    <SelectItem key={item.id} value={item.productId || ""}>
+                      {item.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="bom-code">BOM Code</Label>
@@ -252,15 +278,15 @@ export function EditBomDialog({ open, onOpenChange, bom }: EditBomDialogProps) {
                     <TableRow key={index}>
                       <TableCell>
                         <Select
-                          value={component.materialName}
-                          onValueChange={(value) => handleComponentChange(index, "materialName", value)}
+                          value={component.materialId}
+                          onValueChange={(value) => handleComponentChange(index, "materialId", value)}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Select material" />
                           </SelectTrigger>
                           <SelectContent>
                             {materialOptions.map((item) => (
-                              <SelectItem key={item.name} value={item.name}>
+                              <SelectItem key={item.name} value={item.materialId}>
                                 {item.name}
                               </SelectItem>
                             ))}
@@ -319,7 +345,7 @@ export function EditBomDialog({ open, onOpenChange, bom }: EditBomDialogProps) {
                         />
                       </TableCell>
                       <TableCell>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveComponent(index)}>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveComponent(component.materialId)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </TableCell>
