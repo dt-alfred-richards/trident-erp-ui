@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   Dialog,
   DialogContent,
@@ -22,6 +22,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
+import { Material, PurchaseOrderMaterial, useProcurement } from "@/app/procurement/procurement-context"
+import { getChildObject } from "../generic"
 
 interface POItem {
   id: string
@@ -42,35 +44,30 @@ interface GoodsReceivedDialogProps {
 
 export function GoodsReceivedDialog({ open, onOpenChange, poNumber, onGoodsReceived }: GoodsReceivedDialogProps) {
   // Mock data for PO items - in a real app, this would be fetched based on the PO number
-  const [poItems, setPoItems] = useState<POItem[]>([
-    {
-      id: "1",
-      material: "Plastic Resin",
-      quantity: 500,
-      unit: "kg",
-      supplier: "PlastiCorp Inc.",
-      receivedQuantity: "",
-      selected: false,
-    },
-    {
-      id: "2",
-      material: "Bottle Caps",
-      quantity: 10000,
-      unit: "pcs",
-      supplier: "CapMakers Ltd.",
-      receivedQuantity: "",
-      selected: false,
-    },
-    {
-      id: "3",
-      material: "Label Adhesive",
-      quantity: 100,
-      unit: "liters",
-      supplier: "Adhesive Solutions",
-      receivedQuantity: "",
-      selected: false,
-    },
-  ])
+  const { purchaseOrderMaterials, materials, editPurchaseOrder, purchaseOrders } = useProcurement();
+
+  const materialMapper = useMemo(() => {
+    return materials.reduce((acc: Record<string, Material>, curr) => {
+      if (!acc[curr.materialId]) acc[curr.materialId] = curr
+      return acc;
+    }, {})
+  }, [materials])
+
+  const [poItems, setPoItems] = useState<any[]>([])
+
+  useEffect(() => {
+    setPoItems(
+      purchaseOrderMaterials.filter(item => item.purchaseOrderId === poNumber).map(item => ({
+        id: item.purchaseItemId,
+        material: materialMapper[item.materialId]?.name || "",
+        quantity: item.quantity,
+        unit: item.unit,
+        supplier: materialMapper[item.materialId]?.supplierId || "",
+        receivedQuantity: item?.receivedQuantity || 0,
+        selected: false,
+      }))
+    )
+  }, [purchaseOrderMaterials])
 
   const [formData, setFormData] = useState({
     notes: "",
@@ -86,6 +83,15 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber, onGoodsRecei
     ],
   })
 
+  useEffect(() => {
+    const order = purchaseOrders.find(item => item.purchaseId === poNumber);
+
+    setFormData({
+      ...formData,
+      notes: order?.notes || ""
+    })
+  }, [poNumber])
+
   // Add state for confirmation dialog
   const [confirmReceiveAll, setConfirmReceiveAll] = useState(false)
   const [confirmGrnDialog, setConfirmGrnDialog] = useState(false)
@@ -95,11 +101,11 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber, onGoodsRecei
       prevItems.map((item) =>
         item.id === itemId
           ? {
-              ...item,
-              selected: checked,
-              // Clear received quantity when deselected
-              receivedQuantity: checked ? item.receivedQuantity : "",
-            }
+            ...item,
+            selected: checked,
+            // Clear received quantity when deselected
+            receivedQuantity: checked ? item.receivedQuantity : "",
+          }
           : item,
       ),
     )
@@ -121,28 +127,12 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber, onGoodsRecei
   // Add function to handle "Receive All" button click
   const handleReceiveAll = () => {
     // Select all items and set received quantity to ordered quantity
-    setPoItems((prevItems) =>
-      prevItems.map((item) => ({
-        ...item,
-        selected: true,
-        receivedQuantity: item.quantity.toString(),
-      })),
-    )
+    setPoItems(p => p.map(i => ({ ...i, selected: true, receivedQuantity: i.quantity })))
   }
 
-  // Add function to confirm receive all
-  const confirmReceiveAllItems = () => {
-    // Close the confirmation dialog
-    setConfirmReceiveAll(false)
-
-    // Call the callback to update the parent component
-    if (onGoodsReceived) {
-      onGoodsReceived(poNumber, true)
-    }
-
-    // Close the dialog
-    onOpenChange(false)
-  }
+  // const rawMaterialCategories = useMemo(() => {
+  //   return materials.map(item => ({ value: item.materialId, label: item.name }))
+  // }, [materials])
 
   const rawMaterialCategories = [
     "Plastic Resins",
@@ -180,16 +170,16 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber, onGoodsRecei
       ...(checked
         ? {}
         : {
-            substitutionItems: [
-              {
-                id: "1",
-                category: "",
-                material: "",
-                quantity: "",
-                unit: "kg",
-              },
-            ],
-          }),
+          substitutionItems: [
+            {
+              id: "1",
+              category: "",
+              material: "",
+              quantity: "",
+              unit: "kg",
+            },
+          ],
+        }),
     }))
   }
 
@@ -215,8 +205,8 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber, onGoodsRecei
   }
 
   // Update the handleSubmit function to include the material in the submission
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault()
 
     // Check if at least one item has been selected
     const hasSelectedItems = poItems.some((item) => item.selected)
@@ -249,41 +239,53 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber, onGoodsRecei
     setConfirmGrnDialog(true)
   }
 
-  const confirmCreateGrn = () => {
-    // Here you would submit the GRN to your API
-    console.log("Creating GRN:", {
-      poId: poNumber,
-      items: poItems.filter((item) => item.selected && Number(item.receivedQuantity) > 0),
-      ...formData,
-      // Only include substitution data if enabled
-      ...(formData.useSubstitution
-        ? {
-            substitutions: formData.substitutionItems.map((item) => ({
-              category: item.category,
-              material: item.material,
-              quantity: item.quantity,
-              unit: item.unit,
-            })),
-          }
-        : {}),
-    })
+  const totalQuantity = useMemo(() => {
+    return poItems.reduce((acc, curr) => {
+      acc += curr.quantity
+      return acc;
+    }, 0)
+  }, [poItems])
+  const receivedQuantity = useMemo(() => {
+    return poItems.reduce((acc, curr) => {
+      acc += curr.receivedQuantity
+      return acc;
+    }, 0)
+  }, [poItems])
 
-    // Call the callback to update the parent component - always set to partial
-    if (onGoodsReceived) {
-      onGoodsReceived(poNumber, false) // false means partial delivery
+
+  const getStatus = useCallback(() => {
+    if (receivedQuantity !== totalQuantity) {
+      return "partial"
+    } else if (receivedQuantity === totalQuantity) {
+      return "completed"
+    } else {
+      return ""
     }
+  }, [receivedQuantity, totalQuantity])
+  const confirmCreateGrn = () => {
+    if (!editPurchaseOrder) return
 
-    // Close the confirmation dialog
-    setConfirmGrnDialog(false)
+    editPurchaseOrder({ grnCreated: true, purchaseId: poNumber, notes: formData.notes, status: getStatus() },
+      poItems.filter(item => item.selected).map(item => ({ purchaseItemId: item.id, receivedQuantity: item.receivedQuantity } as Partial<PurchaseOrderMaterial>))
+    ).then(() => {
+      // Close the confirmation dialog
+      setConfirmGrnDialog(false)
 
-    // Close the main dialog
-    onOpenChange(false)
+      // Close the main dialog
+      onOpenChange(false)
+    })
   }
+
+  const noItemsSelected = useMemo(() => {
+    return poItems.filter(item => item.selected).length === 0
+  }, [poItems])
 
   // Check if all items are fully received
   const isFullyReceived = () => {
     return poItems.every((item) => item.selected && Number(item.receivedQuantity) === item.quantity)
   }
+
+  console.log({ sub: formData.substitutionItems })
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -441,8 +443,8 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber, onGoodsRecei
                           </SelectTrigger>
                           <SelectContent>
                             {rawMaterialCategories.map((category) => (
-                              <SelectItem key={category} value={category}>
-                                {category}
+                              <SelectItem key={category.value} value={category.value}>
+                                {category.label}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -563,6 +565,7 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber, onGoodsRecei
           <Button
             type="submit"
             form="grn-form"
+            disabled={noItemsSelected}
             style={{ backgroundColor: "#1b84ff", color: "#ffffff" }}
             className="hover:bg-blue-600"
           >
@@ -581,7 +584,6 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber, onGoodsRecei
         cancelLabel="Cancel"
         onConfirm={() => {
           handleReceiveAll()
-          confirmReceiveAllItems()
         }}
       />
       {/* Confirmation Dialog for Create GRN */}

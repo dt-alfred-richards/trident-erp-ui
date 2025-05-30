@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -15,6 +15,7 @@ import { CalendarIcon, Plus, Minus, DollarSign } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { PurchaseOrder, PurchaseOrderMaterial, useProcurement } from "@/app/procurement/procurement-context"
 
 interface PurchaseOrderDialogProps {
   open: boolean
@@ -30,24 +31,19 @@ interface LineItem {
   price: string
 }
 
-const materials = [
-  { value: "plastic-resin", label: "Plastic Resin" },
-  { value: "bottle-caps", label: "Bottle Caps" },
-  { value: "label-adhesive", label: "Label Adhesive" },
-  { value: "cardboard-boxes", label: "Cardboard Boxes" },
-  { value: "labels", label: "Labels" },
-]
-
-const suppliers = [
-  { value: "plasticorp", label: "PlastiCorp Inc." },
-  { value: "capmakers", label: "CapMakers Ltd." },
-  { value: "adhesive", label: "Adhesive Solutions" },
-  { value: "packaging", label: "Packaging Experts" },
-  { value: "labels", label: "Label Masters" },
-]
-
 export function PurchaseOrderDialog({ open, onOpenChange, onCreateOrder }: PurchaseOrderDialogProps) {
-  const [supplier, setSupplier] = useState("")
+  const { suppliers: contextSuppliers, materials: contextMaterials, createPurchaseOrder } = useProcurement()
+  const [selectedSupplierId, setSelectedSupplierId] = useState("")
+
+  const suppliers = useMemo(() => {
+    return contextSuppliers.map(item => ({ value: item.supplierId, label: item.name }))
+  }, [contextSuppliers])
+  const materials = useMemo(() => {
+    return contextMaterials
+      .filter(item => item.supplierId === selectedSupplierId)
+      .map(item => ({ value: item.materialId, label: item.name }))
+  }, [contextMaterials, selectedSupplierId])
+
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined)
   const [currency, setCurrency] = useState("USD")
   const [paymentTerms, setPaymentTerms] = useState("net30")
@@ -57,6 +53,8 @@ export function PurchaseOrderDialog({ open, onOpenChange, onCreateOrder }: Purch
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { id: crypto.randomUUID(), material: "", quantity: "", unit: "kg", price: "" },
   ])
+
+  console.log({ lineItems })
 
   const handleLineItemChange = (id: string, field: string, value: string) => {
     setLineItems((prev) => prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)))
@@ -72,37 +70,6 @@ export function PurchaseOrderDialog({ open, onOpenChange, onCreateOrder }: Purch
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-
-    // Find the supplier and material names
-    const supplierObj = suppliers.find((s) => s.value === supplier)
-    const supplierName = supplierObj ? supplierObj.label : supplier
-
-    // Calculate the expected delivery date (2 weeks from now)
-    const today = new Date()
-    const expectedDelivery = dueDate
-      ? format(dueDate, "yyyy-MM-dd")
-      : format(new Date(today.setDate(today.getDate() + 14)), "yyyy-MM-dd")
-
-    // Create the new order object
-    const newOrder = {
-      supplier,
-      supplierName,
-      material: lineItems[0].material,
-      materialName: materials.find((m) => m.value === lineItems[0].material)?.label,
-      quantity: Number(lineItems[0].quantity),
-      unit: lineItems[0].unit,
-      expectedDelivery,
-      totalValue: calculateTotal(),
-      priority,
-      notes,
-    }
-
-    // Call the parent function to add the order
-    onCreateOrder(newOrder)
-  }
-
   const calculateTotal = () => {
     return lineItems.reduce((total, item) => {
       const itemTotal =
@@ -113,11 +80,39 @@ export function PurchaseOrderDialog({ open, onOpenChange, onCreateOrder }: Purch
 
   const totalValue = calculateTotal()
   const isFormValid =
-    supplier &&
+    selectedSupplierId &&
     dueDate &&
     lineItems.every(
       (item) => item.material && item.quantity && Number(item.quantity) > 0 && item.price && Number(item.price) > 0,
     )
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+
+    const purchaseOrderPayload: Partial<PurchaseOrder> = {
+      dueDate,
+      currency,
+      notes,
+      paymentTerms,
+      priority,
+      supplierId: selectedSupplierId,
+      total: totalValue,
+      status: "pending"
+    }
+
+    const purchaseOrderMaterialsPayload: Partial<PurchaseOrderMaterial>[] = lineItems.map(item => ({
+      materialId: item.material,
+      quantity: parseInt(item.quantity),
+      unit: item.unit,
+      unitPrice: parseInt(item.price),
+    }))
+
+    if (!createPurchaseOrder) return
+
+    createPurchaseOrder(purchaseOrderPayload, purchaseOrderMaterialsPayload).then(() => {
+      onOpenChange(false)
+    })
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -137,7 +132,7 @@ export function PurchaseOrderDialog({ open, onOpenChange, onCreateOrder }: Purch
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="supplier">Supplier</Label>
-                        <Select value={supplier} onValueChange={setSupplier}>
+                        <Select value={selectedSupplierId} onValueChange={setSelectedSupplierId}>
                           <SelectTrigger id="supplier">
                             <SelectValue placeholder="Select supplier" />
                           </SelectTrigger>

@@ -1,8 +1,14 @@
+Date - May 30 -2025
+- Procurement module completed and excluding substitutions 
+- Discussions
+- What are substitutions in purchase orders
+
 Date - May 27 -2025
 
 - Sales module completed
 
 Discussions
+
 - Where we will get assign to ?
 - Discuss on production flow with fardeen
 
@@ -15,13 +21,14 @@ Date - May 25 -2025
 - Attendance module completed
 
   \*Whats need to be done next
--Payroll module
--profile
+  -Payroll module
+  -profile
 
 Discussions
+
 - How does payroll should be created .on first of every month or manual
 - what should show if the payroll is not yet generated?
--I need s3 url to update documents
+  -I need s3 url to update documents
 
 <!-- .................................................................................. -->
 

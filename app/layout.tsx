@@ -35,6 +35,6 @@ export default function RootLayout({
       <body className={`${inter.className} bg-background`}>
         <LayoutHelper>{children}</LayoutHelper>
       </body>
-    </html>
+    </html >
   )
 }

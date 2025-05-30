@@ -7,6 +7,9 @@ import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Clock, CheckCircle2, AlertTriangle, Printer, Download } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { Material, Suppliers, useProcurement } from "@/app/procurement/procurement-context"
+import { useMemo } from "react"
+import { convertDate } from "../generic"
 
 interface PurchaseOrderViewDialogProps {
   open: boolean
@@ -14,152 +17,55 @@ interface PurchaseOrderViewDialogProps {
   poId: string
 }
 
-// Mock data for a purchase order
-const getPurchaseOrderData = (poId: string) => {
-  const orders = {
-    "PO-001": {
-      id: "PO-001",
-      supplier: "PlastiCorp Inc.",
-      supplierContact: "John Smith",
-      supplierEmail: "john.smith@plasticorp.com",
-      date: "2023-06-01",
-      dueDate: "2023-06-08",
-      status: "pending",
-      currency: "USD",
-      paymentTerms: "Net 30",
-      priority: "normal",
-      notes: "Please ensure all materials meet our quality standards.",
-      items: [
-        {
-          material: "Plastic Resin",
-          quantity: 500,
-          unit: "kg",
-          price: 5.0,
-        },
-      ],
-    },
-    "PO-002": {
-      id: "PO-002",
-      supplier: "CapMakers Ltd.",
-      supplierContact: "Jane Doe",
-      supplierEmail: "jane.doe@capmakers.com",
-      date: "2023-06-02",
-      dueDate: "2023-06-09",
-      status: "partial",
-      received: 5000,
-      currency: "USD",
-      paymentTerms: "Net 45",
-      priority: "high",
-      notes: "Urgent order for production line A.",
-      items: [
-        {
-          material: "Bottle Caps",
-          quantity: 10000,
-          unit: "pcs",
-          price: 0.1,
-        },
-      ],
-    },
-    "PO-003": {
-      id: "PO-003",
-      supplier: "Adhesive Solutions",
-      supplierContact: "Robert Johnson",
-      supplierEmail: "robert@adhesivesolutions.com",
-      date: "2023-06-03",
-      dueDate: "2023-06-10",
-      status: "pending",
-      currency: "USD",
-      paymentTerms: "Net 30",
-      priority: "normal",
-      notes: "",
-      items: [
-        {
-          material: "Label Adhesive",
-          quantity: 100,
-          unit: "liters",
-          price: 15.0,
-        },
-      ],
-    },
-    "PO-004": {
-      id: "PO-004",
-      supplier: "Packaging Experts",
-      supplierContact: "Sarah Williams",
-      supplierEmail: "sarah@packagingexperts.com",
-      date: "2023-05-28",
-      dueDate: "2023-06-05",
-      status: "completed",
-      receivedDate: "2023-06-04",
-      currency: "USD",
-      paymentTerms: "Net 15",
-      priority: "low",
-      notes: "Standard order for Q2.",
-      items: [
-        {
-          material: "Cardboard Boxes",
-          quantity: 1000,
-          unit: "pcs",
-          price: 0.8,
-        },
-      ],
-    },
-    "PO-005": {
-      id: "PO-005",
-      supplier: "Label Masters",
-      supplierContact: "Michael Brown",
-      supplierEmail: "michael@labelmasters.com",
-      date: "2023-05-30",
-      dueDate: "2023-06-07",
-      status: "cancelled",
-      cancelledDate: "2023-06-01",
-      cancelReason: "Supplier unable to fulfill order by required date.",
-      currency: "USD",
-      paymentTerms: "Net 30",
-      priority: "normal",
-      notes: "",
-      items: [
-        {
-          material: "Product Labels",
-          quantity: 5000,
-          unit: "sheets",
-          price: 0.24,
-        },
-      ],
-    },
-  }
-
-  // Add support for dynamically generated PO IDs
-  if (!orders[poId as keyof typeof orders]) {
-    // Create a generic order for any PO ID that doesn't exist in our mock data
-    return {
-      id: poId,
-      supplier: "Generic Supplier",
-      supplierContact: "Contact Person",
-      supplierEmail: "contact@supplier.com",
-      date: new Date().toISOString().split("T")[0], // Today's date
-      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 7 days from now
-      status: "pending",
-      currency: "USD",
-      paymentTerms: "Net 30",
-      priority: "normal",
-      notes: "This is a newly created purchase order.",
-      items: [
-        {
-          material: "Generic Material",
-          quantity: 100,
-          unit: "pcs",
-          price: 10.0,
-        },
-      ],
-    }
-  }
-
-  return orders[poId as keyof typeof orders]
-}
-
 export function PurchaseOrderViewDialog({ open, onOpenChange, poId }: PurchaseOrderViewDialogProps) {
-  const po = getPurchaseOrderData(poId)
+  const { purchaseOrders, purchaseOrderMaterials, suppliers, materials } = useProcurement()
+  const supplierMapper = useMemo(() => {
+    return suppliers.reduce((acc: Record<string, Suppliers>, curr) => {
+      if (!acc[curr.supplierId]) acc[curr.supplierId] = curr
+      return acc;
+    }, {})
+  }, [suppliers])
+
+  const materialMapper = useMemo(() => {
+    return materials.reduce((acc: Record<string, Material>, curr) => {
+      if (!acc[curr.materialId]) acc[curr.materialId] = curr
+      return acc;
+    }, {})
+  }, [materials])
+
+  const orders = useMemo(() => {
+    return purchaseOrders.reduce((acc: Record<string, any>, curr) => {
+      if (!acc[curr.purchaseId]) {
+        acc[curr.purchaseId] = {
+          id: curr.purchaseId,
+          supplier: supplierMapper[curr.supplierId]?.name || "",
+          supplierContact: supplierMapper[curr.supplierId]?.contactPerson || "",
+          supplierEmail: supplierMapper[curr.supplierId]?.email || "",
+          date: convertDate(curr.createdOn || curr.modifiedOn),
+          dueDate: convertDate(curr.dueDate), // 7 days from now
+          status: curr.status || "pending",
+          currency: curr.currency,
+          paymentTerms: curr.paymentTerms,
+          priority: curr.priority,
+          notes: curr.notes,
+          items: purchaseOrderMaterials.filter(item => item.purchaseOrderId === curr.purchaseId).map(item => ({
+            material: materialMapper[item.materialId]?.name || "",
+            quantity: item.quantity,
+            unit: item.unit,
+            price: item.unitPrice,
+
+          })),
+        }
+      }
+      return acc;
+    }, {})
+  }, [purchaseOrders, purchaseOrderMaterials])
   const { toast } = useToast()
+
+  const po = useMemo(() => {
+    return orders[poId]
+  }, [poId, orders])
+
 
   if (!po) {
     return null

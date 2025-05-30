@@ -48,9 +48,11 @@
     --chart-3: 40 90% 50%;
     --chart-4: 0 90% 60%;
     --chart-5: 270 60% 60%;
+    --rdp-chevron-fill: black;
   }
 
   .dark {
+    --rdp-chevron-fill: white;
     --background: 222 47% 11%; /* darker complementary color to #f2f6fa */
     --card: 222 47% 12%;
     --foreground: 210 40% 98%;
@@ -100,7 +102,8 @@
 @layer base {
   * {
     @apply border-border;
-    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-property: color, background-color, border-color,
+      text-decoration-color, fill, stroke;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     transition-duration: 150ms;
   }
