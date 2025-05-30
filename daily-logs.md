@@ -1,6 +1,13 @@
 Date - May 30 -2025
-- Procurement module completed and excluding substitutions 
-- Discussions
+
+- Procurement module completed and excluding substitutions
+
+Bugs
+
+- Bom creating duplicates on edit of the bill
+
+Discussions
+
 - What are substitutions in purchase orders
 
 Date - May 27 -2025
