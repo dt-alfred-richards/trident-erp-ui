@@ -1,3 +1,5 @@
+"use client"
+
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { DataByTableName } from "../api";
 import { getChildObject, removebasicTypes } from "../generic";
@@ -33,7 +35,10 @@ export type MaterialOptions = {
     name: string,
     unit: string,
     cost: number,
-    materialId: string
+    materialId: string,
+    category: string,
+    type: string,
+    status: string
 }
 type Context = {
     bom: BomAndComponent[],
@@ -140,7 +145,7 @@ export const BomProvider = ({ children }: { children: ReactNode }) => {
     }, [clientProposedProductMapper])
 
     const materialOptions = useMemo(() => {
-        return inventory?.map(item => ({ name: item.material, unit: item.unit, cost: item.price, materialId: item.inventoryId }))
+        return inventory?.map(item => ({ name: item.material, unit: item.unit, cost: item.price, materialId: item.inventoryId, category: item.category, type: item.type, status: item.status }))
     }, [inventory])
 
     // Define unit options

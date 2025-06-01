@@ -49,7 +49,7 @@ const ClientContext = createContext<Partial<ClientContext>>({});
 
 export const ClientProvider = ({ children }: { children: ReactNode }) => {
     const clientInstance = new DataByTableName("v1_clients");
-    const clientProposedPriceInstance = new DataByTableName("client_proposed_price")
+    const clientProposedPriceInstance = new DataByTableName("v1_client_products")
     const fetchRef = useRef(true);
 
     const [clientMapper, setClientMapper] = useState<Record<string, Client>>({})

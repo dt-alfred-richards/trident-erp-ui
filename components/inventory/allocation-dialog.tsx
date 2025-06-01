@@ -76,7 +76,7 @@ const saveOrders = (orders: Order[]): void => {
 
 export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = null }: AllocationDialogProps) {
   const { orders: saleOrders, refetchContext } = useOrders()
-  const { updateSaleAllocation, refetchContext: inventoryRefetch } = useInventory()
+  const { updateSaleAllocation, refetchContext: inventoryRefetch, inventory } = useInventory()
   const [searchTerm, setSearchTerm] = useState("")
   const [searchType, setSearchType] = useState<"sku" | "order" | "customer">("order")
   const [orders, setOrders] = useState<AllocationOrder[]>([])
@@ -87,7 +87,7 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
   const { toast } = useToast()
 
   const data = useMemo(() => {
-    return saleOrders.map((item) => ({
+    return saleOrders?.map((item) => ({
       id: item.id,
       customer: item.customer,
       dueDate: item.deliveryDate ? convertDate(item.deliveryDate) : "",
@@ -98,8 +98,6 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
       }))
     }))
   }, [saleOrders])
-
-  console.log({filteredOrders})
 
   // Load orders from storage when component mounts
   useEffect(() => {
@@ -145,7 +143,6 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
     if (priorityFilter !== "all") {
       filtered = filtered.filter((order) => order.priority === priorityFilter)
     }
-
     setFilteredOrders(filtered)
   }, [searchTerm, searchType, orders, priorityFilter])
 
@@ -343,26 +340,7 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
               <div className="flex-1 min-h-0 border rounded-md">
                 <ScrollArea className="h-[350px] rounded-md">
                   <div className="p-4 space-y-3">
-                    {searchTerm.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-8 text-center">
-                        <Search className="h-12 w-12 text-muted-foreground/30 mb-4" />
-                        <p className="text-muted-foreground">
-                          {searchType === "sku"
-                            ? "Enter a SKU to find orders requiring that product"
-                            : searchType === "order"
-                              ? "Enter an order ID to search"
-                              : "Enter a customer name to search"}
-                        </p>
-                      </div>
-                    ) : filteredOrders.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-8 text-center">
-                        <AlertCircle className="h-12 w-12 text-muted-foreground/30 mb-4" />
-                        <p className="text-muted-foreground">No orders found matching "{searchTerm}"</p>
-                        <Button variant="link" size="sm" className="mt-2" onClick={() => setSearchTerm("")}>
-                          Clear search
-                        </Button>
-                      </div>
-                    ) : (
+                    {
                       filteredOrders
                         .map((order) => {
                           // For SKU search, only show orders with matching products that have remaining quantity
@@ -408,8 +386,8 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
                             </Card>
                           )
                         })
-                        .filter(Boolean) // Remove null entries
-                    )}
+                        .filter(Boolean)
+                    }
                   </div>
                   <ScrollBar orientation="vertical" />
                 </ScrollArea>

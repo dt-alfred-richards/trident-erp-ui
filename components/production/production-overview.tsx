@@ -8,6 +8,7 @@ import { Search, ArrowUpDown } from "lucide-react"
 import { useProductionStore } from "@/hooks/use-production-store"
 import { ProductionActionButton } from "@/components/production/production-action-button"
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
+import { useOrders } from "@/contexts/order-context"
 
 interface ProductionOverviewProps {
   onProduceClick: (sku: string, deficit: number) => void
@@ -16,10 +17,22 @@ interface ProductionOverviewProps {
 }
 
 export function ProductionOverview({ onProduceClick, onViewOrders, onViewDemand }: ProductionOverviewProps) {
-  const { productionData, productionOrders } = useProductionStore()
+  const { productionOrders } = useProductionStore()
+  const { clientProposedProductMapper } = useOrders()
   const [searchQuery, setSearchQuery] = useState("")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
+  const productionData = useMemo(() => {
+    return Object.values(clientProposedProductMapper).flat().map(item => ({
+      sku: item.name,
+      productId: item.productId,
+      pendingOrders: "",
+      inProduction: 0,
+      availableStock: 500,
+      deficit: 1500,
+      status: "deficit",
+    }))
+  }, [clientProposedProductMapper])
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 5

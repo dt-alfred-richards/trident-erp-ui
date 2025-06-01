@@ -35,7 +35,7 @@ import { convertDate } from "../generic"
 
 export function SalesTable() {
   // Use order context
-  const { orders = [], approveOrder, rejectOrder, getOrderById, cancelOrder, refetchContext } = useOrders()
+  const { orders = [], approveOrder, rejectOrder, getOrderById, cancelOrder, refetchContext, referenceMapper } = useOrders()
 
   // Filter states
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined)
@@ -202,6 +202,15 @@ export function SalesTable() {
 
   // Get the selected order
   const selectedOrder = selectedOrderId ? getOrderById(selectedOrderId) : null
+
+  const referenceNameMapper = useMemo(() => {
+    return Object.values(referenceMapper).flat().reduce((acc: Record<string, string>, curr) => {
+      if (!acc[curr.referenceId]) {
+        acc[curr.referenceId] = curr.name
+      }
+      return acc;
+    }, {})
+  }, [referenceMapper])
 
   return (
     <div className="space-y-4 bg-white dark:bg-[#0f1729] rounded-lg p-4 shadow-sm dark:text-gray-100">
@@ -384,7 +393,7 @@ export function SalesTable() {
                   <TableCell className="py-3">{convertDate(order?.orderDate)}</TableCell>
                   <TableCell className="font-medium text-primary">{order?.id || ""}</TableCell>
                   <TableCell>{order.customer}</TableCell>
-                  <TableCell>{order.reference}</TableCell>
+                  <TableCell>{referenceNameMapper[order.reference] || ""}</TableCell>
                   <TableCell>{convertDate(order.deliveryDate)}</TableCell>
                   <TableCell>
                     <PriorityIndicator priority={order.priority} />

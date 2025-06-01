@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { format } from "date-fns"
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { AlertCircle, Info, CalendarIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -29,6 +29,9 @@ import { Card, CardContent } from "@/components/ui/card"
 import { useRawMaterialsStore } from "@/hooks/use-raw-materials-store"
 import { useToast } from "@/components/ui/use-toast"
 import { useOrders } from "@/contexts/order-context"
+import { BomAndComponent, MaterialOptions, useBomContext } from "../bom/bom-context"
+import { useProduction } from "./production-context"
+import { getChildObject } from "../generic"
 
 interface CreateProductionDialogProps {
   open: boolean
@@ -42,7 +45,8 @@ interface BomComponentWithAvailability extends BomComponentType {
   isSelected: boolean
   isSufficient: boolean
   type?: string
-  category?: string
+  category?: string,
+  bomId: string
 }
 
 // Material category mapping
@@ -55,6 +59,8 @@ const materialCategoryMap: Record<string, string> = {
 
 export function CreateProductionDialog({ open, onOpenChange, sku, deficit }: CreateProductionDialogProps) {
   const { clientProposedProductMapper } = useOrders()
+  const { createProductionOrder, refetch } = useProduction()
+  const { bom = [], materialOptions = [] } = useBomContext()
   const [quantity, setQuantity] = useState("")
   const [selectedSku, setSelectedSku] = useState("")
   const [assignedTo, setAssignedTo] = useState("")
@@ -65,14 +71,35 @@ export function CreateProductionDialog({ open, onOpenChange, sku, deficit }: Cre
   const [allComponentsSelected, setAllComponentsSelected] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const { createProductionOrder } = useProductionStore()
-  const { boms } = useBomStore()
-  const { rawMaterials } = useInventoryStore()
-  const {
-    rawMaterials: detailedRawMaterials,
-    getRawMaterialByTypeAndCategory,
-    deductRawMaterialQuantity,
-  } = useRawMaterialsStore()
+  const materialMapper = useMemo(() => {
+    return materialOptions.reduce((acc: Record<string, MaterialOptions>, curr) => {
+      if (!acc[curr.materialId]) {
+        acc[curr.materialId] = curr
+      }
+      return acc;
+    }, {})
+  }, [materialOptions])
+
+  const createBom = useCallback((bomItem: BomAndComponent, bomId: string) => {
+    return bomItem.components.flatMap(item => ({
+      available: item.quantity,
+      cost: item.cost,
+      isSelected: false,
+      isSufficient: false,
+      materialId: item.materialId,
+      materialName: materialMapper[item.materialId]?.name || "",
+      quantity: item.quantity,
+      category: materialMapper[item.materialId]?.category || '',
+      unit: materialMapper[item.materialId]?.unit,
+      bomId
+    } as BomComponentWithAvailability))
+  }, [quantity])
+
+  useEffect(() => {
+    const _bomComponents = bom.filter(item => item.productId === selectedSku).flatMap(item => [...createBom(item, item.bomId)])
+    setBomComponents(_bomComponents)
+  }, [selectedSku, bom, quantity])
+
   const { toast } = useToast()
 
   // Updated SKU options as requested
@@ -90,67 +117,6 @@ export function CreateProductionDialog({ open, onOpenChange, sku, deficit }: Cre
     Labels: ["500ml Standard", "1L Premium", "2L Economy", "750ml Special", "330ml Mini"],
     Shrink: ["480mm", "530mm"],
   }
-
-  // Update BOM components when SKU or quantity changes
-  useEffect(() => {
-    if (!selectedSku) {
-      setBomComponents([])
-      setBomId("")
-      return
-    }
-
-    // Get BOM for the selected SKU
-    const bomForSku = boms.find(
-      (bom) =>
-        bom.productName.toLowerCase().includes(selectedSku.toLowerCase()) ||
-        selectedSku.toLowerCase().includes(bom.productName.toLowerCase()),
-    )
-
-    if (!bomForSku) {
-      setBomComponents([])
-      setBomId("")
-      return
-    }
-
-    setBomId(bomForSku.id)
-
-    // Calculate required quantities and check availability
-    const requiredQuantity = Number(quantity) || 0
-    const componentsWithAvailability = bomForSku.components.map((component) => {
-      // Get the default type for this material if not specified
-      const type = component.type || getDefaultType(component.materialName)
-
-      // Get the category for this material
-      const category = getMaterialCategory(component.materialName)
-
-      // Try to get the exact raw material by type and category
-      const exactRawMaterial = getRawMaterialByTypeAndCategory(category, type)
-
-      // If found, use its quantity, otherwise fall back to the old method
-      let available = 0
-      if (exactRawMaterial) {
-        available = exactRawMaterial.quantity
-      } else {
-        // Fallback to the old method
-        const material = rawMaterials.find((m) => m.name.toLowerCase() === component.materialName.toLowerCase())
-        available = material?.quantity || 0
-      }
-
-      const required = component.quantity * requiredQuantity
-      const isSufficient = available >= required
-
-      return {
-        ...component,
-        available,
-        isSelected: isSufficient, // Auto-select if sufficient
-        isSufficient,
-        type,
-        category,
-      }
-    })
-
-    setBomComponents(componentsWithAvailability)
-  }, [selectedSku, quantity, boms, rawMaterials, detailedRawMaterials, getRawMaterialByTypeAndCategory])
 
   // Helper function to get a default type for a material
   const getDefaultType = (materialName: string): string => {
@@ -194,56 +160,21 @@ export function CreateProductionDialog({ open, onOpenChange, sku, deficit }: Cre
     e.preventDefault()
     setIsSubmitting(true)
 
-    if (!selectedSku || !bomId || !allComponentsSelected || !date) {
-      setIsSubmitting(false)
-      return // Prevent submission without a SKU, date, or if components aren't all selected
-    }
 
-    // Deduct materials from inventory
-    // let allDeductionsSuccessful = true
-    // const deductionResults = bomComponents
-    //   .filter((component) => component.isSelected)
-    //   .map((component) => {
-    //     const requiredQty = component.quantity * Number(quantity)
-    //     if (component.category && component.type) {
-    //       const success = deductRawMaterialQuantity(component.category, component.type, requiredQty)
-    //       if (!success) {
-    //         allDeductionsSuccessful = false
-    //       }
-    //       return { component, success, requiredQty }
-    //     }
-    //     return { component, success: false, requiredQty }
-    //   })
+    if (!createProductionOrder || !date || !refetch) return
 
-    // if (!allDeductionsSuccessful) {
-    //   // Show error toast
-    //   toast({
-    //     title: "Inventory Update Failed",
-    //     description: "Some materials could not be deducted from inventory. Please check availability.",
-    //     variant: "destructive",
-    //   })
-    //   setIsSubmitting(false)
-    //   return
-    // }
-
-    // Create the production order
-    // createProductionOrder({
-    //   sku: selectedSku,
-    //   quantity: Number.parseInt(quantity),
-    //   deadline: date.toISOString(),
-    //   assignedTo,
-    //   bomId,
-    // })
-
-    // // Show success toast
-    // toast({
-    //   title: "Production Order Created",
-    //   description: `Successfully created production order for ${quantity} units of ${selectedSku} and updated inventory.`,
-    //   variant: "default",
-    // })
-
-    // setIsSubmitting(false)
-    // onOpenChange(false)
+    Promise.allSettled(
+      bomComponents.map(item => createProductionOrder({
+        bomId: item.bomId,
+        deadline: date,
+        productId: selectedSku,
+        quantity
+      }))
+    ).then(() => {
+      refetch()
+      onOpenChange(false)
+      setSelectedSku("")
+    })
   }
 
   return (
@@ -327,23 +258,6 @@ export function CreateProductionDialog({ open, onOpenChange, sku, deficit }: Cre
                       </PopoverContent>
                     </Popover>
                   </div>
-
-                  {/* Assign To */}
-                  <div className="space-y-2">
-                    <Label htmlFor="assignedTo">Assign To</Label>
-                    <Select value={assignedTo} onValueChange={setAssignedTo}>
-                      <SelectTrigger id="assignedTo">
-                        <SelectValue placeholder="Select team member" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {teamMembers.map((member) => (
-                          <SelectItem key={member} value={member}>
-                            {member}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -374,7 +288,7 @@ export function CreateProductionDialog({ open, onOpenChange, sku, deficit }: Cre
                                 <Checkbox
                                   checked={component.isSelected}
                                   onCheckedChange={(checked) => handleComponentToggle(index, checked as boolean)}
-                                  disabled={!component.isSufficient}
+                                // disabled={!component.isSufficient}
                                 />
                               </TableCell>
                               <TableCell className="font-medium">{component.materialName}</TableCell>
@@ -431,7 +345,7 @@ export function CreateProductionDialog({ open, onOpenChange, sku, deficit }: Cre
           <DialogFooter className="mt-6">
             <Button
               type="submit"
-              disabled={!selectedSku || !date || !assignedTo || !quantity}
+              disabled={!selectedSku || !date || !quantity || bomComponents.length !== bomComponents.filter(item => item.isSelected).length}
               className="bg-[#1b84ff] text-white hover:bg-[#0a6edf]"
             >
               {isSubmitting ? "Creating Order..." : "Create Production Order"}

@@ -33,7 +33,7 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
-import { SaleOrderDetail, ShippingAddress, useOrders, V1Sale } from "@/contexts/order-context"
+import { ClientReference, SaleOrderDetail, ShippingAddress, useOrders, V1Sale } from "@/contexts/order-context"
 import { getChildObject } from "../generic"
 // Mock data for products
 
@@ -87,11 +87,20 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
   const [orderDate] = useState<Date>(new Date()) // Remove setOrderDate since it's now fixed
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<Date | undefined>(undefined)
   const [clientId, setClientId] = useState("")
-  const [reference, setReference] = useState("")
+  const [reference, setReference] = useState<string>("")
   const [poDate, setPoDate] = useState<Date | undefined>(undefined)
   const [poId, setPoId] = useState("")
   const [poNumber, setPoNumber] = useState("") // New state for Purchase Order Number
   const [remarks, setRemarks] = useState("")
+
+  const referenceNameMapper = useMemo(() => {
+    return Object.values(referenceMapper).flat().reduce((acc: Record<string, string>, curr) => {
+      if (!acc[curr.referenceId]) {
+        acc[curr.referenceId] = curr.name
+      }
+      return acc;
+    }, {})
+  }, [referenceMapper])
 
   // Client details (auto-populated)
   const [clientName, setClientName] = useState("")
@@ -448,7 +457,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                     <SelectContent>
                       {availableReferences.map((ref) => (
                         <SelectItem key={ref} value={ref}>
-                          {ref}
+                          {referenceNameMapper[ref] || ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -654,7 +663,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
 
                       {/* Cases */}
                       <div className="space-y-2">
-                        <Label htmlFor="cases">Cases</Label>
+                        <Label htmlFor="cases">Quantity</Label>
                         <Input
                           id="cases"
                           type="number"

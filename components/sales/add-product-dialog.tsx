@@ -82,8 +82,7 @@ export function AddProductDialog({ open, onOpenChange, onAdd, existingIds, clien
       sku: values.sku,
     }
 
-
-    addClientProduct(newProduct).then(() => {
+    addClientProduct(newProduct).then((res) => {
       // Show success toast
       toast({
         title: "Product added",

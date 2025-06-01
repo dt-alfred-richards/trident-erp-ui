@@ -54,8 +54,6 @@ export function PurchaseOrderDialog({ open, onOpenChange, onCreateOrder }: Purch
     { id: crypto.randomUUID(), material: "", quantity: "", unit: "kg", price: "" },
   ])
 
-  console.log({ lineItems })
-
   const handleLineItemChange = (id: string, field: string, value: string) => {
     setLineItems((prev) => prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)))
   }

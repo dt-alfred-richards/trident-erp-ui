@@ -164,7 +164,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const clientInstance = new DataByTableName("v1_clients");
   const clientReferenceInstance = new DataByTableName("client_references");
   const shippingAddressInstance = new DataByTableName("shipping_addresses");
-  const clientProposedProducts = new DataByTableName("client_proposed_products");
+  const clientProposedProducts = new DataByTableName("v1_client_products");
   const saleOrderDetailInstance = new DataByTableName("v1_sales_order_details");
   const eventLoggerInstance = new DataByTableName("events_logger");
 
@@ -238,6 +238,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
           createdAt: item.createdOn,
           modifiedOn: item.modifiedOn,
           clientId: item.clientId,
+          remarks: item.remarks,
           statusHistory: _eventsLogger.filter((i: EventLogger) => i.tableName === "v1_sales" && i.tableId === item.id).map((item: EventLogger) => ({
             timestamp: item.createdOn,
             status: item.fieldValue,
@@ -259,7 +260,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
           }).filter((item: any) => item)
         })
       })
-      setOrders(_orders)
+      setOrders(_orders.filter((item: any) => item))
       setSaleOrders(saleResponse)
       setReferenceMapper(_referenceMapper)
       setShippingAddressMapper(_shippingAddressMapper)

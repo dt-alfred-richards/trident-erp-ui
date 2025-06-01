@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import {
   Dialog,
   DialogContent,
@@ -20,8 +20,9 @@ import { useBomStore } from "@/hooks/use-bom-store"
 import { useInventoryStore } from "@/hooks/use-inventory-store"
 import type { BomComponentType } from "@/types/bom"
 import { useOrders } from "@/contexts/order-context"
-import { Bom, BomComponent, useBomContext } from "./bom-context"
+import { Bom, BomComponent, MaterialOptions, useBomContext } from "./bom-context"
 import { useInventory } from "@/app/inventory-context"
+import { Material } from "@/app/procurement/procurement-context"
 
 // Extended component type to include the type field
 interface ExtendedBomComponentType extends BomComponentType {
@@ -83,7 +84,6 @@ export function CreateBomDialog({ open, onOpenChange }: CreateBomDialogProps) {
   const handleRemoveComponent = (index: number) => {
     setComponents(components.filter((_, i) => i !== index))
   }
-
   const handleComponentChange = (index: number, field: keyof ExtendedBomComponentType, value: string | number) => {
     const updatedComponents = [...components]
 
@@ -91,28 +91,12 @@ export function CreateBomDialog({ open, onOpenChange }: CreateBomDialogProps) {
       const selectedItem = materialOptions.find((item) => item.name === value)
       const typeOptions = getTypeOptions(value as string)
       const defaultType = typeOptions[0] || "Standard"
-
       updatedComponents[index] = {
         ...updatedComponents[index],
         [field]: value as string,
         unit: selectedItem?.unit || "Pcs", // Default to Pcs if not found
         cost: selectedItem?.cost || 0,
         type: defaultType, // Set default type based on selected material
-      }
-    } else if (field === "cost") {
-      // Ensure cost is a valid number
-      let costValue = 0
-      if (typeof value === "string") {
-        // Remove currency symbol if present and parse as float
-        const cleanValue = value.replace(/[^\d.-]/g, "")
-        costValue = Number.parseFloat(cleanValue) || 0
-      } else {
-        costValue = value as number
-      }
-
-      updatedComponents[index] = {
-        ...updatedComponents[index],
-        cost: costValue,
       }
     } else {
       updatedComponents[index] = {
@@ -123,12 +107,20 @@ export function CreateBomDialog({ open, onOpenChange }: CreateBomDialogProps) {
 
     setComponents(updatedComponents)
   }
+  const materialMapper = useMemo(() => {
+    return materialOptions.reduce((acc: Record<string, MaterialOptions>, curr) => {
+      if (!acc[curr.materialId]) {
+        acc[curr.materialId] = curr
+      }
+      return acc;
+    }, {})
+  }, [materialOptions])
 
-  const calculateTotalCost = () => {
+  const calculateTotalCost = useCallback(() => {
     return components.reduce((total, component) => {
-      return total + component.cost * component.quantity
+      return total + (materialMapper[component.materialId]?.cost || 0) * component.quantity
     }, 0)
-  }
+  }, [components, materialMapper])
 
   const handleSubmit = () => {
     // Validation
@@ -290,7 +282,8 @@ export function CreateBomDialog({ open, onOpenChange }: CreateBomDialogProps) {
                       </TableCell>
                       <TableCell>
                         <Select
-                          value={component.unit}
+                          disabled={true}
+                          value={materialMapper[component.materialId]?.unit || ""}
                           onValueChange={(value) => handleComponentChange(index, "unit", value)}
                         >
                           <SelectTrigger>
@@ -311,7 +304,7 @@ export function CreateBomDialog({ open, onOpenChange }: CreateBomDialogProps) {
                           min="0"
                           step="0.01"
                           disabled={true}
-                          value={component.cost}
+                          value={materialMapper[component.materialId]?.cost || 0}
                           onChange={(e) => handleComponentChange(index, "cost", e.target.value)}
                           className="w-full"
                         />

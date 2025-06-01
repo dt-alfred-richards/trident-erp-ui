@@ -75,8 +75,6 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
     order.deliveryDate ? new Date(order.deliveryDate) : undefined,
   )
 
-  console.log({ order, reference })
-
   const [shippingAddresses, setShippingAddresses] = useState<ShippingAddress[]>([])
   const [selectedShippingAddressId, setSelectedShippingAddressId] = useState(order.shippingAddressId || "")
   // Tax location state
@@ -533,7 +531,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
 
                     {/* Cases */}
                     <div className="space-y-2">
-                      <Label htmlFor="cases">Cases</Label>
+                      <Label htmlFor="cases">Quantity</Label>
                       <Input
                         id="cases"
                         type="number"

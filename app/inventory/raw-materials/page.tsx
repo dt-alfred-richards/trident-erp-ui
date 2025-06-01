@@ -139,7 +139,6 @@ export default function RawMaterialsPage() {
     updatedItems.forEach((updatedItem) => {
       const material = rawMaterials.find((m) => m.id === updatedItem.id)
       if (material) {
-        console.log({ material, wastageData })
         // updateRawMaterialQuantity(material.category, material.material, updatedItem.quantity)
       }
     })

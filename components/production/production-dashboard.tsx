@@ -14,6 +14,7 @@ import { useProductionStore } from "@/hooks/use-production-store"
 
 export function ProductionDashboard() {
   const { productionOrders, updateOrderProgress, updateOrderStatus } = useProductionStore()
+
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
   const [updateProgressDialogOpen, setUpdateProgressDialogOpen] = useState(false)
@@ -107,7 +108,7 @@ export function ProductionDashboard() {
             <div>
               <ProductionOverview
                 onProduceClick={handleProduceClick}
-                onViewOrders={() => {}}
+                onViewOrders={() => { }}
                 onViewDemand={handleFilterPendingOrders}
               />
             </div>
