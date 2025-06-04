@@ -1,3 +1,12 @@
+Date - 4th may -2025
+
+Completed
+- Production module
+
+Discussions
+- Discuss on sku in pending orders and how customer is assigned?
+- Discuss on how the produce is working when two orders are provided in the overview table
+
 Date - May 30 -2025
 
 - Procurement module completed and excluding substitutions

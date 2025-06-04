@@ -56,8 +56,10 @@ const getDateDifference = (givenDate: Date) => {
     return diffInDays;
 }
 
-export const getPriority = (givenDate?: Date) => {
-    if (!givenDate) return ""
+export type CommonStatus = "low" | "medium" | "high"
+
+export const getPriority = (givenDate?: Date): "low" | "medium" | "high" => {
+    if (!givenDate) return "low"
     const diff = getDateDifference(givenDate)
     if (diff <= 2) {
         return "high"

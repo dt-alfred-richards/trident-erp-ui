@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -19,6 +19,9 @@ import { AlertCircle, Clock, ArrowUp } from "lucide-react"
 import type { ProductionOrder } from "@/types/production"
 import { Separator } from "@/components/ui/separator"
 import { ConfirmationDialog } from "@/components/common/confirmation-dialog"
+import { useProduction } from "./production-context"
+import { useOrders } from "@/contexts/order-context"
+import { convertDate } from "../generic"
 
 // Define a type for progress history entries
 interface ProgressHistoryEntry {
@@ -106,7 +109,6 @@ const completedUnitsStore: Record<string, number> = {}
 interface UpdateProgressDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  orders: ProductionOrder[]
   onUpdateProgress: (orderId: string, progress: number) => void
   onSwitchToTracking?: () => void
 }
@@ -114,7 +116,6 @@ interface UpdateProgressDialogProps {
 export function UpdateProgressDialog({
   open,
   onOpenChange,
-  orders,
   onUpdateProgress,
   onSwitchToTracking,
 }: UpdateProgressDialogProps) {
@@ -128,6 +129,31 @@ export function UpdateProgressDialog({
   const [updateConfirmDialogOpen, setUpdateConfirmDialogOpen] = useState(false)
   const [progressHistory, setProgressHistory] = useState<ProgressHistoryEntry[]>([])
 
+  const { productionOrders, updateProductionOrder, refetch } = useProduction()
+  const { clientProposedProductMapper } = useOrders()
+
+  const productNameMapper = useMemo(() => {
+    return Object.values(clientProposedProductMapper).flat().reduce((acc: Record<string, string>, curr) => {
+      if (!acc[curr.productId || ""]) acc[curr.productId || ""] = curr.name;
+      return acc;
+    }, {})
+  }, [clientProposedProductMapper])
+
+  const orders = useMemo(() => {
+    return (productionOrders || []).filter(item => !["cancelled", "completed"].includes(item.status)).map(item => {
+      return ({
+        assignedTo: "",
+        completedQuantity: item.produced,
+        deadline: item.deadline,
+        quantity: item.inProduction,
+        status: item.status,
+        sku: productNameMapper[item.productId],
+        bomId: item.bomId,
+        createdAt: item.createdOn,
+        id: item.productionOrderId
+      } as ProductionOrder)
+    })
+  }, [productionOrders])
   // Reset state when dialog opens
   useEffect(() => {
     if (open && orders.length > 0) {
@@ -225,7 +251,6 @@ export function UpdateProgressDialog({
       setProgressPercentage(Number.parseFloat(exactProgress.toFixed(2)))
     }
   }
-
   const handleUpdateClick = () => {
     const numValue = Number.parseInt(newCompletedUnits, 10)
 
@@ -243,40 +268,14 @@ export function UpdateProgressDialog({
   }
 
   const confirmUpdate = () => {
-    const numValue = Number.parseInt(newCompletedUnits, 10)
+    if (!updateProductionOrder || !refetch) return;
 
-    if (selectedOrderId && !error && !isNaN(numValue) && numValue > 0) {
-      const newTotalCompleted = previousCompletedUnits + numValue
-
-      // Update our completed units store with the exact value
-      completedUnitsStore[selectedOrderId] = newTotalCompleted
-
-      // Calculate exact progress percentage with 2 decimal places
-      const exactProgress = (newTotalCompleted / totalUnits) * 100
-      const formattedProgress = Number.parseFloat(exactProgress.toFixed(2))
-
-      // Create a new progress history entry with the exact units
-      const newHistoryEntry: ProgressHistoryEntry = {
-        timestamp: new Date().toISOString(),
-        completedUnits: newTotalCompleted,
-        totalUnits: totalUnits,
-        progressPercentage: formattedProgress,
-      }
-
-      // Update the progress history in our local store
-      const updatedHistory = [...progressHistory, newHistoryEntry]
-      progressHistoryStore[selectedOrderId] = updatedHistory
-      setProgressHistory(updatedHistory)
-
-      // Update the progress in the parent component
-      onUpdateProgress(selectedOrderId, formattedProgress)
-
-      // Close the confirmation dialog
+    updateProductionOrder(selectedOrderId, { produced: (selectedOrder?.completedQuantity || 0) + parseInt(newCompletedUnits), inProduction: Math.abs((selectedOrder?.quantity || 0) - parseInt(newCompletedUnits)) }).then(() => {
+      refetch()
+      setUpdateConfirmDialogOpen(true)
       setUpdateConfirmDialogOpen(false)
-
-      // Close the main dialog
       onOpenChange(false)
-    }
+    })
   }
 
   const handleCancelProduction = () => {
@@ -284,25 +283,14 @@ export function UpdateProgressDialog({
   }
 
   const confirmCancelProduction = () => {
-    if (selectedOrderId) {
-      // First close the cancel dialog
+    if (!selectedOrderId || !updateProductionOrder || !refetch) return
+
+    updateProductionOrder(selectedOrderId, { status: "cancelled" }).then(() => {
+      refetch()
       setCancelDialogOpen(false)
-
-      // Then close the update dialog
+      setSelectedOrderId("")
       onOpenChange(false)
-
-      // Update the order status to cancelled
-      // We're using a timeout to ensure the dialogs are closed first
-      setTimeout(() => {
-        // Call the onUpdateProgress with a special flag for cancellation
-        onUpdateProgress(selectedOrderId, -1) // Using -1 as a special flag for cancellation
-
-        // Switch to the tracking tab to show the cancelled order
-        if (onSwitchToTracking) {
-          onSwitchToTracking()
-        }
-      }, 100)
-    }
+    })
   }
 
   const selectedOrder = orders.find((order) => order.id === selectedOrderId)
@@ -388,11 +376,8 @@ export function UpdateProgressDialog({
                     <span className="font-medium">SKU:</span> {selectedOrder.sku}
                   </div>
                   <div>
-                    <span className="font-medium">Assigned To:</span> {selectedOrder.assignedTo}
-                  </div>
-                  <div>
                     <span className="font-medium">Deadline:</span>{" "}
-                    {new Date(selectedOrder.deadline).toLocaleDateString()}
+                    {convertDate(selectedOrder.deadline)}
                   </div>
                 </div>
 

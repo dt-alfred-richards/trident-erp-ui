@@ -5,8 +5,8 @@ export interface ProductionOrder {
   sku: string
   quantity: number
   completedQuantity: number
-  deadline: string
-  createdAt: string
+  deadline: Date
+  createdAt: Date
   status: ProductionStatus
   assignedTo: string
   bomId?: string // Add bomId field

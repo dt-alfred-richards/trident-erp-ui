@@ -10,9 +10,13 @@ type V1ProductionOrder = {
     id: number;
     productionOrderId: string; // Generated as 'PROD-' || id
     productId: string;
-    quantity: string;
+    inProduction: number;
+    quantity: number,
+    produced: number;
     deadline: Date; // ISO string (e.g., from timestamptz)
     bomId: string;
+    sku: string;
+    status: string;
 } & Partial<Basic>;
 
 type Context = {
@@ -32,11 +36,19 @@ export const ProductionProvider = ({ children }: { children: ReactNode }) => {
 
     const fetchRef = useRef(true)
 
+    const setStatus = (item: V1ProductionOrder) => {
+        const currentStatus = item.status || "pending";
+        if (item.quantity === item.produced) return "completed"
+        else return currentStatus
+    }
+
     const fetchData = () => {
         Promise.allSettled([
             productionInstance.get(),
         ]).then(responses => {
-            const productionOrderResponse = getChildObject(responses, "0.value.data", [])
+            const productionOrderResponse = getChildObject(responses, "0.value.data", []).map(item => ({
+                ...item, status: setStatus(item)
+            }))
             setProductionOrders(productionOrderResponse)
         })
     }
@@ -48,7 +60,7 @@ export const ProductionProvider = ({ children }: { children: ReactNode }) => {
     }, [])
 
     const createProductionOrder = (newOrder: Partial<V1ProductionOrder>) => {
-        return productionInstance.post(removebasicTypes(newOrder, ["id", "productionOrderId"])).catch(error => {
+        return productionInstance.post(removebasicTypes({ ...newOrder, status: "pending" }, ["id", "productionOrderId"])).catch(error => {
             console.log({ error })
         })
     }
@@ -64,6 +76,8 @@ export const ProductionProvider = ({ children }: { children: ReactNode }) => {
             key: "production_order_id",
             value: orderId
         }, removebasicTypes(productionOrder, ["id", "production_order_id"])).catch(error => {
+            console.log({ error })
+        }).catch(error => {
             console.log({ error })
         })
     }

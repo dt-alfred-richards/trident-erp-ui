@@ -147,7 +147,6 @@ export function ProductionDashboard() {
       <UpdateProgressDialog
         open={updateProgressDialogOpen}
         onOpenChange={setUpdateProgressDialogOpen}
-        orders={productionOrders}
         onUpdateProgress={handleUpdateProgress}
         onSwitchToTracking={handleSwitchToTracking}
       />

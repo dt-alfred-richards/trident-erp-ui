@@ -57,9 +57,9 @@ const materialCategoryMap: Record<string, string> = {
   Shrink: "Shrink",
 }
 
-export function CreateProductionDialog({ open, onOpenChange, sku, deficit }: CreateProductionDialogProps) {
+export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProductionDialogProps) {
   const { clientProposedProductMapper } = useOrders()
-  const { createProductionOrder, refetch } = useProduction()
+  const { createProductionOrder, refetch, updateProductionOrder } = useProduction()
   const { bom = [], materialOptions = [] } = useBomContext()
   const [quantity, setQuantity] = useState("")
   const [selectedSku, setSelectedSku] = useState("")
@@ -80,6 +80,13 @@ export function CreateProductionDialog({ open, onOpenChange, sku, deficit }: Cre
     }, {})
   }, [materialOptions])
 
+  const productNameMapper = useMemo(() => {
+    return Object.values(clientProposedProductMapper).flat().reduce((acc: Record<string, string>, curr) => {
+      if (!acc[curr.productId || ""]) acc[curr.productId || ""] = curr.name;
+      return acc;
+    }, {})
+  }, [clientProposedProductMapper])
+
   const createBom = useCallback((bomItem: BomAndComponent, bomId: string) => {
     return bomItem.components.flatMap(item => ({
       available: item.quantity,
@@ -98,7 +105,10 @@ export function CreateProductionDialog({ open, onOpenChange, sku, deficit }: Cre
   useEffect(() => {
     const _bomComponents = bom.filter(item => item.productId === selectedSku).flatMap(item => [...createBom(item, item.bomId)])
     setBomComponents(_bomComponents)
-  }, [selectedSku, bom, quantity])
+    if (sku) {
+      setSelectedSku(sku)
+    }
+  }, [selectedSku, bom, quantity, sku])
 
   const { toast } = useToast()
 
@@ -156,32 +166,51 @@ export function CreateProductionDialog({ open, onOpenChange, sku, deficit }: Cre
     setBomComponents(updatedComponents)
   }
 
+  const onUpdateProductionOrder = () => {
+    if (!updateProductionOrder || !date || !refetch) return;
+    updateProductionOrder(sku, { quantity: parseInt(quantity), deadline: date }).then(() => {
+      setDate(null)
+      setQuantity("")
+      refetch()
+      onOpenChange(false)
+      setSelectedSku("")
+      setIsSubmitting(false)
+    })
+  }
+
+  console.log({ sku, open })
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
+    if (!createProductionOrder || !date || !refetch || !updateProductionOrder) return
 
-    if (!createProductionOrder || !date || !refetch) return
-
-    Promise.allSettled(
-      bomComponents.map(item => createProductionOrder({
-        bomId: item.bomId,
-        deadline: date,
-        productId: selectedSku,
-        quantity
-      }))
-    ).then(() => {
-      refetch()
-      onOpenChange(false)
-      setSelectedSku("")
-    })
+    if (sku) {
+      onUpdateProductionOrder()
+    } else {
+      Promise.allSettled(
+        bomComponents.map(item => createProductionOrder({
+          bomId: item.bomId,
+          deadline: date,
+          productId: selectedSku,
+          inProduction: parseInt(quantity),
+          quantity: parseInt(quantity)
+        }))
+      ).then(() => {
+        refetch()
+        onOpenChange(false)
+        setSelectedSku("")
+        setIsSubmitting(false)
+      })
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create Production Order</DialogTitle>
+          <DialogTitle>{`${sku ? "Edit" : "Create"} Production Order`}</DialogTitle>
           <DialogDescription>Create a new production order{sku ? ` for ${sku} SKU` : ""}.</DialogDescription>
         </DialogHeader>
 
@@ -205,7 +234,7 @@ export function CreateProductionDialog({ open, onOpenChange, sku, deficit }: Cre
                   <div className="space-y-2">
                     <Label htmlFor="sku">SKU</Label>
                     {sku ? (
-                      <Input id="sku" value={sku} readOnly className="bg-muted" />
+                      <Input id="sku" value={productNameMapper[sku]} readOnly className="bg-muted" />
                     ) : (
                       <Select value={selectedSku} onValueChange={(value) => setSelectedSku(value)}>
                         <SelectTrigger id="sku">
@@ -345,14 +374,14 @@ export function CreateProductionDialog({ open, onOpenChange, sku, deficit }: Cre
           <DialogFooter className="mt-6">
             <Button
               type="submit"
-              disabled={!selectedSku || !date || !quantity || bomComponents.length !== bomComponents.filter(item => item.isSelected).length}
+              disabled={!selectedSku || !date || !quantity || bomComponents.length <= 0 || bomComponents.length !== bomComponents.filter(item => item.isSelected).length}
               className="bg-[#1b84ff] text-white hover:bg-[#0a6edf]"
             >
-              {isSubmitting ? "Creating Order..." : "Create Production Order"}
+              {isSubmitting ? `${sku ? "Editing" : "Creating"} Order...` : `${sku ? "Edit" : "Create"} Production Order`}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
-    </Dialog>
+    </Dialog >
   )
 }

@@ -9,6 +9,10 @@ import { useProductionStore } from "@/hooks/use-production-store"
 import { ProductionActionButton } from "@/components/production/production-action-button"
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
 import { useOrders } from "@/contexts/order-context"
+import { useProduction } from "./production-context"
+import { getChildObject } from "../generic"
+import { useBomContext } from "../bom/bom-context"
+import { useInventory } from "@/app/inventory-context"
 
 interface ProductionOverviewProps {
   onProduceClick: (sku: string, deficit: number) => void
@@ -17,22 +21,45 @@ interface ProductionOverviewProps {
 }
 
 export function ProductionOverview({ onProduceClick, onViewOrders, onViewDemand }: ProductionOverviewProps) {
-  const { productionOrders } = useProductionStore()
+  const { productionOrders = [] } = useProduction()
+  const { bom = [] } = useBomContext();
+  const { inventory } = useInventory()
   const { clientProposedProductMapper } = useOrders()
   const [searchQuery, setSearchQuery] = useState("")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
+  const notCompletedOrders = useMemo(() => {
+    return productionOrders.filter(item => !["cancelled", "completed"].includes(item.status))
+  }, [productionOrders])
+
+  const getCummulativeSum = ({ key, refObject, defaultValue = 0 }: { key: string, refObject: any[], defaultValue?: number }) => {
+    return refObject.reduce((acc, curr) => {
+      acc += getChildObject(curr, key, defaultValue)
+      return acc;
+    }, 0)
+  }
+
   const productionData = useMemo(() => {
-    return Object.values(clientProposedProductMapper).flat().map(item => ({
-      sku: item.name,
-      productId: item.productId,
-      pendingOrders: "",
-      inProduction: 0,
-      availableStock: 500,
-      deficit: 1500,
-      status: "deficit",
-    }))
-  }, [clientProposedProductMapper])
+    return Object.values(clientProposedProductMapper).flat().map(item => {
+      const productOrders = notCompletedOrders.filter(i => i.productId === item.productId),
+        availableStock = 0,
+        deficit = Math.abs(
+          getCummulativeSum({ key: "inProduction", refObject: productOrders }) -
+          availableStock
+        )
+      return ({
+        sku: item.name,
+        productId: item.productId,
+        pendingOrders: productOrders.length || 0,
+        inProduction: getCummulativeSum({ key: "inProduction", refObject: productOrders }),
+        produced: getCummulativeSum({ key: "produced", refObject: productOrders }),
+        availableStock,
+        activeOrders: productOrders.length,
+        deficit
+      })
+    })
+  }, [clientProposedProductMapper, notCompletedOrders])
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 5
@@ -152,7 +179,7 @@ export function ProductionOverview({ onProduceClick, onViewOrders, onViewDemand 
                   <TableCell className="font-medium">{item.sku}</TableCell>
                   <TableCell className="text-right">{item.pendingOrders.toLocaleString()}</TableCell>
                   <TableCell className="text-right">{item.inProduction.toLocaleString()}</TableCell>
-                  <TableCell className="text-right">{getLatestProducedUnits(item.sku).toLocaleString()}</TableCell>
+                  <TableCell className="text-right">{item.produced}</TableCell>
                   <TableCell className="text-right">{item.availableStock.toLocaleString()}</TableCell>
                   <TableCell
                     className={`text-right font-medium ${item.deficit > 0 ? "text-red-500" : "text-green-500"}`}
@@ -160,9 +187,9 @@ export function ProductionOverview({ onProduceClick, onViewOrders, onViewDemand 
                     {item.deficit > 0 ? item.deficit.toLocaleString() : "Sufficient"}
                   </TableCell>
                   <TableCell className="text-right">
-                    {activeOrdersBySku[item.sku] ? (
+                    {item.activeOrders ? (
                       <Badge variant="outline" className="ml-auto">
-                        {activeOrdersBySku[item.sku]} orders
+                        {item.activeOrders} orders
                       </Badge>
                     ) : (
                       <span className="text-muted-foreground">None</span>
@@ -172,7 +199,7 @@ export function ProductionOverview({ onProduceClick, onViewOrders, onViewDemand 
                     <div className="flex justify-end">
                       <ProductionActionButton
                         type="produce"
-                        sku={item.sku}
+                        sku={item.productId}
                         deficit={item.deficit}
                         onClick={onProduceClick}
                       />
