@@ -140,7 +140,7 @@ export function UpdateProgressDialog({
   }, [clientProposedProductMapper])
 
   const orders = useMemo(() => {
-    return (productionOrders || []).filter(item => !["cancelled", "completed"].includes(item.status)).map(item => {
+    return (productionOrders || []).map(item => {
       return ({
         assignedTo: "",
         completedQuantity: item.produced,
@@ -154,6 +154,13 @@ export function UpdateProgressDialog({
       } as ProductionOrder)
     })
   }, [productionOrders])
+
+
+  useEffect(() => {
+    const completedUnits = orders.find(item => item.id === selectedOrderId)?.completedQuantity
+    setNewCompletedUnits(completedUnits ? completedUnits + '' : '');
+  }, [selectedOrderId])
+
   // Reset state when dialog opens
   useEffect(() => {
     if (open && orders.length > 0) {
@@ -382,35 +389,6 @@ export function UpdateProgressDialog({
                 </div>
 
                 <Separator className="my-2" />
-
-                <div className="space-y-2">
-                  <h3 className="text-sm font-medium">Progress History</h3>
-                  <div className="h-[180px] rounded-md border overflow-y-auto">
-                    {progressHistory.length === 0 ? (
-                      <div className="p-4 text-center text-sm text-muted-foreground">No progress history available</div>
-                    ) : (
-                      <div className="p-4 space-y-4">
-                        {progressHistory.map((entry, index) => (
-                          <div key={index} className="space-y-1 pb-3 border-b last:border-0">
-                            <div className="flex justify-between items-center">
-                              <div className="flex items-center text-sm font-medium">
-                                <Clock className="h-3 w-3 mr-1 text-muted-foreground" />
-                                {new Date(entry.timestamp).toLocaleDateString()} at{" "}
-                                {new Date(entry.timestamp).toLocaleTimeString()}
-                              </div>
-                              <div className="text-sm font-semibold">{entry.progressPercentage}%</div>
-                            </div>
-                            <div className="text-sm">
-                              <span className="text-muted-foreground">Units:</span> {entry.completedUnits} of{" "}
-                              {entry.totalUnits}
-                            </div>
-                            <Progress value={entry.progressPercentage} className="h-1.5 mt-1" />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
               </>
             )}
           </div>

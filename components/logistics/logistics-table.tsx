@@ -39,22 +39,24 @@ export function LogisticsTable({ status }: LogisticsTableProps) {
   const [itemsPerPage] = useState(10)
   const { orders } = useOrders()
 
-  // const filteredOrders = useMemo(() => {
-  //   return orders.map(item => ({
-  //     id: item.id,
-  //     customer: item.customer,
-  //     sku: "",
-  //     quantity: item.products.reduce((acc, curr) => {
-  //       acc += curr.cases
-  //       return acc;
-  //     }, 0),
-  //     status: item.status === "approved" ? "ready" : "",
-  //     date: convertDate(item.modifiedOn || item.createdAt)
-  //   }))
-  // }, [orders])
+  const filteredOrders = useMemo(() => {
+    return orders.filter(item => ["approved", "ready"].includes(item.status)).map(item => ({
+      id: item.id,
+      customer: item.customer,
+      sku: "",
+      quantity: item.products.reduce((acc, curr) => {
+        acc += curr.cases
+        return acc;
+      }, 0),
+      status: item.status === "approved" ? "ready" : "",
+      date: convertDate(item.modifiedOn || item.createdAt)
+    }))
+  }, [orders])
+
+  console.log({ orders })
 
   // Get logistics data from custom hook with shared context
-  const { updateOrderStatus, filteredOrders } = useLogisticsData(status)
+  const { updateOrderStatus } = useLogisticsData(status)
 
   // Calculate pagination
   const indexOfLastItem = currentPage * itemsPerPage

@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator"
 import { UpdateInventoryDialog } from "@/components/inventory/update-inventory-dialog"
 import { WastageSummaryDialog, type WastageData } from "@/components/inventory/wastage-summary-dialog"
 import { useInventory } from "@/app/inventory-context"
-import { useOrders } from "@/contexts/order-context"
+import { OrderProvider, useOrders } from "@/contexts/order-context"
 import { getChildObject } from "@/components/generic"
 
 type Data = {
@@ -259,96 +259,98 @@ export default function FinishedGoodsPage() {
   }
 
   return (
-    <DashboardShell className="p-6">
-      <CardHeader className="px-0 pt-0 pb-4 flex flex-row items-center justify-between">
-        <CardTitle className="text-2xl font-bold">Finished Goods Inventory Management</CardTitle>
-        <div className="flex space-x-2">
-          <Button
-            onClick={() => setShowWastageDialog(true)}
-            className="ml-auto bg-[#f8285a] hover:bg-[#f8285a]/90 text-white border-[#f8285a]"
-          >
-            <AlertTriangle className="mr-2 h-4 w-4" />
-            Wastage
-          </Button>
-          <Button
-            onClick={() => setShowUpdateDialog(true)}
-            className="ml-auto bg-[#725af2] hover:bg-[#725af2]/90 text-white border-[#725af2]"
-          >
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Update Inventory
-          </Button>
-          <Button
-            onClick={() => {
-              setSelectedSku(null) // Clear any selected SKU
-              setShowAllocationDialog(true)
-            }}
-            className="ml-auto bg-[#43ced7] hover:bg-[#43ced7]/90 text-white border-[#43ced7]"
-          >
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Allocate Stock
-          </Button>
-        </div>
-      </CardHeader>
-
-      <div className="space-y-6">
-        {/* Inventory Overview */}
-        <Card>
-          <CardContent className="pt-6">
-            <InventoryTable
-              key={`inventory-table-${refreshKey}`}
-              inventoryData={inventoryData}
-              onAllocate={(sku) => {
-                setSelectedSku(sku)
+    <OrderProvider>
+      <DashboardShell className="p-6">
+        <CardHeader className="px-0 pt-0 pb-4 flex flex-row items-center justify-between">
+          <CardTitle className="text-2xl font-bold">Finished Goods Inventory Management</CardTitle>
+          <div className="flex space-x-2">
+            <Button
+              onClick={() => setShowWastageDialog(true)}
+              className="ml-auto bg-[#f8285a] hover:bg-[#f8285a]/90 text-white border-[#f8285a]"
+            >
+              <AlertTriangle className="mr-2 h-4 w-4" />
+              Wastage
+            </Button>
+            <Button
+              onClick={() => setShowUpdateDialog(true)}
+              className="ml-auto bg-[#725af2] hover:bg-[#725af2]/90 text-white border-[#725af2]"
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Update Inventory
+            </Button>
+            <Button
+              onClick={() => {
+                setSelectedSku(null) // Clear any selected SKU
                 setShowAllocationDialog(true)
               }}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Allocation History Section - Now expanded by default */}
-        <div>
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-medium">Allocation History</h3>
-            <Button variant="ghost" size="sm" onClick={() => setShowHistory(!showHistory)}>
-              {showHistory ? (
-                <>
-                  <ChevronUp className="h-4 w-4 mr-2" />
-                  Hide History
-                </>
-              ) : (
-                <>
-                  <ChevronDown className="h-4 w-4 mr-2" />
-                  Show History
-                </>
-              )}
+              className="ml-auto bg-[#43ced7] hover:bg-[#43ced7]/90 text-white border-[#43ced7]"
+            >
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Allocate Stock
             </Button>
           </div>
-          <Separator className="my-4" />
-          {showHistory && (
-            <Card>
-              <CardContent className="pt-6">
-                <AllocationHistory key={`allocation-history-${refreshKey}`} allocationHistory={allocationHistory} />
-              </CardContent>
-            </Card>
-          )}
+        </CardHeader>
+
+        <div className="space-y-6">
+          {/* Inventory Overview */}
+          <Card>
+            <CardContent className="pt-6">
+              <InventoryTable
+                key={`inventory-table-${refreshKey}`}
+                inventoryData={inventoryData}
+                onAllocate={(sku) => {
+                  setSelectedSku(sku)
+                  setShowAllocationDialog(true)
+                }}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Allocation History Section - Now expanded by default */}
+          <div>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-medium">Allocation History</h3>
+              <Button variant="ghost" size="sm" onClick={() => setShowHistory(!showHistory)}>
+                {showHistory ? (
+                  <>
+                    <ChevronUp className="h-4 w-4 mr-2" />
+                    Hide History
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-4 w-4 mr-2" />
+                    Show History
+                  </>
+                )}
+              </Button>
+            </div>
+            <Separator className="my-4" />
+            {showHistory && (
+              <Card>
+                <CardContent className="pt-6">
+                  <AllocationHistory key={`allocation-history-${refreshKey}`} allocationHistory={allocationHistory} />
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </div>
-      </div>
 
-      <AllocationDialog
-        open={showAllocationDialog}
-        onOpenChange={setShowAllocationDialog}
-        onAllocate={handleAllocate}
-        initialSku={selectedSku}
-      />
+        <AllocationDialog
+          open={showAllocationDialog}
+          onOpenChange={setShowAllocationDialog}
+          onAllocate={handleAllocate}
+          initialSku={selectedSku}
+        />
 
-      <UpdateInventoryDialog
-        open={showUpdateDialog}
-        onOpenChange={setShowUpdateDialog}
-        inventoryType="finished"
-        items={inventoryData}
-        onUpdateInventory={handleUpdateInventory}
-      />
-      <WastageSummaryDialog open={showWastageDialog} onOpenChange={setShowWastageDialog} wastageData={wastageData} />
-    </DashboardShell>
+        <UpdateInventoryDialog
+          open={showUpdateDialog}
+          onOpenChange={setShowUpdateDialog}
+          inventoryType="finished"
+          items={inventoryData}
+          onUpdateInventory={handleUpdateInventory}
+        />
+        <WastageSummaryDialog open={showWastageDialog} onOpenChange={setShowWastageDialog} wastageData={wastageData} />
+      </DashboardShell>
+    </OrderProvider>
   )
 }

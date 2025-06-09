@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -27,6 +27,7 @@ import {
   CommandSeparator,
 } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { useOrders } from "@/contexts/order-context"
 
 // Define the product type if not already defined elsewhere
 interface Product {
@@ -73,7 +74,26 @@ const mockDrivers = [
 
 export function DispatchDialog({ open, onOpenChange, order, onDispatchComplete }: DispatchDialogProps) {
   // Mock products data since it's not available in the order object
+  const { orders } = useOrders()
+  const saleOrder = useMemo(() => {
+    return orders.find(item => item.id === order.id)
+  }, [orders])
+
   const [orderProducts, set_OrderProducts] = useState<Product[]>([])
+  useEffect(() => {
+    if (!saleOrder) return
+    set_OrderProducts((saleOrder?.products || []).map(item => ({
+      id: item.id,
+      name: item.name,
+      quantity: item.cases,
+      allocated: item.allocated,
+      sku: item.sku,
+      dispatched: 0
+    } as Product)))
+  }, [saleOrder])
+
+  console.log({ order, orders, orderProducts })
+
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([])
 
   // Vehicle ID field
@@ -98,35 +118,6 @@ export function DispatchDialog({ open, onOpenChange, order, onDispatchComplete }
   // Simulate fetching products for this order when the dialog opens
   useEffect(() => {
     if (open) {
-      // Mock data - in a real app, this would be an API call
-      const mockProducts: Product[] = [
-        {
-          id: "prod-1",
-          name: "Product A",
-          sku: "SKU-001",
-          quantity: 10,
-          allocated: 10,
-          dispatched: 5,
-        },
-        {
-          id: "prod-2",
-          name: "Product B",
-          sku: "SKU-002",
-          quantity: 8,
-          allocated: 8,
-          dispatched: 0,
-        },
-        {
-          id: "prod-3",
-          name: "Product C",
-          sku: "SKU-003",
-          quantity: 5,
-          allocated: 5,
-          dispatched: 5, // Fully dispatched
-        },
-      ]
-      set_OrderProducts(mockProducts)
-
       // Auto-fill delivery address from order
       if (order.deliveryAddress) {
         setDeliveryAddress(order.deliveryAddress)

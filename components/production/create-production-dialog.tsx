@@ -82,7 +82,7 @@ export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProduc
 
   const productNameMapper = useMemo(() => {
     return Object.values(clientProposedProductMapper).flat().reduce((acc: Record<string, string>, curr) => {
-      if (!acc[curr.productId || ""]) acc[curr.productId || ""] = curr.name;
+      if (!acc[curr.productId || ""]) acc[curr.productId || ""] = curr.sku;
       return acc;
     }, {})
   }, [clientProposedProductMapper])
@@ -178,39 +178,33 @@ export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProduc
     })
   }
 
-  console.log({ sku, open })
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
     if (!createProductionOrder || !date || !refetch || !updateProductionOrder) return
 
-    if (sku) {
-      onUpdateProductionOrder()
-    } else {
-      Promise.allSettled(
-        bomComponents.map(item => createProductionOrder({
-          bomId: item.bomId,
-          deadline: date,
-          productId: selectedSku,
-          inProduction: parseInt(quantity),
-          quantity: parseInt(quantity)
-        }))
-      ).then(() => {
-        refetch()
-        onOpenChange(false)
-        setSelectedSku("")
-        setIsSubmitting(false)
-      })
-    }
+    Promise.allSettled(
+      bomComponents.map(item => createProductionOrder({
+        bomId: item.bomId,
+        deadline: date,
+        productId: selectedSku || sku,
+        inProduction: parseInt(quantity),
+        quantity: parseInt(quantity)
+      }))
+    ).then(() => {
+      refetch()
+      onOpenChange(false)
+      setSelectedSku("")
+      setIsSubmitting(false)
+    })
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{`${sku ? "Edit" : "Create"} Production Order`}</DialogTitle>
+          <DialogTitle>{`Create Production Order`}</DialogTitle>
           <DialogDescription>Create a new production order{sku ? ` for ${sku} SKU` : ""}.</DialogDescription>
         </DialogHeader>
 
@@ -377,7 +371,7 @@ export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProduc
               disabled={!selectedSku || !date || !quantity || bomComponents.length <= 0 || bomComponents.length !== bomComponents.filter(item => item.isSelected).length}
               className="bg-[#1b84ff] text-white hover:bg-[#0a6edf]"
             >
-              {isSubmitting ? `${sku ? "Editing" : "Creating"} Order...` : `${sku ? "Edit" : "Create"} Production Order`}
+              {isSubmitting ? `${sku ? "Editing" : "Creating"} Order...` : `Create Production Order`}
             </Button>
           </DialogFooter>
         </form>

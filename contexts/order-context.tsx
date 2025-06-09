@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { type Order, type OrderStatus, OrderActionService, SalesOrderDetails } from "@/types/order"
 import type { ProductStatus } from "@/types/product"
 import { DataByTableName } from "@/components/api"
@@ -103,6 +103,7 @@ export type SaleOrderDetail = {
 interface OrderContextType {
   orders: Order[]
   currentUser: string
+  productSkuMapper: Record<string, string>
   filteredOrders: (status: OrderStatus | "all") => Order[]
   approveOrder: (orderId: string) => Promise<void>
   rejectOrder: (orderId: string) => Promise<void>
@@ -158,7 +159,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const [referenceMapper, setReferenceMapper] = useState({})
   const [shippingAddressMapper, setShippingAddressMapper] = useState({})
   const [eventsLogger, setEventsLogger] = useState([])
-  const [clientProposedProductMapper, setClientProposedProductMapper] = useState({})
+  const [clientProposedProductMapper, setClientProposedProductMapper] = useState<Record<string, ClientProposedProduct[]>>({})
   const fetchRef = useRef(true);
   const saleInstance = new DataByTableName("v1_sales");
   const clientInstance = new DataByTableName("v1_clients");
@@ -167,6 +168,15 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const clientProposedProducts = new DataByTableName("v1_client_products");
   const saleOrderDetailInstance = new DataByTableName("v1_sales_order_details");
   const eventLoggerInstance = new DataByTableName("events_logger");
+
+  const productSkuMapper = useMemo(() => {
+    return Object.values(clientProposedProductMapper).flat().reduce((acc: Record<string, string>, curr) => {
+      if (!acc[curr?.productId || ""]) {
+        acc[curr?.productId || ""] = curr.name
+      }
+      return acc;
+    }, {})
+  }, [clientProposedProductMapper])
 
   const fetchData = () => {
     Promise.allSettled([
@@ -456,7 +466,8 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     eventsLogger,
     refetchContext: fetchData,
     saleOrders,
-    deleteSaleOrder
+    deleteSaleOrder,
+    productSkuMapper
   }}>{children}</OrderContext.Provider>
 }
 

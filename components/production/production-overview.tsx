@@ -41,7 +41,7 @@ export function ProductionOverview({ onProduceClick, onViewOrders, onViewDemand 
 
   const productionData = useMemo(() => {
     return Object.values(clientProposedProductMapper).flat().map(item => {
-      const productOrders = notCompletedOrders.filter(i => i.productId === item.productId),
+      const productOrders = productionOrders.filter(i => i.productId === item.productId),
         availableStock = 0,
         deficit = Math.abs(
           getCummulativeSum({ key: "inProduction", refObject: productOrders }) -

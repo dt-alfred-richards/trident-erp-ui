@@ -518,7 +518,7 @@ const PurchaseOrderHelper = ({
                                         {/* Mock GRN data - in a real app, this would be fetched based on the PO */}
                                         {
                                             receivedGoods.map(item => {
-                                                return <TableRow>
+                                                return <TableRow key={`${item.materialId}-${item.id}`}>
                                                     <TableCell>{convertDate(item.modifiedOn)}</TableCell>
                                                     <TableCell>{materialMapper[item.materialId]?.name || ""}</TableCell>
                                                     <TableCell>{`${item.receivedQuantity} ${item.unit}`}</TableCell>

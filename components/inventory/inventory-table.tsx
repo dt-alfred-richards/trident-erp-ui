@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast"
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
 import { useRawMaterialsStore } from "@/hooks/use-raw-materials-store"
 import { useInventory } from "@/app/inventory-context"
+import { useOrders } from "@/contexts/order-context"
 
 // Update the interface to include inventoryData
 interface InventoryTableProps {
@@ -31,6 +32,7 @@ export function InventoryTable({ onAllocate, inventoryData: propInventoryData }:
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const { toast } = useToast()
   const [displayData, setDisplayData] = useState<any[]>([])
+  const { productSkuMapper, clientProposedProductMapper } = useOrders()
 
   // Get raw materials data from the store
   const { rawMaterials } = useRawMaterialsStore()
@@ -41,83 +43,25 @@ export function InventoryTable({ onAllocate, inventoryData: propInventoryData }:
 
   // This would come from your API in a real application
   const defaultInventoryData = useMemo(() => {
-    return inventory.map(item => ({
-      sku: item.material,
-      available: item.quantity || 0,
-      reserved: item.reserved || 0,
-      inProduction: item.inProduction || 0,
+    return Object.values(clientProposedProductMapper).flat().map(item => ({
+      sku: productSkuMapper[item?.productId || ""] || "",
+      available: 1,
+      reserved: 1,
+      inProduction: 1,
     }))
-  }, [inventory])
+  }, [clientProposedProductMapper, productSkuMapper])
+
+  console.log({ defaultInventoryData, clientProposedProductMapper, productSkuMapper })
 
   // Process the inventory data when it changes
   useEffect(() => {
     // Start with the default inventory data
     const processedData = [...defaultInventoryData]
-
-    // Update available quantities based on raw materials data
-    // This is a simplified approach - in a real app, you'd have a more sophisticated mapping
-    processedData.forEach((item) => {
-      // For 500ml, use the quantity from the 500ml Standard label
-      if (item.sku === "500ml") {
-        const material = rawMaterials.find((m) => m.type === "500ml Standard" && m.category === "Labels")
-        if (material) {
-          item.available = material.quantity
-        }
-      }
-
-      // For 750ml, use the quantity from the 750ml Special label
-      else if (item.sku === "750ml") {
-        const material = rawMaterials.find((m) => m.type === "750ml Special" && m.category === "Labels")
-        if (material) {
-          item.available = material.quantity
-        }
-      }
-
-      // For 1000ml, use the quantity from the 1L Premium label
-      else if (item.sku === "1000ml") {
-        const material = rawMaterials.find((m) => m.type === "1L Premium" && m.category === "Labels")
-        if (material) {
-          item.available = material.quantity
-        }
-      }
-
-      // For 2000ml, use the quantity from the 2L Economy label
-      else if (item.sku === "2000ml") {
-        const material = rawMaterials.find((m) => m.type === "2L Economy" && m.category === "Labels")
-        if (material) {
-          item.available = material.quantity
-        }
-      }
-    })
-
-    // If prop data is provided, use it to override the defaults
-    if (propInventoryData) {
-      propInventoryData.forEach((propItem) => {
-        if (!propItem.name && !propItem.id && !propItem.sku) return
-
-        const itemName = propItem.name || propItem.id || propItem.sku
-        const index = processedData.findIndex((item) => item.sku.toLowerCase() === String(itemName).toLowerCase())
-
-        if (index !== -1) {
-          processedData[index].available =
-            propItem.quantity !== undefined
-              ? propItem.quantity
-              : propItem.available !== undefined
-                ? propItem.available
-                : processedData[index].available
-
-          if (propItem.reserved !== undefined) {
-            processedData[index].reserved = propItem.reserved
-          }
-        }
-      })
-    }
-
     setDisplayData(processedData)
-  }, [propInventoryData, rawMaterials])
+  }, [defaultInventoryData])
 
   // Filter data based on search term
-  const filteredData = displayData.filter((item) => item.sku.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredData = useMemo(() => displayData.filter((item) => item.sku.toLowerCase().includes(searchTerm.toLowerCase())), [displayData])
 
   // Sort data if a sort column is selected
   const sortedData = [...filteredData].sort((a, b) => {
