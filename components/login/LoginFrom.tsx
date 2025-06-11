@@ -15,7 +15,7 @@ import { DataByTableName } from "../api"
 import { UAParser } from "ua-parser-js"
 import { getChildObject } from "../generic"
 import { jwtDecode } from "jwt-decode"
-import { useGlobalContext } from "@/app/GlobalContext"
+import { useGlobalContext } from "@/components/GlobalContext"
 
 // Password validation requirements
 const PASSWORD_REQUIREMENTS = [
@@ -119,8 +119,6 @@ export function LoginForm() {
     const handleCheckboxChange = (checked: boolean) => {
         setFormData((prev) => ({ ...prev, rememberMe: checked }))
     }
-
-    console.log({ routerInfo })
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()

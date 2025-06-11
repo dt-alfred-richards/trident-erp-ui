@@ -76,7 +76,7 @@ const saveOrders = (orders: Order[]): void => {
 
 export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = null }: AllocationDialogProps) {
   const { orders: saleOrders, refetchContext } = useOrders()
-  const { updateSaleAllocation, refetchContext: inventoryRefetch, inventory } = useInventory()
+  const { updateSaleAllocation, refetchContext: inventoryRefetch } = useInventory()
   const [searchTerm, setSearchTerm] = useState("")
   const [searchType, setSearchType] = useState<"sku" | "order" | "customer">("order")
   const [orders, setOrders] = useState<AllocationOrder[]>([])
@@ -143,6 +143,7 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
     if (priorityFilter !== "all") {
       filtered = filtered.filter((order) => order.priority === priorityFilter)
     }
+    console.log({ filtered, saleOrders, searchTerm })
     setFilteredOrders(filtered)
   }, [searchTerm, searchType, orders, priorityFilter])
 
@@ -184,7 +185,6 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
       inventoryRefetch()
     })
   }
-
   // Get priority badge
   const getPriorityBadge = (priority: string) => {
     switch (priority) {

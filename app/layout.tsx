@@ -9,6 +9,7 @@ import { OrderProvider } from "@/contexts/order-context"
 import { Poppins } from "next/font/google"
 import { cn } from "@/lib/utils"
 import LayoutHelper from "./LayoutHelper"
+import { GlobalProvider } from "@/components/GlobalContext"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -33,7 +34,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={cn("antialiased", poppins.variable)}>
       <body className={`${inter.className} bg-background`}>
-        <LayoutHelper>{children}</LayoutHelper>
+        <GlobalProvider>
+          <LayoutHelper>{children}</LayoutHelper>
+        </GlobalProvider>
       </body>
     </html >
   )

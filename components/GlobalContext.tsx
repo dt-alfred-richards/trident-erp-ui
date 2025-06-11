@@ -1,8 +1,10 @@
+"use client";
 import { DataByTableName } from "@/components/api";
 import { createType, getChildObject, removebasicTypes } from "@/components/generic";
 import { jwtDecode } from "jwt-decode";
 import { createContext, ReactNode, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { Employee } from "./hr/hr-context";
+import { Employee } from "../app/hr/hr-context";
+import { useRouter } from 'next/navigation' // ✅ Correct
 
 type Token = {
     firstName: string,
@@ -54,17 +56,23 @@ const GlobalContext = createContext<GloabalPropType>({
 
 export const GlobalProvider = ({ children }: { children: ReactNode }) => {
     const fetchRef = useRef(true)
+    const router = useRouter()
     const [userDetails, setUserDetails] = useState({})
     const [usersMapper, setUsersMapper] = useState<Record<string, string>>({})
     const [user, setUser] = useState<Partial<Employee>>({})
     const employeeInstance = new DataByTableName("v1_employee");
-    const token = localStorage.getItem("token") || sessionStorage.getItem("token") || ""
     const [tokenDetails, setTokenDetails] = useState<Token>({} as Token)
     const [sessionInfo, setSessionInfo] = useState<Session[]>([])
+    const [token, setToken] = useState("")
+
+    useEffect(() => {
+        const _token = localStorage?.getItem("token") || sessionStorage?.getItem("token") || ""
+        setToken(_token)
+    }, [])
 
     const sessionInstance = new DataByTableName("v1_user_sessions")
 
-    const fetchData = useCallback(() => {
+    const fetchData = () => {
         const decodeToken = jwtDecode(token) as Token;
 
         Promise.allSettled([
@@ -73,12 +81,16 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
         ]).then(responses => {
             const employeeResponse = getChildObject(responses, "0.value.data.0", {})
             const sessionInfoResponse = getChildObject(responses, "1.value.data", []);
+            const checkForActiveSessions = sessionInfoResponse.find((item: Session) => item.sessionId === decodeToken.sessionId)
 
+            if (!checkForActiveSessions) {
+                router?.push("/login")
+            }
             setSessionInfo(sessionInfoResponse)
             setUser(employeeResponse)
             setTokenDetails(decodeToken)
         })
-    }, [token])
+    }
 
     useEffect(() => {
         if (!fetchRef.current || !token) return;
@@ -97,7 +109,7 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
             } else {
                 sessionStorage.setItem("token", token)
             }
-            window.location.href = "/"
+            router?.push("/")
         }).then(fetchData)
     }
 
@@ -117,7 +129,7 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
         sessionInstance.deleteById({ key: "user_id", value: tokenDetails.userId }).then(() => {
             localStorage.removeItem("token")
             sessionStorage.removeItem("token")
-            window.location.href = "/login"
+            router?.push("/login")
         })
     }
 

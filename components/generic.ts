@@ -98,3 +98,8 @@ export function formatRelativeTime(date?: Date): string {
     }
 }
 
+
+export function getStartedAgo(timestamp: string | number | Date): string {
+    return `Started ${moment(timestamp).fromNow()}`;
+}
+

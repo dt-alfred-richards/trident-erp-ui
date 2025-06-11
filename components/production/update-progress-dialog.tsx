@@ -21,7 +21,7 @@ import { Separator } from "@/components/ui/separator"
 import { ConfirmationDialog } from "@/components/common/confirmation-dialog"
 import { useProduction } from "./production-context"
 import { useOrders } from "@/contexts/order-context"
-import { convertDate } from "../generic"
+import { convertDate, getChildObject } from "../generic"
 
 // Define a type for progress history entries
 interface ProgressHistoryEntry {
@@ -128,9 +128,8 @@ export function UpdateProgressDialog({
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [updateConfirmDialogOpen, setUpdateConfirmDialogOpen] = useState(false)
   const [progressHistory, setProgressHistory] = useState<ProgressHistoryEntry[]>([])
-
   const { productionOrders, updateProductionOrder, refetch } = useProduction()
-  const { clientProposedProductMapper } = useOrders()
+  const { clientProposedProductMapper, updateClientProduct } = useOrders()
 
   const productNameMapper = useMemo(() => {
     return Object.values(clientProposedProductMapper).flat().reduce((acc: Record<string, string>, curr) => {
@@ -141,20 +140,25 @@ export function UpdateProgressDialog({
 
   const orders = useMemo(() => {
     return (productionOrders || []).map(item => {
+      if (item.inProduction === 0) return null
       return ({
         assignedTo: "",
         completedQuantity: item.produced,
         deadline: item.deadline,
         quantity: item.inProduction,
         status: item.status,
-        sku: productNameMapper[item.productId],
+        sku: item.sku,
         bomId: item.bomId,
         createdAt: item.createdOn,
-        id: item.productionOrderId
+        id: item.productionOrderId,
+        productId: item.productId
       } as ProductionOrder)
-    })
+    }).filter(item => item)
   }, [productionOrders])
 
+  const selectedOrder = useMemo(() => {
+    return orders.find((order) => order.id === selectedOrderId)
+  }, [selectedOrderId])
 
   useEffect(() => {
     const completedUnits = orders.find(item => item.id === selectedOrderId)?.completedQuantity
@@ -175,6 +179,7 @@ export function UpdateProgressDialog({
       setError(null)
     }
   }, [open, orders, selectedOrderId])
+
 
   // Update state when selected order changes
   useEffect(() => {
@@ -274,14 +279,18 @@ export function UpdateProgressDialog({
     }
   }
 
-  const confirmUpdate = () => {
-    if (!updateProductionOrder || !refetch) return;
 
-    updateProductionOrder(selectedOrderId, { produced: (selectedOrder?.completedQuantity || 0) + parseInt(newCompletedUnits), inProduction: Math.abs((selectedOrder?.quantity || 0) - parseInt(newCompletedUnits)) }).then(() => {
-      refetch()
-      setUpdateConfirmDialogOpen(true)
-      setUpdateConfirmDialogOpen(false)
-      onOpenChange(false)
+  const confirmUpdate = () => {
+    if (!updateProductionOrder || !refetch || !updateClientProduct) return;
+    const productQuantity = Object.values(clientProposedProductMapper).flat().find(item => item.productId === getChildObject(selectedOrder, "productId", ""))?.availableQuantity || "0"
+    
+    updateClientProduct({ productId: getChildObject(selectedOrder, "productId", ""), availableQuantity: `${parseInt(productQuantity) + parseInt(newCompletedUnits)}` }).then(() => {
+      updateProductionOrder(selectedOrderId, { produced: (selectedOrder?.completedQuantity || 0) + parseInt(newCompletedUnits), inProduction: Math.abs((selectedOrder?.quantity || 0) - parseInt(newCompletedUnits)) }).then(() => {
+        refetch()
+        setUpdateConfirmDialogOpen(true)
+        setUpdateConfirmDialogOpen(false)
+        onOpenChange(false)
+      })
     })
   }
 
@@ -300,7 +309,6 @@ export function UpdateProgressDialog({
     })
   }
 
-  const selectedOrder = orders.find((order) => order.id === selectedOrderId)
   const remainingUnits = totalUnits - previousCompletedUnits
   const newTotalCompleted = previousCompletedUnits + (Number.parseInt(newCompletedUnits, 10) || 0)
   const newRemainingUnits = totalUnits - newTotalCompleted

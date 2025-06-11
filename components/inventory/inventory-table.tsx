@@ -34,24 +34,21 @@ export function InventoryTable({ onAllocate, inventoryData: propInventoryData }:
   const [displayData, setDisplayData] = useState<any[]>([])
   const { productSkuMapper, clientProposedProductMapper } = useOrders()
 
-  // Get raw materials data from the store
-  const { rawMaterials } = useRawMaterialsStore()
-
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
 
   // This would come from your API in a real application
   const defaultInventoryData = useMemo(() => {
-    return Object.values(clientProposedProductMapper).flat().map(item => ({
-      sku: productSkuMapper[item?.productId || ""] || "",
-      available: 1,
-      reserved: 1,
-      inProduction: 1,
-    }))
+    return Object.values(clientProposedProductMapper).flat().map(item => {
+      return {
+        sku: productSkuMapper[item?.productId || ""] || "",
+        available: parseInt(item.availableQuantity) || 0,
+        reserved: parseInt(item.reservedQuantity) || 0,
+        inProduction: parseInt(item.inProduction) || 0,
+      }
+    })
   }, [clientProposedProductMapper, productSkuMapper])
-
-  console.log({ defaultInventoryData, clientProposedProductMapper, productSkuMapper })
 
   // Process the inventory data when it changes
   useEffect(() => {
@@ -175,7 +172,7 @@ export function InventoryTable({ onAllocate, inventoryData: propInventoryData }:
           <TableBody>
             {paginatedData.length > 0 ? (
               paginatedData.map((item) => {
-                const total = item.available + item.reserved + item.inProduction
+                const total = parseInt(item.available) + parseInt(item.reserved) + parseInt(item.inProduction)
 
                 return (
                   <TableRow key={item.sku}>

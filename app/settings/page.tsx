@@ -24,7 +24,7 @@ import {
   Clock,
   Sliders,
 } from "lucide-react"
-import { useGlobalContext } from "../GlobalContext"
+import { useGlobalContext } from "../../components/GlobalContext"
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("general")

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useCallback } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -32,23 +32,21 @@ export function ProductionOverview({ onProduceClick, onViewOrders, onViewDemand 
     return productionOrders.filter(item => !["cancelled", "completed"].includes(item.status))
   }, [productionOrders])
 
-  const getCummulativeSum = ({ key, refObject, defaultValue = 0 }: { key: string, refObject: any[], defaultValue?: number }) => {
-    return refObject.reduce((acc, curr) => {
-      acc += getChildObject(curr, key, defaultValue)
-      return acc;
-    }, 0)
-  }
+  const getCummulativeSum = useCallback(
+    ({ key, refObject, defaultValue = 0 }: { key: string, refObject: any[], defaultValue?: number }) => {
+      return refObject.reduce((acc, curr) => {
+        acc += getChildObject(curr, key, defaultValue)
+        return acc;
+      }, 0)
+    }, [productionOrders])
 
   const productionData = useMemo(() => {
     return Object.values(clientProposedProductMapper).flat().map(item => {
       const productOrders = productionOrders.filter(i => i.productId === item.productId),
-        availableStock = 0,
-        deficit = Math.abs(
-          getCummulativeSum({ key: "inProduction", refObject: productOrders }) -
-          availableStock
-        )
+        availableStock = parseInt(item.availableQuantity),
+        deficit = getCummulativeSum({ key: "inProduction", refObject: productOrders })
       return ({
-        sku: item.name,
+        sku: item.sku,
         productId: item.productId,
         pendingOrders: productOrders.length || 0,
         inProduction: getCummulativeSum({ key: "inProduction", refObject: productOrders }),
@@ -58,7 +56,7 @@ export function ProductionOverview({ onProduceClick, onViewOrders, onViewDemand 
         deficit
       })
     })
-  }, [clientProposedProductMapper, notCompletedOrders])
+  }, [clientProposedProductMapper, notCompletedOrders, productionOrders, getCummulativeSum])
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)

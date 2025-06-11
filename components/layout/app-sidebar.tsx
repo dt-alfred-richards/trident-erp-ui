@@ -176,7 +176,7 @@ export function AppSidebar() {
     }))
   }
 
-  if (pathname === "/login") return null
+  if (pathname === "/login" || pathname === "/contact") return null
 
   return (
     <motion.div

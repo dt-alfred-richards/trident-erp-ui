@@ -36,7 +36,8 @@ axiosInstance.interceptors.response.use(
       // Redirect to login page if token is invalid
       if (
         typeof window !== "undefined" &&
-        window.location.pathname !== "/login"
+        window.location.pathname !== "/login" && 
+        window.location.pathname !== "/contact"
       ) {
         window.location.href = "/login";
       }

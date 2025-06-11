@@ -12,7 +12,7 @@ import {
 import Link from "next/link"
 import { User, Lock, LogOut } from "lucide-react"
 import { usePathname } from "next/navigation"
-import { useGlobalContext } from "@/app/GlobalContext"
+import { useGlobalContext } from "@/components/GlobalContext"
 import { DataByTableName } from "../api"
 import { useRouter } from "next/router"
 

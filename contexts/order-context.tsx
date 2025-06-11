@@ -62,7 +62,11 @@ export type ClientProposedProduct = {
   createdOn: string,
   modifiedOn: object,
   createdBy: string,
-  modifiedBy: object
+  modifiedBy: object,
+  availableQuantity: string,
+  reservedQuantity: string,
+  inProduction: string,
+  produced: string;
 }
 
 export type V1Sale = {
@@ -122,7 +126,8 @@ interface OrderContextType {
   refetchContext: VoidFunction,
   eventsLogger: EventLogger[],
   saleOrders: SaleOrderDetail[],
-  deleteSaleOrder: (orderId: string[]) => Promise<PromiseSettledResult<any>[]>
+  deleteSaleOrder: (orderId: string[]) => Promise<PromiseSettledResult<any>[]>,
+  updateClientProduct?: (clientPayload: Partial<ClientProposedProduct>) => Promise<void>
 }
 
 const emptyFunction = (props: any) => "" as any
@@ -148,7 +153,8 @@ const OrderContext = createContext<OrderContextType>({
   refetchContext: () => { },
   eventsLogger: [],
   saleOrders: [],
-  deleteSaleOrder: (orderId: string[]) => Promise.resolve(Promise.allSettled([]))
+  deleteSaleOrder: (orderId: string[]) => Promise.resolve(Promise.allSettled([])),
+  productSkuMapper: {}
 })
 
 export function OrderProvider({ children }: { children: ReactNode }) {
@@ -172,7 +178,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const productSkuMapper = useMemo(() => {
     return Object.values(clientProposedProductMapper).flat().reduce((acc: Record<string, string>, curr) => {
       if (!acc[curr?.productId || ""]) {
-        acc[curr?.productId || ""] = curr.name
+        acc[curr?.productId || ""] = curr.sku
       }
       return acc;
     }, {})
@@ -445,6 +451,10 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     )
   }
 
+  const updateClientProduct = (productPayload: Partial<ClientProposedProduct>) => {
+    return clientProposedProducts.patch({ key: "product_id", value: productPayload.productId }, removebasicTypes(productPayload, ["productId"]))
+  }
+
   return <OrderContext.Provider value={{
     orders,
     currentUser,
@@ -463,6 +473,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     shippingAddressMapper,
     clientProposedProductMapper,
     addSaleOrder,
+    updateClientProduct,
     eventsLogger,
     refetchContext: fetchData,
     saleOrders,

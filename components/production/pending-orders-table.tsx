@@ -52,7 +52,7 @@ export function PendingOrdersTable({ filterSku }: PendingOrdersTableProps) {
         customer = clientMapper[clientId]?.name || ""
       return ({
         id: item.productionOrderId,
-        sku: productClientMapper[item.productId]?.name,
+        sku: item.sku,
         orderQuantity: item.quantity || 0,
         pendingQuantity: item.inProduction,
         orderDate: item.createdOn,

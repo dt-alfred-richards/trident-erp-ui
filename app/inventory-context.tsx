@@ -2,6 +2,7 @@
 
 import { DataByTableName } from "@/components/api";
 import { getChildObject } from "@/components/generic";
+import { useOrders } from "@/contexts/order-context";
 import { createContext, ReactNode, useContext, useEffect, useRef, useState } from "react";
 
 export type Inventory = {
@@ -34,10 +35,11 @@ const InventoryContext = createContext<Partial<InventoryContext>>({})
 
 export const InventoryProvider = ({ children }: { children: ReactNode }) => {
     const fetchRef = useRef(true);
+    const { clientProposedProductMapper, updateClientProduct } = useOrders()
     const [inventory, setInventory] = useState([])
     const [allocations, setAllocations] = useState([])
     const inventoryInstance = new DataByTableName("v1_inventory");
-    const saleOrderDetailInstance = new DataByTableName("sales_order_details");
+    const saleOrderDetailInstance = new DataByTableName("v1_sales_order_details");
     const allocationInstance = new DataByTableName("v1_sale_allocation");
     const fetchData = () => {
         Promise.allSettled([
@@ -69,13 +71,21 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         const saleId = getChildObject(selectedOrder, "id", "")
         const products = getChildObject(selectedOrder, "products", [])
         const product = products.find((item: any) => item.id === id)
-        if (!saleId || !product) return Promise.reject("Not enough data");
+        if (!saleId || !product || !updateClientProduct) return Promise.reject("Not enough data");
+
         return saleOrderDetailInstance.patch({ key: "product_id", value: id }, payload).then(() => {
             return allocationInstance.post({
                 orderId: saleId,
                 sku: getChildObject(product, "sku", ""),
                 allocated: getChildObject(payload, "allocated", 0)
             })
+        }).then((res) => {
+            const data = getChildObject(res, "data.0", {})
+            const productId = Object.values(clientProposedProductMapper).flat().find(item => item.sku === (data?.sku || ""))?.productId || ""
+
+            const productReservedQuantity = parseInt(Object.values(clientProposedProductMapper).flat().find(item => item.productId === productId)?.reservedQuantity || "0")
+            debugger
+            return updateClientProduct({ productId: productId, reservedQuantity: `${productReservedQuantity + parseInt(payload?.allocated || 0)}` })
         }).catch(error => {
             console.log({ error })
         })

@@ -58,7 +58,7 @@ const materialCategoryMap: Record<string, string> = {
 }
 
 export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProductionDialogProps) {
-  const { clientProposedProductMapper } = useOrders()
+  const { clientProposedProductMapper, productSkuMapper } = useOrders()
   const { createProductionOrder, refetch, updateProductionOrder } = useProduction()
   const { bom = [], materialOptions = [] } = useBomContext()
   const [quantity, setQuantity] = useState("")
@@ -188,7 +188,8 @@ export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProduc
       bomComponents.map(item => createProductionOrder({
         bomId: item.bomId,
         deadline: date,
-        productId: selectedSku || sku,
+        productId: selectedSku,
+        sku: productSkuMapper[selectedSku],
         inProduction: parseInt(quantity),
         quantity: parseInt(quantity)
       }))
@@ -199,6 +200,8 @@ export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProduc
       setIsSubmitting(false)
     })
   }
+
+  console.log({ bomComponents, selectedSku })
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

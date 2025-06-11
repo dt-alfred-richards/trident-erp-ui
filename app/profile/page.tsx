@@ -17,11 +17,11 @@ import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 // Add these imports at the top of the file (after the existing imports)
-import { convertDate, formatRelativeTime, getChildObject, toCamelCase } from "@/components/generic"
+import { convertDate, formatRelativeTime, getChildObject, getStartedAgo, toCamelCase } from "@/components/generic"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format } from "date-fns"
-import { useGlobalContext } from "../GlobalContext"
+import { useGlobalContext } from "../../components/GlobalContext"
 import { Employee } from "../hr/hr-context"
 
 export default function ProfilePage() {
@@ -136,7 +136,7 @@ export default function ProfilePage() {
   ]
 
   useEffect(() => {
-    if (!user || !fetchRef.current) return
+    if (Object.values(user).length === 0 || !fetchRef.current) return
     setUserDetails(user)
     fetchRef.current = false
   }, [user])
@@ -740,11 +740,11 @@ export default function ProfilePage() {
                     <div className="space-y-4">
                       {
                         sessionInfo.map(item => {
-                          return <div className="flex items-center justify-between">
+                          return <div className="flex items-center justify-between" key={item.id}>
                             <div>
                               <p className="font-medium">{tokenDetails.sessionId === item.sessionId ? "Current Session" : "Session"}</p>
-                              <p className="text-sm text-muted-foreground">{`${[item.location, item.deviceInfo].filter(item => item).join(",")}`}</p>
-                              <p className="text-xs text-muted-foreground">{convertDate(item.createdOn)}</p>
+                              <p className="text-sm text-muted-foreground">{`${[item.location, item.deviceInfo].filter(item => item).join(", ")}`}</p>
+                              <p className="text-xs text-muted-foreground">{getStartedAgo(item.createdOn)}</p>
                             </div>
                             {
                               tokenDetails.sessionId === item.sessionId ? <Badge>Active</Badge> :
@@ -791,7 +791,6 @@ export default function ProfilePage() {
                             <input
                               type="checkbox"
                               id={`email-${item.replace(/\s+/g, "-").toLowerCase()}`}
-                              defaultChecked
                               {...getAttributes(toCamelCase(item) as keyof Employee, true)}
                             />
                             <Label htmlFor={`email-${item.replace(/\s+/g, "-").toLowerCase()}`} className="sr-only">
@@ -820,7 +819,6 @@ export default function ProfilePage() {
                             <input
                               type="checkbox"
                               id={`app-${item.replace(/\s+/g, "-").toLowerCase()}`}
-                              defaultChecked
                               {...getAttributes(toCamelCase(item) as keyof Employee, true)}
                             />
                             <Label htmlFor={`app-${item.replace(/\s+/g, "-").toLowerCase()}`} className="sr-only">
