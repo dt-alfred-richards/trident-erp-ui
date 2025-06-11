@@ -176,6 +176,8 @@ export function AppSidebar() {
     }))
   }
 
+  if (pathname === "/login") return null
+
   return (
     <motion.div
       initial={{ opacity: 0.8, x: -10 }}

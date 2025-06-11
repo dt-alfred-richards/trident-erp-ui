@@ -2,30 +2,44 @@
 
 import type React from "react"
 
-import { useState, useRef, useEffect } from "react"
-import { User, Bell, Shield, Clock, FileText, Mail, Phone, MapPin, Edit, CheckCircle } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Bell, CheckCircle, Clock, Edit, FileText, Mail, MapPin, Phone, Shield, User } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 // Add these imports at the top of the file (after the existing imports)
+import { convertDate, formatRelativeTime, getChildObject, toCamelCase } from "@/components/generic"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format } from "date-fns"
+import { useGlobalContext } from "../GlobalContext"
+import { Employee } from "../hr/hr-context"
 
 export default function ProfilePage() {
+  const { user = {}, saveUser, sessionInfo, tokenDetails, logout = () => { }, logoutSession } = useGlobalContext()
+  const fetchRef = useRef(true)
   const [activeTab, setActiveTab] = useState("account")
   const [avatarSrc, setAvatarSrc] = useState("/placeholder.svg?height=96&width=96")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [showActivityLog, setShowActivityLog] = useState(false)
+
+  const [userDetails, setUserDetails] = useState<Partial<Employee>>({})
+
+  const updateUser = (event: any) => {
+    setUserDetails(p => ({
+      ...p,
+      [getChildObject(event, "target.name", "")]: getChildObject(event, "target.value")
+    }))
+  }
 
   // Full activity log data - this would come from your API in a real application
   const fullActivityLog = [
@@ -121,6 +135,21 @@ export default function ProfilePage() {
     },
   ]
 
+  useEffect(() => {
+    if (!user || !fetchRef.current) return
+    setUserDetails(user)
+    fetchRef.current = false
+  }, [user])
+
+  const onAccountSave = () => {
+    if (!saveUser) return
+    saveUser(userDetails)?.then(res => {
+      alert("User saved successfully")
+    })
+  }
+
+  console.log({ user, userDetails })
+
   // Add these state variables inside the ProfilePage component (after the existing state variables)
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
     from: undefined,
@@ -190,6 +219,28 @@ export default function ProfilePage() {
     filterActivitiesByDate()
   }, [dateRange])
 
+  const getAttributes = (key: keyof Employee, isCheckBox: boolean = false) => {
+    const rawValue = getChildObject(userDetails, key, isCheckBox ? true : "");
+    const value = rawValue === null ? "" : rawValue; // convert null to empty string
+
+    return {
+      name: key,
+      value: isCheckBox ? !!value : value, // for checkboxes, use boolean
+      onChange: (e: any) => {
+        updateUser({
+          target: {
+            name: e.target.name,
+            value: isCheckBox ? e.target.checked : e.target.value
+          }
+        });
+      }
+    };
+  };
+
+
+  const [tempPassword, setTempPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -239,32 +290,28 @@ export default function ProfilePage() {
             <div className="w-full space-y-2">
               <div className="flex items-center">
                 <Mail className="h-4 w-4 mr-2 text-muted-foreground" />
-                <span className="text-sm">admin@dhaara.com</span>
+                <span className="text-sm">{userDetails?.emailId || ""}</span>
               </div>
               <div className="flex items-center">
                 <Phone className="h-4 w-4 mr-2 text-muted-foreground" />
-                <span className="text-sm">+91 98765 43210</span>
+                <span className="text-sm">{userDetails?.contactNumber || ""}</span>
               </div>
               <div className="flex items-center">
                 <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
-                <span className="text-sm">Bangalore, India</span>
+                <span className="text-sm">{`${userDetails?.city || ""},${userDetails?.country || ""}`}</span>
               </div>
             </div>
             <Separator />
             <div className="w-full space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Joined</span>
-                <span className="text-sm">Jan 15, 2023</span>
+                <span className="text-sm">{convertDate(userDetails?.createdOn)}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Last login</span>
-                <span className="text-sm">Today, 10:30 AM</span>
+                <span className="text-sm">{formatRelativeTime(userDetails.loggedOn)}</span>
               </div>
             </div>
-            <Button className="w-full" variant="outline">
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Profile
-            </Button>
           </CardContent>
         </Card>
 
@@ -319,18 +366,24 @@ export default function ProfilePage() {
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="username">Emp-ID</Label>
-                    <Input id="username" defaultValue="admin" />
+                    <Input id="username" defaultValue="admin" name="id" value={userDetails?.id || ""} disabled />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="display-name">Display Name</Label>
-                    <Input id="display-name" defaultValue="Administrator" />
+                    <Label htmlFor="display-name">First Name</Label>
+                    <Input id="display-name" defaultValue="Administrator" name="firstName" value={userDetails?.firstName || ""} onChange={updateUser} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="display-name">Last Name</Label>
+                    <Input id="display-name" defaultValue="Administrator" name="firstName" value={userDetails?.lastName || ""} onChange={updateUser} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="bio">Bio</Label>
                     <textarea
                       id="bio"
                       className="w-full min-h-[100px] p-2 border rounded-md"
-                      defaultValue="System Administrator responsible for managing the Dhaara ERP system and user accounts."
+                      value={userDetails?.bio || ""}
+                      name="bio"
+                      onChange={updateUser}
                     />
                   </div>
                   <Separator />
@@ -339,7 +392,7 @@ export default function ProfilePage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="language">Language</Label>
-                        <select id="language" className="w-full p-2 border rounded-md">
+                        <select id="language" value={userDetails?.language || ""} name="language" onChange={updateUser} className="w-full p-2 border rounded-md">
                           <option value="en">English</option>
                           <option value="hi">Hindi</option>
                           <option value="kn">Kannada</option>
@@ -349,7 +402,7 @@ export default function ProfilePage() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="timezone">Timezone</Label>
-                        <select id="timezone" className="w-full p-2 border rounded-md">
+                        <select id="timezone" className="w-full p-2 border rounded-md" value={userDetails?.timezone || ""} name="timezone" onChange={updateUser}>
                           <option value="ist">Indian Standard Time (IST)</option>
                           <option value="gmt">Greenwich Mean Time (GMT)</option>
                           <option value="est">Eastern Standard Time (EST)</option>
@@ -361,7 +414,7 @@ export default function ProfilePage() {
                 </CardContent>
                 <CardFooter className="flex justify-between">
                   <Button variant="outline">Cancel</Button>
-                  <Button className="bg-[#1b84ff] text-[#ffffff] hover:bg-[#1b84ff]/90">Save Changes</Button>
+                  <Button className="bg-[#1b84ff] text-[#ffffff] hover:bg-[#1b84ff]/90" onClick={onAccountSave}>Save Changes</Button>
                 </CardFooter>
               </Card>
             </TabsContent>
@@ -379,16 +432,12 @@ export default function ProfilePage() {
                     <h3 className="text-sm font-medium">Personal Information</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="full-name">Full Name</Label>
-                        <Input id="full-name" defaultValue="Administrator" />
-                      </div>
-                      <div className="space-y-2">
                         <Label htmlFor="date-of-birth">Date of Birth</Label>
-                        <Input id="date-of-birth" type="date" defaultValue="1985-06-15" />
+                        <Input id="date-of-birth" type="date" defaultValue="1985-06-15" name="dob" value={userDetails?.dob || ""} onChange={updateUser} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="gender">Gender</Label>
-                        <select id="gender" className="w-full p-2 border rounded-md">
+                        <select id="gender" className="w-full p-2 border rounded-md" {...getAttributes("gender")}>
                           <option value="male">Male</option>
                           <option value="female">Female</option>
                           <option value="other">Other</option>
@@ -397,7 +446,7 @@ export default function ProfilePage() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="blood-group">Blood Group</Label>
-                        <select id="blood-group" className="w-full p-2 border rounded-md">
+                        <select id="blood-group" className="w-full p-2 border rounded-md" {...getAttributes("bloodGroup")}>
                           <option value="a+">A+</option>
                           <option value="a-">A-</option>
                           <option value="b+">B+</option>
@@ -410,7 +459,7 @@ export default function ProfilePage() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="nationality">Nationality</Label>
-                        <Input id="nationality" defaultValue="Indian" />
+                        <Input id="nationality" defaultValue="Indian" {...getAttributes("nationality")} />
                       </div>
                     </div>
                   </div>
@@ -422,20 +471,20 @@ export default function ProfilePage() {
                     <h3 className="text-sm font-medium">Contact Information</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="primary-email">Primary Email</Label>
-                        <Input id="primary-email" type="email" defaultValue="admin@dhaara.com" />
+                        <Label htmlFor="primary-email">Email id</Label>
+                        <Input id="primary-email" type="email" defaultValue="admin@dhaara.com" {...getAttributes("emailId")} />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="secondary-email">Secondary Email</Label>
-                        <Input id="secondary-email" type="email" defaultValue="" placeholder="Add a backup email" />
+                        <Label htmlFor="secondary-email">Personal Email</Label>
+                        <Input id="secondary-email" type="email" defaultValue="" placeholder="Add a backup email" {...getAttributes("personalEmail")} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="mobile-number">Mobile Number</Label>
-                        <Input id="mobile-number" defaultValue="+91 98765 43210" />
+                        <Input id="mobile-number" defaultValue="+91 98765 43210" {...getAttributes("contactNumber")} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="work-phone">Work Phone</Label>
-                        <Input id="work-phone" defaultValue="+91 80 4567 8901" />
+                        <Input id="work-phone" defaultValue="+91 80 4567 8901" {...getAttributes("workPhone")} />
                       </div>
                     </div>
                   </div>
@@ -446,30 +495,26 @@ export default function ProfilePage() {
                   <div className="space-y-4">
                     <h3 className="text-sm font-medium">Address Information</h3>
                     <div className="space-y-2">
-                      <Label htmlFor="address-line1">Address Line 1</Label>
-                      <Input id="address-line1" defaultValue="123 Tech Park" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="address-line2">Address Line 2</Label>
-                      <Input id="address-line2" defaultValue="Electronic City Phase 1" />
+                      <Label htmlFor="address-line1">Address</Label>
+                      <Input id="address-line1" defaultValue="123 Tech Park" {...getAttributes("address")} />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="city">City</Label>
-                        <Input id="city" defaultValue="Bangalore" />
+                        <Input id="city" defaultValue="Bangalore" {...getAttributes("city")} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="state">State</Label>
-                        <Input id="state" defaultValue="Karnataka" />
+                        <Input id="state" defaultValue="Karnataka" {...getAttributes("state")} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="postal-code">Postal Code</Label>
-                        <Input id="postal-code" defaultValue="560100" />
+                        <Input id="postal-code" defaultValue="560100" {...getAttributes("postalCode")} />
                       </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="country">Country</Label>
-                      <select id="country" className="w-full p-2 border rounded-md">
+                      <select id="country" className="w-full p-2 border rounded-md" {...getAttributes("country")}>
                         <option value="india">India</option>
                         <option value="usa">United States</option>
                         <option value="uk">United Kingdom</option>
@@ -487,11 +532,11 @@ export default function ProfilePage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="role">Role</Label>
-                        <Input id="role" defaultValue="System Administrator" />
+                        <Input id="role" defaultValue="System Administrator" {...getAttributes("role")} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="department">Department</Label>
-                        <select id="department" className="w-full p-2 border rounded-md">
+                        <select id="department" className="w-full p-2 border rounded-md" {...getAttributes("department")}>
                           <option value="it">IT & Systems</option>
                           <option value="finance">Finance</option>
                           <option value="hr">Human Resources</option>
@@ -502,7 +547,7 @@ export default function ProfilePage() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="employment-type">Employment Type</Label>
-                        <select id="employment-type" className="w-full p-2 border rounded-md">
+                        <select id="employment-type" className="w-full p-2 border rounded-md" {...getAttributes("employeeType")}>
                           <option value="full-time">Full-time</option>
                           <option value="part-time">Part-time</option>
                           <option value="contract">Contract</option>
@@ -513,11 +558,11 @@ export default function ProfilePage() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="working-hours">Average Working Hours</Label>
-                        <Input id="working-hours" defaultValue="40" />
+                        <Input id="working-hours" defaultValue="40" {...getAttributes("averageWorkingHours")} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="shift-duration">Shift Duration</Label>
-                        <select id="shift-duration" className="w-full p-2 border rounded-md">
+                        <select id="shift-duration" className="w-full p-2 border rounded-md" {...getAttributes("shiftDuration")}>
                           <option value="8">8 Hours</option>
                           <option value="9">9 Hours</option>
                           <option value="10">10 Hours</option>
@@ -536,22 +581,22 @@ export default function ProfilePage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="salary">Salary</Label>
-                        <Input id="salary" defaultValue="₹1,200,000" />
+                        <Input id="salary" defaultValue="₹1,200,000" {...getAttributes("salary")} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="base-pay">Base Pay</Label>
-                        <Input id="base-pay" defaultValue="₹100,000" />
+                        <Input id="base-pay" defaultValue="₹100,000" {...getAttributes("basePay")} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="monthly-payment">Monthly Payment</Label>
-                        <select id="monthly-payment" className="w-full p-2 border rounded-md">
+                        <select id="monthly-payment" className="w-full p-2 border rounded-md" {...getAttributes("monthlyPayment")}>
                           <option value="yes">Yes</option>
                           <option value="no">No</option>
                         </select>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="pay-cycle">Pay Cycle</Label>
-                        <select id="pay-cycle" className="w-full p-2 border rounded-md">
+                        <select id="pay-cycle" className="w-full p-2 border rounded-md" {...getAttributes("payCycle")}>
                           <option value="monthly">Monthly</option>
                           <option value="bi-weekly">Bi-Weekly</option>
                           <option value="weekly">Weekly</option>
@@ -569,31 +614,31 @@ export default function ProfilePage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="aadhaar-number">Aadhaar Number</Label>
-                        <Input id="aadhaar-number" defaultValue="1234 5678 9012" />
+                        <Input id="aadhaar-number" defaultValue="1234 5678 9012" {...getAttributes("aadhaarNumber")} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="pan-number">PAN Number</Label>
-                        <Input id="pan-number" defaultValue="ABCDE1234F" />
+                        <Input id="pan-number" defaultValue="ABCDE1234F" {...getAttributes("panNumber")} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="uan-number">UAN Number</Label>
-                        <Input id="uan-number" defaultValue="123456789012" />
+                        <Input id="uan-number" defaultValue="123456789012" {...getAttributes("uanNumber")} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="bank-name">Bank Name</Label>
-                        <Input id="bank-name" defaultValue="State Bank of India" />
+                        <Input id="bank-name" defaultValue="State Bank of India" {...getAttributes("bankName")} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="bank-branch">Bank Branch</Label>
-                        <Input id="bank-branch" defaultValue="Electronic City" />
+                        <Input id="bank-branch" defaultValue="Electronic City" {...getAttributes("bankBranch")} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="account-number">Account Number</Label>
-                        <Input id="account-number" defaultValue="1234567890" />
+                        <Input id="account-number" defaultValue="1234567890" {...getAttributes("accountNumber")} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="ifsc-code">IFSC Code</Label>
-                        <Input id="ifsc-code" defaultValue="SBIN0012345" />
+                        <Input id="ifsc-code" defaultValue="SBIN0012345" {...getAttributes("ifscCode")} />
                       </div>
                     </div>
                   </div>
@@ -606,23 +651,23 @@ export default function ProfilePage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="total-leaves">Total Leaves</Label>
-                        <Input id="total-leaves" defaultValue="24" />
+                        <Input id="total-leaves" defaultValue="24" {...getAttributes("leaves")} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="earned-leaves">Earned Leaves</Label>
-                        <Input id="earned-leaves" defaultValue="18" />
+                        <Input id="earned-leaves" defaultValue="18" {...getAttributes("earnedLeaves")} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="used-leaves">Used Leaves</Label>
-                        <Input id="used-leaves" defaultValue="12" />
+                        <Input id="used-leaves" defaultValue="12" {...getAttributes("usedLeaves")} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="balance-leaves">Balance Leaves</Label>
-                        <Input id="balance-leaves" defaultValue="12" />
+                        <Input id="balance-leaves" defaultValue="12" disabled value={(userDetails?.leaves || 0) - (userDetails?.usedLeaves || 0)} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="sunday-holiday">Sunday Holiday</Label>
-                        <select id="sunday-holiday" className="w-full p-2 border rounded-md">
+                        <select id="sunday-holiday" className="w-full p-2 border rounded-md" {...getAttributes("sundayOn")}>
                           <option value="yes">Yes</option>
                           <option value="no">No</option>
                         </select>
@@ -632,7 +677,7 @@ export default function ProfilePage() {
                 </CardContent>
                 <CardFooter className="flex justify-between">
                   <Button variant="outline">Cancel</Button>
-                  <Button className="bg-[#1b84ff] text-[#ffffff] hover:bg-[#1b84ff]/90">Save Changes</Button>
+                  <Button className="bg-[#1b84ff] text-[#ffffff] hover:bg-[#1b84ff]/90" onClick={onAccountSave}>Save Changes</Button>
                 </CardFooter>
               </Card>
             </TabsContent>
@@ -648,18 +693,26 @@ export default function ProfilePage() {
                   <div className="space-y-4">
                     <h3 className="text-sm font-medium">Change Password</h3>
                     <div className="space-y-2">
-                      <Label htmlFor="current-password">Current Password</Label>
-                      <Input id="current-password" type="password" />
-                    </div>
-                    <div className="space-y-2">
                       <Label htmlFor="new-password">New Password</Label>
-                      <Input id="new-password" type="password" />
+                      <Input id="new-password" type="password" value={tempPassword} onChange={(event) => {
+                        setTempPassword(event.target.value)
+                      }} />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="confirm-password">Confirm New Password</Label>
-                      <Input id="confirm-password" type="password" />
+                      <Input id="confirm-password" type="password" value={confirmPassword} onChange={(event) => {
+                        setConfirmPassword(event.target.value)
+                      }} />
                     </div>
-                    <Button className="bg-[#725af2] text-[#ffffff] hover:bg-[#725af2]/90">Update Password</Button>
+                    {
+                      tempPassword !== confirmPassword && <div style={{ color: "red" }}>Password doesnt match</div>
+                    }
+                    <Button className="bg-[#725af2] text-[#ffffff] hover:bg-[#725af2]/90" onClick={() => {
+                      if (!saveUser) return;
+                      saveUser({ password: tempPassword, employeeId: userDetails.employeeId })?.then(res => {
+                        alert("Password changed successfully")
+                      })
+                    }}>Update Password</Button>
                   </div>
 
                   <Separator className="my-4" />
@@ -668,10 +721,15 @@ export default function ProfilePage() {
                     <h3 className="text-sm font-medium">Two-Factor Authentication</h3>
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-medium">Two-factor authentication is disabled</p>
+                        <p className="font-medium">{`Two-factor authentication is ${userDetails?.twoFactor ? "disabled" : "enabled"}`}</p>
                         <p className="text-sm text-muted-foreground">Add an extra layer of security to your account</p>
                       </div>
-                      <Button variant="outline">Enable</Button>
+                      <Button variant="outline" onClick={() => {
+                        if (!saveUser) return;
+                        saveUser({ twoFactor: userDetails?.twoFactor ? false : true, employeeId: userDetails.employeeId })?.then(res => {
+                          // alert("Password changed successfully")
+                        })
+                      }}>{!userDetails?.twoFactor ? "Disabled" : "Enabled"}</Button>
                     </div>
                   </div>
 
@@ -680,26 +738,25 @@ export default function ProfilePage() {
                   <div className="space-y-4">
                     <h3 className="text-sm font-medium">Active Sessions</h3>
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">Current Session</p>
-                          <p className="text-sm text-muted-foreground">Bangalore, India • Chrome on Windows</p>
-                          <p className="text-xs text-muted-foreground">Started 2 hours ago</p>
-                        </div>
-                        <Badge>Active</Badge>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">Mobile Session</p>
-                          <p className="text-sm text-muted-foreground">Bangalore, India • Dhaara App on Android</p>
-                          <p className="text-xs text-muted-foreground">Started 1 day ago</p>
-                        </div>
-                        <Button variant="outline" size="sm">
-                          Sign Out
-                        </Button>
-                      </div>
+                      {
+                        sessionInfo.map(item => {
+                          return <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium">{tokenDetails.sessionId === item.sessionId ? "Current Session" : "Session"}</p>
+                              <p className="text-sm text-muted-foreground">{`${[item.location, item.deviceInfo].filter(item => item).join(",")}`}</p>
+                              <p className="text-xs text-muted-foreground">{convertDate(item.createdOn)}</p>
+                            </div>
+                            {
+                              tokenDetails.sessionId === item.sessionId ? <Badge>Active</Badge> :
+                                <Button variant="outline" size="sm" onClick={() => logoutSession?.(item.sessionId)}>
+                                  Sign Out
+                                </Button>
+                            }
+                          </div>
+                        })
+                      }
                     </div>
-                    <Button variant="outline">Sign Out All Devices</Button>
+                    <Button variant="outline" onClick={() => logout()}>Sign Out All Devices</Button>
                   </div>
                 </CardContent>
               </Card>
@@ -735,6 +792,7 @@ export default function ProfilePage() {
                               type="checkbox"
                               id={`email-${item.replace(/\s+/g, "-").toLowerCase()}`}
                               defaultChecked
+                              {...getAttributes(toCamelCase(item) as keyof Employee, true)}
                             />
                             <Label htmlFor={`email-${item.replace(/\s+/g, "-").toLowerCase()}`} className="sr-only">
                               {item}
@@ -763,6 +821,7 @@ export default function ProfilePage() {
                               type="checkbox"
                               id={`app-${item.replace(/\s+/g, "-").toLowerCase()}`}
                               defaultChecked
+                              {...getAttributes(toCamelCase(item) as keyof Employee, true)}
                             />
                             <Label htmlFor={`app-${item.replace(/\s+/g, "-").toLowerCase()}`} className="sr-only">
                               {item}
@@ -781,10 +840,10 @@ export default function ProfilePage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-medium">Quiet Hours</p>
-                          <p className="text-sm text-muted-foreground">Don't send notifications during these hours</p>
+                          <p className="text-sm text-muted-foreground" >Don't send notifications during these hours</p>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <input type="checkbox" id="quiet-hours" />
+                          <input type="checkbox" id="quiet-hours" {...getAttributes("quietHours", true)} />
                           <Label htmlFor="quiet-hours" className="sr-only">
                             Quiet Hours
                           </Label>
@@ -793,11 +852,11 @@ export default function ProfilePage() {
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="quiet-start">Start Time</Label>
-                          <Input id="quiet-start" type="time" defaultValue="22:00" />
+                          <Input id="quiet-start" type="time" defaultValue="22:00" {...getAttributes("startTime")} />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="quiet-end">End Time</Label>
-                          <Input id="quiet-end" type="time" defaultValue="08:00" />
+                          <Input id="quiet-end" type="time" defaultValue="08:00" {...getAttributes("endTime")} />
                         </div>
                       </div>
                     </div>
@@ -805,7 +864,7 @@ export default function ProfilePage() {
                 </CardContent>
                 <CardFooter className="flex justify-between">
                   <Button variant="outline">Reset to Defaults</Button>
-                  <Button className="bg-[#1b84ff] text-[#ffffff] hover:bg-[#1b84ff]/90">Save Preferences</Button>
+                  <Button className="bg-[#1b84ff] text-[#ffffff] hover:bg-[#1b84ff]/90" onClick={onAccountSave}>Save Preferences</Button>
                 </CardFooter>
               </Card>
             </TabsContent>

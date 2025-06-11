@@ -11,8 +11,14 @@ import {
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
 import { User, Lock, LogOut } from "lucide-react"
+import { usePathname } from "next/navigation"
+import { useGlobalContext } from "@/app/GlobalContext"
+import { DataByTableName } from "../api"
+import { useRouter } from "next/router"
 
 export function UserNav() {
+  const { tokenDetails, logout } = useGlobalContext()
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -23,8 +29,8 @@ export function UserNav() {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">Administrator</p>
-            <p className="text-xs leading-none text-muted-foreground">admin@dhaara.com</p>
+            <p className="text-sm font-medium leading-none">{`${[tokenDetails.firstName, tokenDetails.lastName].filter(item => item).join("")}`}</p>
+            <p className="text-xs leading-none text-muted-foreground">{tokenDetails?.email || ""}</p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -43,7 +49,7 @@ export function UserNav() {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="cursor-pointer">
+        <DropdownMenuItem className="cursor-pointer" onClick={logout}>
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>
         </DropdownMenuItem>

@@ -6,6 +6,7 @@ import { createContext, ReactNode, useContext, useEffect, useRef, useState } fro
 
 export type Employee = {
     id: string,
+    employeeId?: string,
     firstName: string,
     middleName: string,
     lastName: string,
@@ -32,13 +33,38 @@ export type Employee = {
     accountNumber: string,
     ifscCode: string,
     password: string,
-    createdOn: string,
-    modifiedOn: Date,
-    createdBy: string,
-    modifiedBy: Date,
     personalEmail: string,
-    usedleaves: number
-};
+    usedLeaves: number,
+    bio: string,
+    language: string,
+    timezone: string,
+    nationality: string,
+    workPhone: string,
+    city: string,
+    state: string,
+    postalCode: string,
+    country: string,
+    averageWorkingHours: string,
+    basePay: string,
+    monthlyPayment: string,
+    uanNumber: string,
+    earnedLeaves: string,
+    twoFactor: boolean,
+    systemAlerts: boolean,
+    orderUpdates: boolean,
+    productionStatusChanges: boolean,
+    inventoryAlerts: boolean,
+    financialReports: boolean,
+    taskAssignments: boolean,
+    mentions: boolean,
+    comments: boolean,
+    approvals: boolean,
+    systemUpdates: boolean,
+    startTime: string,
+    endTime: string,
+    quietHours: boolean,
+    loggedOn?: Date
+} & Basic;
 
 type EmployeeLeaves = {
     id: number,

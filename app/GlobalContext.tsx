@@ -1,65 +1,144 @@
-import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { jwtDecode, JwtPayload } from "jwt-decode";
-import { getChildObject } from "@/components/generic";
 import { DataByTableName } from "@/components/api";
+import { createType, getChildObject, removebasicTypes } from "@/components/generic";
+import { jwtDecode } from "jwt-decode";
+import { createContext, ReactNode, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { Employee } from "./hr/hr-context";
+
+type Token = {
+    firstName: string,
+    lastName: string,
+    sessionId: string,
+    email: string,
+    iat: number,
+    exp: number,
+    userId: string,
+    role: string
+}
+
+type Session = {
+    id: number,
+    userId: string,
+    createdOn: Date,
+    createdBy: string,
+    location: string,
+    deviceInfo: string,
+    sessionId: string
+}
 
 type GloabalPropType = {
     userId: string,
     userName: string,
     userEmail: string,
-    usersMapper: Record<string, string>
+    usersMapper: Record<string, string>,
+    user: Partial<Employee>,
+    saveUser?: (payload: Partial<Employee>) => Promise<void>,
+    tokenDetails: Token,
+    sessionInfo: Session[],
+    logout?: () => void,
+    logoutSession: (sessionId: string) => void
+    login: (payload: any, rememberMe: boolean) => void
 }
 
 const GlobalContext = createContext<GloabalPropType>({
+    user: {},
     userId: "",
     userName: "",
     userEmail: "",
-    usersMapper: {}
+    usersMapper: {},
+    tokenDetails: {} as Token,
+    sessionInfo: [] as Session[],
+    logoutSession: () => { },
+    login: () => { }
 })
-
-type User = {
-    id: string, name: string
-}
 
 
 export const GlobalProvider = ({ children }: { children: ReactNode }) => {
     const fetchRef = useRef(true)
     const [userDetails, setUserDetails] = useState({})
     const [usersMapper, setUsersMapper] = useState<Record<string, string>>({})
+    const [user, setUser] = useState<Partial<Employee>>({})
+    const employeeInstance = new DataByTableName("v1_employee");
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token") || ""
+    const [tokenDetails, setTokenDetails] = useState<Token>({} as Token)
+    const [sessionInfo, setSessionInfo] = useState<Session[]>([])
+
+    const sessionInstance = new DataByTableName("v1_user_sessions")
+
+    const fetchData = useCallback(() => {
+        const decodeToken = jwtDecode(token) as Token;
+
+        Promise.allSettled([
+            employeeInstance.getby({ column: "id", value: decodeToken.userId }),
+            sessionInstance.getby({ column: "user_id", value: decodeToken.userId })
+        ]).then(responses => {
+            const employeeResponse = getChildObject(responses, "0.value.data.0", {})
+            const sessionInfoResponse = getChildObject(responses, "1.value.data", []);
+
+            setSessionInfo(sessionInfoResponse)
+            setUser(employeeResponse)
+            setTokenDetails(decodeToken)
+        })
+    }, [token])
 
     useEffect(() => {
-        if (!fetchRef.current) return;
-
+        if (!fetchRef.current || !token) return;
         fetchRef.current = false;
-        const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibmFtZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBnbWFpbC5jb20iLCJpYXQiOjE3NDc1NTI5MDR9.uBLHguj0ToxYnfH9-qxHacUELnmO5xd-qkK3ZGIYwuE";
+        fetchData()
+    }, [token])
 
-        const tokenPayload = jwtDecode(token)
-        const usersInstance = new DataByTableName("users");
+    const apiInstance = new DataByTableName("")
 
-        usersInstance.get().then(res => {
-            const _usersMapper = getChildObject(res, "data", []).reduce((acc: Record<string, string>, curr: User) => {
-                if (!acc[curr.id]) {
-                    acc[curr.id] = curr.name
-                }
-                return acc;
-            }, {} as Record<string, string>)
-            setUsersMapper(_usersMapper)
-            setUserDetails(tokenPayload)
-        }).catch(error => {
-            console.log({ error })
+
+    const login = (payload: any, rememberMe: boolean) => {
+        apiInstance.login(payload).then(res => {
+            const token = getChildObject(res, "token", '')
+            if (rememberMe) {
+                localStorage.setItem("token", token)
+            } else {
+                sessionStorage.setItem("token", token)
+            }
+            window.location.href = "/"
+        }).then(fetchData)
+    }
+
+    const saveUser = (payload: Partial<Employee>) => {
+        return employeeInstance.patch({
+            key: "employee_id",
+            value: payload.employeeId
+        }, removebasicTypes(payload, ["id", "employeeId",]))
+            .then(() => {
+                fetchData()
+            }).catch(error => {
+                console.log({ error })
+            })
+    }
+
+    const logout = () => {
+        sessionInstance.deleteById({ key: "user_id", value: tokenDetails.userId }).then(() => {
+            localStorage.removeItem("token")
+            sessionStorage.removeItem("token")
+            window.location.href = "/login"
         })
-    }, [])
+    }
 
-    const contextValue = useMemo<GloabalPropType>(() => {
-        return ({
-            userEmail: getChildObject(userDetails, "email", ""),
-            userId: getChildObject(userDetails, "id", ""),
-            userName: getChildObject(userDetails, "name", ""),
-            usersMapper
-        })
-    }, [userDetails, usersMapper])
+    const logoutSession = (sessionId: string) => {
+        sessionInstance.deleteById({ key: "session_id", value: sessionId }).then(fetchData)
+    }
 
-    return <GlobalContext.Provider value={contextValue}>{children}</GlobalContext.Provider>
+
+    return <GlobalContext.Provider value={{
+        userEmail: getChildObject(userDetails, "email", ""),
+        userId: getChildObject(userDetails, "id", ""),
+        userName: getChildObject(userDetails, "name", ""),
+        usersMapper,
+        user,
+        saveUser,
+        tokenDetails,
+        sessionInfo,
+        logout,
+        logoutSession,
+        login
+    }}>{children}</GlobalContext.Provider>
 }
 
 export const useGlobalContext = () => {

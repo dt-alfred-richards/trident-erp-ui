@@ -2,7 +2,6 @@
 
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { DataByTableName } from "../../api"
-import { createType } from "../../generic";
 import { Client, ClientReferences, Sale } from "./sales-types";
 
 const SalesContext = createContext<{

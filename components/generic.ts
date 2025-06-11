@@ -2,6 +2,7 @@
 import _ from "lodash"
 import moment from "moment";
 export const createType = (object: Record<string, any>) => {
+    if (!object) return
     const res = Object.entries(object).map(([key, value]) => {
         return [key, typeof value];
     });
@@ -69,3 +70,31 @@ export const getPriority = (givenDate?: Date): "low" | "medium" | "high" => {
         return "low"
     }
 }
+
+export function toCamelCase(input: string): string {
+    return input
+        .toLowerCase()
+        .replace(/[^a-zA-Z0-9 ]/g, '') // remove non-alphanumeric chars except space
+        .split(' ')
+        .map((word, index) =>
+            index === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1)
+        )
+        .join('');
+}
+
+
+
+export function formatRelativeTime(date?: Date): string {
+    if (!date) return ""
+    const mDate = moment(date);
+    const now = moment();
+
+    if (mDate.isSame(now, 'day')) {
+        return `Today, ${mDate.format('hh:mm A')}`;
+    } else if (mDate.isSame(now.clone().subtract(1, 'day'), 'day')) {
+        return `Yesterday, ${mDate.format('hh:mm A')}`;
+    } else {
+        return mDate.format('MMMM D, hh:mm A'); // fallback
+    }
+}
+

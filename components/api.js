@@ -12,9 +12,7 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
   (config) => {
     const token =
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibmFtZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBnbWFpbC5jb20iLCJpYXQiOjE3NDc2NjY2MzR9.XaiBHTRxm5GeCO3AmqFTXbYOxfsW6tbfj5fiaAgIqwk" ||
-      localStorage.getItem("token") ||
-      sessionStorage.getItem("token"); // Get token from localStorage
+      localStorage.getItem("token") || sessionStorage.getItem("token"); // Get token from localStorage
     if (token) {
       config.headers["token"] = token;
     }
@@ -36,9 +34,12 @@ axiosInstance.interceptors.response.use(
       sessionStorage.removeItem("role");
 
       // Redirect to login page if token is invalid
-      // if (typeof window !== "undefined") {
-      //   window.location.href = "/login"; // fallback if you can't use router.push
-      // }
+      if (
+        typeof window !== "undefined" &&
+        window.location.pathname !== "/login"
+      ) {
+        window.location.href = "/login";
+      }
     }
 
     return Promise.reject(error);
@@ -77,9 +78,9 @@ export class DataByTableName {
       .then((res) => res.data);
   }
 
-  login({ email, password }) {
+  login(payload) {
     return axiosInstance
-      .post(`${this.backendUrl}login`, { email, password })
+      .post(`${this.backendUrl}login`, payload)
       .then((res) => res.data);
   }
 }
