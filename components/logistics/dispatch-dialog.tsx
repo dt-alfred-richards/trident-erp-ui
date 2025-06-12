@@ -28,6 +28,8 @@ import {
 } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useOrders } from "@/contexts/order-context"
+import { useVehicleContext } from "./vehicle-context"
+import { Logistics, useLogistics } from "@/app/logistics/shipment-tracking/logistics-context"
 
 // Define the product type if not already defined elsewhere
 interface Product {
@@ -58,26 +60,22 @@ interface SelectedProduct {
   isSelected: boolean
 }
 
-// Mock data for vehicles
-const mockVehicles = [
-  { value: "VEH001", label: "VEH001 - Truck 10T" },
-  { value: "VEH002", label: "VEH002 - Pickup 5T" },
-  { value: "VEH003", label: "VEH003 - Van 3T" },
-]
-
-// Mock data for drivers
-const mockDrivers = [
-  { value: "DRV001", label: "DRV001 - John Smith" },
-  { value: "DRV002", label: "DRV002 - Maria Garcia" },
-  { value: "DRV003", label: "DRV003 - David Chen" },
-]
-
 export function DispatchDialog({ open, onOpenChange, order, onDispatchComplete }: DispatchDialogProps) {
   // Mock products data since it's not available in the order object
   const { orders } = useOrders()
+  const { vehicles, drivers } = useVehicleContext()
+  const { create: createLogistics } = useLogistics()
   const saleOrder = useMemo(() => {
     return orders.find(item => item.id === order.id)
   }, [orders])
+
+  // Mock data for vehicles
+  const mockVehicles = useMemo(() => {
+    return vehicles.map(item => ({ value: item.id, label: `${item.vehicleId} - ${item.model}` }))
+  }, [vehicles])
+  const mockDrivers = useMemo(() => {
+    return drivers.map(item => ({ value: item.id, label: `${item.driverId} - ${item.fullName}` }))
+  }, [drivers])
 
   const [orderProducts, set_OrderProducts] = useState<Product[]>([])
   useEffect(() => {
@@ -91,8 +89,6 @@ export function DispatchDialog({ open, onOpenChange, order, onDispatchComplete }
       dispatched: 0
     } as Product)))
   }, [saleOrder])
-
-  console.log({ order, orders, orderProducts })
 
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([])
 
@@ -224,6 +220,13 @@ export function DispatchDialog({ open, onOpenChange, order, onDispatchComplete }
         ? "Custom"
         : mockVehicles.find((v) => v.value === vehicleId)?.label.split(" - ")[1] || "Unknown",
     }
+
+    // const payload = {
+    //   contactNumber,
+    //   deliveryAddress,
+    //   deliveryNote,
+    //   products:
+    // } as Logistics
 
     // This would update the order in a real application
     console.log("Updated order:", updatedOrder)

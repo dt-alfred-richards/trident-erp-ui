@@ -1,10 +1,13 @@
-import { LogisticsProvider } from "@/hooks/use-logistics-data"
 import { LogisticsDashboard } from "@/components/logistics/logistics-dashboard"
+import { LogisticsProvider } from "./logistics-context"
+import { VehicleProvider } from "@/components/logistics/vehicle-context"
 
 export default function ShipmentTrackingPage() {
   return (
-    <LogisticsProvider>
-      <LogisticsDashboard />
-    </LogisticsProvider>
+    <VehicleProvider>
+      <LogisticsProvider>
+        <LogisticsDashboard />
+      </LogisticsProvider>
+    </VehicleProvider>
   )
 }

@@ -123,12 +123,6 @@ export function LoginForm() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
-        // Validate password before submission
-        // if (!isPasswordValid) {
-        //     setFormError("Please ensure your password meets all requirements.")
-        //     return
-        // }
-
         setIsLoading(true)
 
         try {

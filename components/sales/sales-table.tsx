@@ -32,11 +32,12 @@ import { useOrders } from "@/contexts/order-context"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { ConfirmationDialog } from "@/components/common/confirmation-dialog"
 import { convertDate } from "../generic"
+import { useContextBoilerCode } from "../custom/context-boilercode"
+import { Sale } from "@/contexts/types"
 
 export function SalesTable() {
   // Use order context
   const { orders = [], approveOrder, rejectOrder, getOrderById, cancelOrder, refetchContext, referenceMapper } = useOrders()
-
   // Filter states
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined)
   const [clientFilter, setClientFilter] = useState("")

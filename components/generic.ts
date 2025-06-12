@@ -20,8 +20,9 @@ export const convertDate = (date?: Date) => {
     return moment(date).format("LL")
 }
 
-export const removebasicTypes = (refData: any, additionalFields: string[]) => {
-    const basicKeys: string[] = ["createdBy", "modifiedBy", "modifiedOn", "createdOn"]
+export const removebasicTypes = (refData: any, additionalFields: string[] = []) => {
+    const idKeys = Object.keys(refData).filter(item => item.toLowerCase().includes("id"))
+    const basicKeys: string[] = ["createdBy", "modifiedBy", "modifiedOn", "createdOn"].concat(idKeys)
     const result = { ...refData } as any
     for (const key of basicKeys.concat(additionalFields || [])) {
         if (result.hasOwnProperty(key)) {
