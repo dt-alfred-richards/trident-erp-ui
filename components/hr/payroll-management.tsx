@@ -33,7 +33,7 @@ export function PayrollManagement() {
         department: item.department,
         role: item.role,
         salary: item.basicSalary,
-        attendance: "",
+        attendance: item.attendance,
         overtime: item.overtime,
         bonus: 0,
         deductions: 0,

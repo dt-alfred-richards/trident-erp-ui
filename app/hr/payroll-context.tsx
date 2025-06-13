@@ -14,7 +14,8 @@ export type Payroll = {
     tax: string,
     providentFund: string,
     otherDeductions: string,
-    status: string
+    status: string,
+    attendance: number
 } & Basic;
 
 export const { BoilerProvider: PayrollProvider, useBoiler: usePayrollContext } = createBoilerContext<Payroll>("v1_payroll")
