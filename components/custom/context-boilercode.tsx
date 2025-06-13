@@ -29,7 +29,7 @@ const useContextBoilerCode = <T,>(tableName: string): ContextBoilder<T> => {
     useEffect(() => {
         if (!tableName || !fetchRef.current) return;
         fetchData();
-        fetchRef.current = true
+        fetchRef.current = false
     }, [])
 
 
@@ -98,7 +98,7 @@ export function createBoilerContext<T>(tableName: string) {
     const useBoiler = () => {
         const context = useContext(BoilerContext)
         if (!context) {
-            throw new Error(`useBoiler must be used within a ${tableName} BoilerProvider`)
+            console.log(`useBoiler must be used within a ${tableName} BoilerProvider`)
         }
         return context
     }

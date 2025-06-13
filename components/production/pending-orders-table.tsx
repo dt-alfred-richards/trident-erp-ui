@@ -49,7 +49,7 @@ export function PendingOrdersTable({ filterSku }: PendingOrdersTableProps) {
   const samplePendingOrders = useMemo(() => {
     return productionOrders.map(item => {
       const clientId = productClientMapper[item.productId]?.clientId || "",
-        customer = clientMapper[clientId]?.name || ""
+        customer = clientMapper[item.modifiedBy || item.createdBy || '']?.name || ""
       return ({
         id: item.productionOrderId,
         sku: item.sku,
@@ -62,7 +62,7 @@ export function PendingOrdersTable({ filterSku }: PendingOrdersTableProps) {
       })
     })
   }, [productionOrders, productClientMapper, clientMapper])
-
+  console.log({ productionOrders })
 
   // Filter and sort the pending orders
   const filteredAndSortedOrders = useMemo(() => {

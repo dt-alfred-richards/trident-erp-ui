@@ -13,8 +13,8 @@ export type LogisticsProduct = {
 export type Logistics = {
     id: number,
     products: string,
-    vehicleId: string,
-    driverId: string,
+    vehicle: string,
+    driver: string,
     contactNumber: string,
     deliveryAddress: string,
     deliveryNote: string,

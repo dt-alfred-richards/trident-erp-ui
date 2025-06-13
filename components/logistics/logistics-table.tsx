@@ -43,28 +43,7 @@ export function LogisticsTable({ status }: LogisticsTableProps) {
 
   const filteredOrders = useMemo(() => {
     const mapper: any = {};
-    const saleOrders = orders.map(item => {
-      mapper[item.id] = item.customer;
-      return ({
-        saleId: item.id,
-        clientId: item.customer,
-        trackingId: ``,
-        logisticsId: "",
-        products: JSON.stringify(item.products.map(i => ({
-          allocatedQuantity: i?.allocated || 0,
-          dispatchQuantity: i?.dispatched || 0,
-          sku: i.sku,
-          totatOrderQuantity: i.cases
-        } as LogisticsProduct))),
-        status: item.status === "approved" ? "ready" : "",
-        date: convertDate(item.modifiedOn || item.createdAt),
-        vehicleId: "",
-        driverId: "",
-        contactNumber: "",
-        orderDate: item.modifiedOn || item.createdAt,
-      })
-    }).filter(item => item.status)
-    const list = logisticsData.concat(saleOrders as any).map(item => {
+    const list = logisticsData.map(item => {
       const products = JSON.parse(item.products) as LogisticsProduct[]
       return {
         logisticsId: item.id,
@@ -74,13 +53,12 @@ export function LogisticsTable({ status }: LogisticsTableProps) {
         products: products,
         status: item.status,
         date: convertDate(item.modifiedOn || item.createdOn),
-        vehicleId: item.vehicleId,
-        driverId: item.driverId,
+        vehicleId: item.vehicle,
+        driverId: item.driver,
         contactNumber: item.contactNumber,
         orderDate: item.modifiedOn || item.createdOn
       }
     })
-    console.log({ list })
     if (status === 'all') return list;
     return list.filter(item => item.status === status)
   }, [orders, status, logisticsData])
@@ -139,9 +117,6 @@ export function LogisticsTable({ status }: LogisticsTableProps) {
   const isDispatched = (status: string) => {
     return ["dispatched", "partial_fulfillment", "delivered"].includes(status)
   }
-
-
-  console.log({ paginatedOrders })
 
   return (
     <div className="space-y-4">

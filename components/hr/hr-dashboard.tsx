@@ -24,6 +24,7 @@ import { AddEmployeeDialog } from "@/components/hr/add-employee-dialog"
 import { AddAttendanceDialog } from "@/components/hr/add-attendance-dialog"
 import { useToast } from "@/hooks/use-toast"
 import { useHrContext } from "@/app/hr/hr-context"
+import { PayrollProvider } from "@/app/hr/payroll-context"
 
 // Sample employee data with added aadharImageUrl field
 export const initialEmployees = [
@@ -428,7 +429,9 @@ export function HRDashboard() {
         <TabsContent value="payroll" className="space-y-6">
           <Card>
             <CardContent className="p-0">
-              <PayrollManagement />
+              <PayrollProvider>
+                <PayrollManagement />
+              </PayrollProvider>
             </CardContent>
           </Card>
         </TabsContent>

@@ -30,6 +30,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useOrders } from "@/contexts/order-context"
 import { useVehicleContext } from "./vehicle-context"
 import { Logistics, useLogistics } from "@/app/logistics/shipment-tracking/logistics-context"
+import { getChildObject } from "../generic"
 
 // Define the product type if not already defined elsewhere
 interface Product {
@@ -66,7 +67,7 @@ export function DispatchDialog({ open, onOpenChange, order, onDispatchComplete }
   // Mock products data since it's not available in the order object
   const { orders, updateOrder } = useOrders()
   const { vehicles, drivers } = useVehicleContext()
-  const { create: createLogistics } = useLogistics()
+  const { create: createLogistics, update: updateLogistics } = useLogistics()
 
   const saleOrder = useMemo(() => {
     return orders.find(item => item.id === order.id)
@@ -194,8 +195,11 @@ export function DispatchDialog({ open, onOpenChange, order, onDispatchComplete }
     )
   }
 
+  console.log({ vehicleId, driverId })
+
   const handleSubmit = () => {
     const payload = {
+      id: getChildObject(order, "logisticsId", ""),
       contactNumber,
       deliveryAddress,
       deliveryNote,
@@ -206,12 +210,12 @@ export function DispatchDialog({ open, onOpenChange, order, onDispatchComplete }
         dispatchQuantity: item.dispatchQuantity
       }))),
       status: "dispatched",
-      vehicleId,
-      driverId,
+      vehicle: vehicleId,
+      driver: driverId,
       orderId: order.id
     } as Partial<Logistics>
-
-    createLogistics(payload).then(() => {
+    // console.log({ payload })
+    updateLogistics(payload).then(() => {
       onOpenChange(false)
     })
   }

@@ -34,6 +34,8 @@ import { ConfirmationDialog } from "@/components/common/confirmation-dialog"
 import { convertDate } from "../generic"
 import { useContextBoilerCode } from "../custom/context-boilercode"
 import { Sale } from "@/contexts/types"
+import { LogisticsProduct } from "@/app/logistics/shipment-tracking/logistics-context"
+import { DataByTableName } from "../api"
 
 export function SalesTable() {
   // Use order context
@@ -180,9 +182,35 @@ export function SalesTable() {
 
   const confirmApproval = () => {
     if (orderToAction) {
+      const saleOrder = orders.find(item => item.id === orderToAction)
+      if (!saleOrder) {
+        alert("Sale order not found")
+        return;
+      }
+      const logisticsPayload = {
+        vehicleId: "",
+        driverId: "",
+        contactNumber: "",
+        deliveryAddress: "",
+        deliveryNote: "",
+        status: "ready",
+        clientId: saleOrder.clientId,
+        orderId: orderToAction,
+        products: JSON.stringify(saleOrder.products.map(i => ({
+          allocatedQuantity: i?.allocated || 0,
+          dispatchQuantity: i?.dispatched || 0,
+          sku: i.sku,
+          totatOrderQuantity: i.cases
+        } as LogisticsProduct)))
+      }
+
+      const logisticsInstance = new DataByTableName("v1_logistics");
       approveOrder(orderToAction).then(() => {
+        return logisticsInstance.post(logisticsPayload)
+      }).then(() => {
         setOrderToAction(null)
         refetchContext()
+
       })
     }
   }

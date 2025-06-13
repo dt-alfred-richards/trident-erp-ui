@@ -21,6 +21,7 @@ import { ConfirmationDialog } from "@/components/common/confirmation-dialog"
 import { progressHistoryStore } from "./update-progress-dialog"
 import { useProduction } from "./production-context"
 import { useOrders } from "@/contexts/order-context"
+import { convertDate } from "../generic"
 
 interface ProductionKanbanProps {
   onViewDetails: (orderId: string) => void
@@ -287,7 +288,7 @@ ${column.id === "inProgress"
                           <span className="text-sm font-medium w-14">{item.progress.toFixed(2)}%</span>
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          Deadline: {new Date(item.deadline).toLocaleDateString()}
+                          Deadline: {convertDate(item.deadline)}
                         </div>
                       </div>
                     </CardContent>

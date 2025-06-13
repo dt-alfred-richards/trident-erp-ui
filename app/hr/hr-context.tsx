@@ -147,7 +147,6 @@ export const HrProvider = ({ children }: { children: ReactNode }) => {
                 return acc;
             }, {} as Record<string, LeaveData[]>)
             const dailyAttendanceResponse = getChildObject(response, "2.value.data", [])
-            console.log(createType(dailyAttendanceResponse[0]))
             setDailyAttendance(dailyAttendanceResponse)
             setEmployees(employeeResponse)
             setEmployeeLeaves(empLeaveResponse)

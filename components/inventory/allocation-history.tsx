@@ -30,6 +30,7 @@ interface AllocationHistoryProps {
 export function AllocationHistory({ allocationHistory: propAllocationHistory }: AllocationHistoryProps) {
   const [startDate, setStartDate] = useState<Date>()
   const { allocations = [] } = useInventory()
+  const { clientMapper } = useOrders();
   const [endDate, setEndDate] = useState<Date>()
   const [filterSku, setFilterSku] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState<string>("")
@@ -56,11 +57,13 @@ export function AllocationHistory({ allocationHistory: propAllocationHistory }: 
       id: getChildObject(item, "allocationId", ""),
       timestamp: getChildObject(item, "createdOn", getChildObject(item, "modifiedOn", "")),
       orderId: getChildObject(item, "orderId", ""),
-      customer: getChildObject(item, "createdBy", getChildObject(item, "modifiedBy", "")),
+      customer: clientMapper[getChildObject(item, "createdBy", getChildObject(item, "modifiedBy", ""))]?.name || '',
       sku: getChildObject(item, "sku", ""),
       allocated: getChildObject(item, "allocated", 0)
     }))
   }, [allocations])
+
+  console.log({ defaultAllocationHistory, allocations })
 
   // Update display history when prop history changes
   useEffect(() => {

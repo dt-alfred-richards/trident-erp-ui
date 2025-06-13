@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import {
   Dialog,
   DialogContent,
@@ -147,6 +147,15 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
     setFilteredOrders(filtered)
   }, [searchTerm, searchType, orders, priorityFilter])
 
+
+  const products = useMemo(() => {
+    return saleOrders.flatMap(item => item.products)
+  }, [saleOrders])
+
+  const getCurrentAllocation = useCallback((id: string) => {
+    return products.find(item => item.id === id)?.allocated || 0
+  }, [products])
+
   // Handle order selection
   const handleOrderSelect = (order: Order) => {
     setSelectedOrder(order)
@@ -154,6 +163,7 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
     // Initialize allocations with zeros
     const initialAllocations: Record<string, number> = {}
     order.products.forEach((product) => {
+      const currentQuantity = getCurrentAllocation(product.id)
       initialAllocations[product.id] = 0
     })
     setAllocations(initialAllocations)
@@ -173,16 +183,13 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
     }))
   }
 
-  const products = useMemo(() => {
-    return saleOrders.flatMap(item => item.products)
-  }, [saleOrders])
   // Handle allocation submission
   const handleSubmitAllocation = () => {
     if (!selectedOrder || !updateSaleAllocation || !inventoryRefetch) return
-
-    Promise.allSettled(Object.entries(allocations).map(([key, value]) => (
-      updateSaleAllocation({ allocated: value }, key, selectedOrder)
-    ))).then(() => {
+    Promise.allSettled(Object.entries(allocations).map(([key, value]) => {
+      if (value === 0) return null;
+      return updateSaleAllocation({ allocated: parseInt(value + '') + parseInt(getCurrentAllocation(key) + '') }, key, selectedOrder)
+    }).filter(item => item)).then(() => {
       onOpenChange(false)
       refetchContext();
       inventoryRefetch()
@@ -221,9 +228,10 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
 
   // Calculate allocation progress percentage
   const getAllocationProgress = (product: OrderProduct) => {
-    const currentAllocated = (product.allocated || 0) + (allocations[product.id] || 0)
+    const currentAllocated = (allocations[product.id] || 0) + parseInt(getCurrentAllocation(product.id) + '')
     return Math.round((currentAllocated / product.quantity) * 100)
   }
+
 
   // Get allocation status color
   const getAllocationStatusColor = (progress: number) => {
@@ -489,7 +497,7 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
                                   <div className="text-center p-1 bg-muted/50 rounded">
                                     <div className="text-muted-foreground">Allocated</div>
                                     <div className="font-medium">
-                                      {parseInt(getChildObject(product, "allocated", 0)) + parseInt(getChildObject(allocations, product.id, 0))}
+                                      {getCurrentAllocation(product.id)}
                                     </div>
                                   </div>
                                   <div className="text-center p-1 bg-muted/50 rounded">
@@ -508,7 +516,7 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
                                     type="number"
                                     min="0"
                                     max={remaining}
-                                    value={allocations[product.id] || ""}
+                                    value={(allocations[product.id] || "")}
                                     onChange={(e) => handleAllocationChange(product.id, e.target.value)}
                                     className="w-full pr-16"
                                     disabled={isFullyAllocated}

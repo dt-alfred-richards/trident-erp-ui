@@ -65,8 +65,8 @@ export function AttendanceTracking({
       employeeId: item.id,
       employeeName: `${item.firstName} ${item.lastName}`,
       earnedLeave: item.leaves,
-      usedLeave: item.usedleaves || pastLeavesData[item.id].length || 0,
-      remainingLeave: item.leaves - (item.usedleaves || pastLeavesData[item.id].length || 0)
+      usedLeave: item.usedLeaves || pastLeavesData[item.id]?.length || 0,
+      remainingLeave: item.leaves - (item.usedLeaves || pastLeavesData[item.id]?.length || 0)
     }))
   }, [employees])
 

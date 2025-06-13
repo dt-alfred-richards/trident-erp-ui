@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { DashboardShell } from "@/components/dashboard-shell"
 import { HRDashboard } from "@/components/hr/hr-dashboard"
 import { HrProvider } from "./hr-context"
+import { PayrollProvider } from "./payroll-context"
 
 export const metadata: Metadata = {
   title: "Human Resources",

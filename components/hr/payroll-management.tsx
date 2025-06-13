@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { useHrContext } from "@/app/hr/hr-context"
+import { Payroll, usePayroll } from "@/app/hr/payroll-context"
+import { convertDate, createType, getChildObject } from "../generic"
 
 // Sample payroll data
 const payrollData = [
@@ -232,6 +234,26 @@ const getPayrollStatusBadgeClass = (status: string) => {
 
 export function PayrollManagement() {
   const { employees } = useHrContext()
+  const { data = [] } = usePayroll()
+
+  const payrollData = useMemo(() => {
+    return data.map((item: Payroll) => {
+      return {
+        id: item.id + '',
+        name: getChildObject(item, "employee", ""),
+        department: getChildObject(item, "department", "Unknown Department"),
+        role: getChildObject(item, "role", "Unknown Role"),
+        salary: getChildObject(item, "salary", 0),
+        attendance: getChildObject(item, "attendance", 0),
+        overtime: getChildObject(item, "overtime", 0),
+        bonus: getChildObject(item, "bonus", 0),
+        deductions: getChildObject(item, "deductions", 0),
+        netPay: getChildObject(item, "netPay", 0),
+        status: getChildObject(item, "status", "Pending"),
+        month: convertDate(getChildObject(item, "createdOn", getChildObject(item, "modifiedOn", new Date()))),
+      }
+    })
+  }, [data])
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("all")
   const [selectedMonth, setSelectedMonth] = useState(getMaxMonth())
@@ -241,30 +263,10 @@ export function PayrollManagement() {
   const [payrollUpdateCounter, setPayrollUpdateCounter] = useState(0)
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false)
   const [processingEmployeeId, setProcessingEmployeeId] = useState<string | undefined>(undefined)
-
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
-
-  // const payrollData = useMemo(() => {
-  //   return employees.map(item => (
-  //     {
-  //       id: item.id,
-  //       name: `${item.firstName} ${item.lastName}`,
-  //       department: item,
-  //       role: "System Administrator",
-  //       salary: 50000,
-  //       attendance: 20,
-  //       overtime: 8,
-  //       bonus: 1500,
-  //       deductions: 1200,
-  //       netPay: 51800,
-  //       status: "Pending",
-  //       month: "2025-03",
-  //     }
-  //   ))
-  // }, [employees])
-  // Filter payroll data based on search query, selected filters, and month
+  
   const filteredPayroll = useMemo(
     () =>
       payrollData.filter((employee) => {
@@ -276,7 +278,7 @@ export function PayrollManagement() {
 
         const matchesMonth = employee.month === selectedMonth
 
-        return matchesSearch && matchesStatus && matchesMonth
+        return matchesSearch && matchesStatus
       }),
     [searchQuery, selectedStatus, selectedMonth, payrollUpdateCounter],
   )
