@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -24,9 +24,10 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
+import { useInvoiceContext } from "./context/invoice-context"
+import { getCummulativeSum } from "../generic"
 
 export function AccountsReceivable() {
-  const { invoices, deleteInvoice } = useFinance()
   const [activeTab, setActiveTab] = useState("invoices")
   const [searchTerm, setSearchTerm] = useState("")
   const [customerSearchTerm, setCustomerSearchTerm] = useState("")
@@ -43,6 +44,22 @@ export function AccountsReceivable() {
   const [invoiceItemsPerPage] = useState(5)
   const [customerCurrentPage, setCustomerCurrentPage] = useState(1)
   const [customerItemsPerPage] = useState(5)
+  const { data, deleteItem: deleteInvoice } = useInvoiceContext()
+  const invoices = useMemo(() => {
+    return data.map(item => {
+      const items = JSON.parse(item.items)
+      return ({
+        id: item.id + '',
+        customer: item.customer,
+        date: item.date,
+        dueDate: item.dueDate,
+        amount: item?.total || 0,
+        balance: (item?.total || 0) - (item?.subtotal || 0),
+        status: item.status,
+        items
+      })
+    })
+  }, [data])
 
   // Filter invoices based on search term and status
   const filteredInvoices = invoices.filter((invoice) => {
@@ -54,6 +71,7 @@ export function AccountsReceivable() {
 
     return matchesSearch && matchesStatus
   })
+
 
   // Calculate pagination for invoices
   const indexOfLastInvoice = invoiceCurrentPage * invoiceItemsPerPage
@@ -123,9 +141,10 @@ export function AccountsReceivable() {
   // Confirm delete
   const confirmDelete = () => {
     if (invoiceToDelete) {
-      deleteInvoice(invoiceToDelete)
-      setInvoiceToDelete(null)
-      setIsDeleteDialogOpen(false)
+      deleteInvoice(parseInt(invoiceToDelete)).then(()=>{
+        setInvoiceToDelete(null)
+        setIsDeleteDialogOpen(false)
+      })
     }
   }
 

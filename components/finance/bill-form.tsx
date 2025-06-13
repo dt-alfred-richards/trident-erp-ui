@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/dialog"
 import { useFinance, type Bill } from "@/contexts/finance-context"
 import { X, Plus } from "lucide-react"
+import { useBillContext } from "./context/bill-context"
+import { useMemo } from "react"
 
 // Define the form schema
 const billItemSchema = z.object({
@@ -50,23 +52,26 @@ export function BillForm({ open, onOpenChange, initialValues, billId }: BillForm
   const isEditing = !!billId
 
   // Default values for the form
-  const defaultValues: Partial<BillFormValues> = {
-    supplier: "",
-    date: new Date().toISOString().split("T")[0],
-    dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    status: "Open",
-    items: [
-      {
-        description: "",
-        quantity: 1,
-        unitPrice: 0,
-        amount: 0,
-        taxRate: 18,
-        taxAmount: 0,
-      },
-    ],
-    ...initialValues,
-  }
+  const defaultValues: Partial<BillFormValues> = useMemo(() => {
+    if (isEditing) return initialValues
+    return ({
+      supplier: "",
+      date: new Date().toISOString().split("T")[0],
+      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+      status: "Open",
+      items: [
+        {
+          description: "",
+          quantity: 1,
+          unitPrice: 0,
+          amount: 0,
+          taxRate: 18,
+          taxAmount: 0,
+        },
+      ],
+      ...initialValues,
+    })
+  }, [initialValues, billId, isEditing])
 
   // Initialize the form
   const form = useForm<BillFormValues>({
@@ -114,6 +119,8 @@ export function BillForm({ open, onOpenChange, initialValues, billId }: BillForm
     })
   }
 
+
+  const { create, update } = useBillContext()
   // Handle form submission
   const onSubmit = (values: BillFormValues) => {
     const { subtotal, tax, total } = calculateTotalAmount()
@@ -124,14 +131,26 @@ export function BillForm({ open, onOpenChange, initialValues, billId }: BillForm
       balance: total,
     }
 
-    if (isEditing && billId) {
-      updateBill(billId, billData)
+    if (isEditing) {
+      update({ ...billData, id: billId, items: JSON.stringify(billData.items) }).then(() => {
+        onOpenChange(false)
+        form.reset(defaultValues)
+      })
     } else {
-      addBill(billData)
+      create({ ...billData, status: billData.status as string, items: JSON.stringify(billData.items) })
+        .then(() => {
+          onOpenChange(false)
+          form.reset(defaultValues)
+        })
     }
+    // if (isEditing && billId) {
+    //   updateBill(billId, billData)
+    // } else {
+    //   addBill(billData)
+    // }
 
-    onOpenChange(false)
-    form.reset(defaultValues)
+    // onOpenChange(false)
+    // form.reset(defaultValues)
   }
 
   const { subtotal, tax, total } = calculateTotalAmount()

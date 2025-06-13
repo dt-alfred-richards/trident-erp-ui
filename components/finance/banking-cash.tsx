@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -27,9 +27,10 @@ import {
 } from "@/components/ui/alert-dialog"
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
 import { StatusBadge } from "@/components/common/status-badge"
+import { useBankAccountContext } from "./context/bank-account-context"
+import { useTranscation } from "./context/trasncations"
 
 export function BankingCash() {
-  const { bankAccounts, transactions, deleteBankAccount, deleteTransaction } = useFinance()
   const [activeTab, setActiveTab] = useState("accounts")
   const [searchTerm, setSearchTerm] = useState("")
   const [accountSearchTerm, setAccountSearchTerm] = useState("")
@@ -58,6 +59,15 @@ export function BankingCash() {
   const [unreconciledPage, setUnreconciledPage] = useState(0)
   const [unreconciledRowsPerPage, setUnreconciledRowsPerPage] = useState(5)
 
+  const { data, deleteItem: deleteBankAccount } = useBankAccountContext()
+  const { data: Tdata, deleteItem: deleteTransaction } = useTranscation()
+
+  const bankAccounts = useMemo(() => {
+    return data.map(item => ({ ...item }))
+  }, [data])
+  const transactions = useMemo(() => {
+    return Tdata.map(item => ({ ...item }))
+  }, [Tdata])
   // Get account title based on selected account type
   const getAccountTitle = () => {
     switch (selectedAccountType) {
@@ -389,9 +399,10 @@ export function BankingCash() {
 
   const confirmDeleteAccount = () => {
     if (accountToDelete) {
-      deleteBankAccount(accountToDelete)
-      setAccountToDelete(null)
-      setIsAccountDeleteDialogOpen(false)
+      deleteBankAccount(parseInt(accountToDelete)).then(() => {
+        setAccountToDelete(null)
+        setIsAccountDeleteDialogOpen(false)
+      })
     }
   }
 
@@ -423,9 +434,10 @@ export function BankingCash() {
 
   const confirmDeleteTransaction = () => {
     if (transactionToDelete) {
-      deleteTransaction(transactionToDelete)
-      setTransactionToDelete(null)
-      setIsTransactionDeleteDialogOpen(false)
+      deleteTransaction(parseInt(transactionToDelete)).then(() => {
+        setTransactionToDelete(null)
+        setIsTransactionDeleteDialogOpen(false)
+      })
     }
   }
 
@@ -437,9 +449,9 @@ export function BankingCash() {
   // Paginate unreconciled items
   const paginatedUnreconciledItems = reconciliationData.unreconciledItems
     ? reconciliationData.unreconciledItems.slice(
-        unreconciledPage * unreconciledRowsPerPage,
-        unreconciledPage * unreconciledRowsPerPage + unreconciledRowsPerPage,
-      )
+      unreconciledPage * unreconciledRowsPerPage,
+      unreconciledPage * unreconciledRowsPerPage + unreconciledRowsPerPage,
+    )
     : []
 
   // Export function

@@ -15,7 +15,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useFinance, type BankAccount } from "@/contexts/finance-context"
-import { useEffect } from "react"
+import { useEffect, useMemo } from "react"
+import { useBankAccountContext } from "./context/bank-account-context"
 
 // Define the form schema
 const formSchema = z.object({
@@ -40,15 +41,16 @@ export function BankAccountForm({ open, onOpenChange, initialValues, accountId }
   const isEditing = !!accountId
 
   // Default values for the form
-  const defaultValues: Partial<BankAccountFormValues> = {
-    name: "",
-    bank: "",
-    accountNumber: "",
-    balance: 0,
-    type: "Current",
-    ...initialValues,
-  }
-
+  const defaultValues: Partial<BankAccountFormValues> = useMemo(() => {
+    if (isEditing) return initialValues
+    return ({
+      name: "",
+      bank: "",
+      accountNumber: "",
+      balance: 0,
+      type: "Current"
+    })
+  }, [])
   // Initialize the form
   const form = useForm<BankAccountFormValues>({
     resolver: zodResolver(formSchema),
@@ -72,24 +74,32 @@ export function BankAccountForm({ open, onOpenChange, initialValues, accountId }
     }
   }, [form, initialValues, isEditing])
 
+  const { create, update } = useBankAccountContext()
   // Handle form submission
   const onSubmit = (values: BankAccountFormValues) => {
-    if (isEditing && accountId) {
-      updateBankAccount(accountId, values)
+    if (isEditing) {
+      update({ ...values, id: parseInt(accountId) }).then(() => {
+        onOpenChange(false)
+        form.reset(defaultValues)
+      })
     } else {
-      addBankAccount(values)
+      create({ ...values })
+        .then(() => {
+          onOpenChange(false)
+          form.reset(defaultValues)
+        })
     }
 
-    onOpenChange(false)
+    // onOpenChange(false)
 
-    // Reset form to default empty values
-    form.reset({
-      name: "",
-      bank: "",
-      accountNumber: "",
-      balance: 0,
-      type: "Current",
-    })
+    // // Reset form to default empty values
+    // form.reset({
+    //   name: "",
+    //   bank: "",
+    //   accountNumber: "",
+    //   balance: 0,
+    //   type: "Current",
+    // })
   }
 
   return (

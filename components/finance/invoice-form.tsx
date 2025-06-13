@@ -17,6 +17,7 @@ import {
 import { useFinance, type Invoice } from "@/contexts/finance-context"
 import { X, Plus } from "lucide-react"
 import { useEffect } from "react"
+import { useInvoiceContext } from "./context/invoice-context"
 
 // Define the form schema
 const invoiceItemSchema = z.object({
@@ -144,24 +145,24 @@ export function InvoiceForm({ open, onOpenChange, initialValues, invoiceId }: In
     }, 0)
   }
 
+  const { create, update } = useInvoiceContext()
+
   // Handle form submission
   const onSubmit = (values: InvoiceFormValues) => {
     const { subtotal, tax, total } = calculateTotalAmount()
-
-    const invoiceData = {
-      ...values,
-      amount: total,
-      balance: total,
+    if (isEditing) {
+      update({ ...values, id: parseInt(invoiceId), subtotal, tax, total, items: JSON.stringify(values.items) }).then(() => {
+        onOpenChange(false)
+        form.reset(defaultValues)
+      })
     }
-
-    if (isEditing && invoiceId) {
-      updateInvoice(invoiceId, invoiceData)
-    } else {
-      addInvoice(invoiceData)
+    else {
+      create({ ...values, subtotal, tax, total, items: JSON.stringify(values.items) })
+        .then(() => {
+          onOpenChange(false)
+          form.reset(defaultValues)
+        })
     }
-
-    onOpenChange(false)
-    form.reset(defaultValues)
   }
 
   const { subtotal, tax, total } = calculateTotalAmount()

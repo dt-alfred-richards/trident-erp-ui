@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog"
 import { useFinance, type Transaction } from "@/contexts/finance-context"
 import { useEffect } from "react"
+import { useTranscation } from "./context/trasncations"
 
 // Define the form schema
 const formSchema = z.object({
@@ -80,15 +81,21 @@ export function TransactionForm({ open, onOpenChange, initialValues, transaction
     }
   }, [form, initialValues, isEditing, open])
 
+  const { create, update } = useTranscation()
   // Handle form submission
   const onSubmit = (values: TransactionFormValues) => {
-    if (isEditing && transactionId) {
-      updateTransaction(transactionId, values)
+    if (isEditing) {
+      update({ ...values, id: parseInt(transactionId), reference: (values?.reference || "") }).then(() => {
+        onOpenChange(false)
+        form.reset(defaultValues)
+      })
     } else {
-      addTransaction(values)
+      create({ ...values, reference: (values?.reference || "") })
+        .then(() => {
+          onOpenChange(false)
+          form.reset(defaultValues)
+        })
     }
-
-    onOpenChange(false)
   }
 
   return (

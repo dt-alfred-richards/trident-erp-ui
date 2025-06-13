@@ -104,3 +104,11 @@ export function getStartedAgo(timestamp: string | number | Date): string {
     return `Started ${moment(timestamp).fromNow()}`;
 }
 
+
+
+export const getCummulativeSum = ({ key, refObject, defaultValue = 0 }: { key: string, refObject: any[], defaultValue?: number }) => {
+    return refObject.reduce((acc, curr) => {
+        acc += getChildObject(curr, key, defaultValue)
+        return acc;
+    }, 0)
+}

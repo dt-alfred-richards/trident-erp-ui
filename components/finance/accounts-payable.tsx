@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -24,9 +24,9 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
+import { useBillContext } from "./context/bill-context"
 
 export function AccountsPayable() {
-  const { bills, deleteBill } = useFinance()
   const [activeTab, setActiveTab] = useState("bills")
   const [searchTerm, setSearchTerm] = useState("")
   const [supplierSearchTerm, setSupplierSearchTerm] = useState("")
@@ -43,6 +43,17 @@ export function AccountsPayable() {
   const [billItemsPerPage] = useState(5)
   const [supplierCurrentPage, setSupplierCurrentPage] = useState(1)
   const [supplierItemsPerPage] = useState(5)
+
+  const { data, deleteItem: deleteBill } = useBillContext()
+
+  const bills = useMemo(() => {
+    return data.map(item => {
+      return ({
+        ...item,
+        items: JSON.parse(item.items)
+      })
+    })
+  }, [data])
 
   // Filter bills based on search term and status
   const filteredBills = bills.filter((bill) => {
@@ -120,9 +131,10 @@ export function AccountsPayable() {
   // Confirm delete
   const confirmDelete = () => {
     if (billToDelete) {
-      deleteBill(billToDelete)
-      setBillToDelete(null)
-      setIsDeleteDialogOpen(false)
+      deleteBill(parseInt(billToDelete)).then(() => {
+        setBillToDelete(null)
+        setIsDeleteDialogOpen(false)
+      })
     }
   }
 
