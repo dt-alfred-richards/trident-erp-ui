@@ -3,7 +3,7 @@
 import { createBoilerContext } from "@/components/custom/context-boilercode";
 import { Basic } from "@/contexts/types";
 
-type Product = {
+export type LogisticsProduct = {
     sku: string,
     totatOrderQuantity: number,
     allocatedQuantity: number,
@@ -12,13 +12,15 @@ type Product = {
 
 export type Logistics = {
     id: number,
-    products: Product[],
+    products: string,
     vehicleId: string,
     driverId: string,
     contactNumber: string,
     deliveryAddress: string,
     deliveryNote: string,
-    status: string
+    status: string,
+    clientId: string,
+    orderId: string
 } & Basic
 
 export const { BoilerProvider: LogisticsProvider, useBoiler: useLogistics } = createBoilerContext<Logistics>("v1_logistics")

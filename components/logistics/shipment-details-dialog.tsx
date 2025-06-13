@@ -5,6 +5,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/common/status-badge"
 import { Separator } from "@/components/ui/separator"
 import { Clock, MapPin, Package, Phone, Truck, User } from "lucide-react"
+import { LogisticsProduct } from "@/app/logistics/shipment-tracking/logistics-context"
+import { useOrders } from "@/contexts/order-context"
+import { useVehicleContext } from "./vehicle-context"
+import { useMemo } from "react"
+import { convertDate } from "../generic"
 
 interface ShipmentDetailsDialogProps {
   open: boolean
@@ -13,6 +18,13 @@ interface ShipmentDetailsDialogProps {
 }
 
 export function ShipmentDetailsDialog({ open, onOpenChange, order }: ShipmentDetailsDialogProps) {
+  const { clientProposedProductMapper } = useOrders()
+  const { drivers } = useVehicleContext()
+
+  const driverDetails = useMemo(() => {
+    return drivers.find(item => item.id === parseInt(order.driverId))
+  }, [drivers, order])
+
   if (!order) return null
 
   return (
@@ -46,7 +58,7 @@ export function ShipmentDetailsDialog({ open, onOpenChange, order }: ShipmentDet
                 <p className="text-sm text-muted-foreground">Order Date</p>
                 <div className="flex items-center gap-1.5">
                   <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span>{new Date().toLocaleDateString()}</span>
+                  <span>{convertDate(order.orderDate)}</span>
                 </div>
               </div>
             </div>
@@ -67,19 +79,24 @@ export function ShipmentDetailsDialog({ open, onOpenChange, order }: ShipmentDet
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-1.5">
-                      <Package className="h-4 w-4 text-muted-foreground" />
-                      <span>{order.sku}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">{order.quantity.toLocaleString()}</TableCell>
-                  <TableCell className="text-right">${order.pricePerUnit?.toFixed(2) || "0.00"}</TableCell>
-                  <TableCell className="text-right">
-                    ${(order.quantity * (order.pricePerUnit || 0)).toFixed(2)}
-                  </TableCell>
-                </TableRow>
+                {
+                  (order?.products || []).map((order: LogisticsProduct, index: number) => {
+                    const pricePerUnit = Object.values(clientProposedProductMapper).flat().find(item => item.sku === order.sku)?.price || 0;
+                    return <TableRow key={`${order.sku}-${index}`}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-1.5">
+                          <Package className="h-4 w-4 text-muted-foreground" />
+                          <span>{order.sku}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">{order.totatOrderQuantity.toLocaleString()}</TableCell>
+                      <TableCell className="text-right">${pricePerUnit?.toFixed(2) || "0.00"}</TableCell>
+                      <TableCell className="text-right">
+                        ${(order.totatOrderQuantity * (pricePerUnit || 0)).toFixed(2)}
+                      </TableCell>
+                    </TableRow>
+                  })
+                }
               </TableBody>
             </Table>
           </div>
@@ -141,7 +158,7 @@ export function ShipmentDetailsDialog({ open, onOpenChange, order }: ShipmentDet
                 <p className="text-sm text-muted-foreground">Driver Name</p>
                 <div className="flex items-center gap-1.5">
                   <User className="h-4 w-4 text-muted-foreground" />
-                  <span>{order.driverName || "Not assigned"}</span>
+                  <span>{driverDetails?.fullName || "Not assigned"}</span>
                 </div>
               </div>
               <div className="space-y-1 col-span-2">

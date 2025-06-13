@@ -36,7 +36,7 @@ interface Product {
   id: string
   name: string
   sku: string
-  quantity: number // Total order quantity
+  cases: number // Total order quantity
   allocated?: number
   dispatched?: number
 }
@@ -55,26 +55,29 @@ interface DispatchDialogProps {
 
 interface SelectedProduct {
   id: string
-  quantity: number
-  maxQuantity: number
+  dispatchQuantity: number
+  allocated: number
   isSelected: boolean
+  sku: string,
+  cases: number
 }
 
 export function DispatchDialog({ open, onOpenChange, order, onDispatchComplete }: DispatchDialogProps) {
   // Mock products data since it's not available in the order object
-  const { orders } = useOrders()
+  const { orders, updateOrder } = useOrders()
   const { vehicles, drivers } = useVehicleContext()
   const { create: createLogistics } = useLogistics()
+
   const saleOrder = useMemo(() => {
     return orders.find(item => item.id === order.id)
   }, [orders])
 
   // Mock data for vehicles
   const mockVehicles = useMemo(() => {
-    return vehicles.map(item => ({ value: item.id, label: `${item.vehicleId} - ${item.model}` }))
+    return vehicles.map(item => ({ value: item.id + '', label: `${item.vehicleId} - ${item.model}` }))
   }, [vehicles])
   const mockDrivers = useMemo(() => {
-    return drivers.map(item => ({ value: item.id, label: `${item.driverId} - ${item.fullName}` }))
+    return drivers.map(item => ({ value: item.id + '', label: `${item.driverId} - ${item.fullName}` }))
   }, [drivers])
 
   const [orderProducts, set_OrderProducts] = useState<Product[]>([])
@@ -83,7 +86,7 @@ export function DispatchDialog({ open, onOpenChange, order, onDispatchComplete }
     set_OrderProducts((saleOrder?.products || []).map(item => ({
       id: item.id,
       name: item.name,
-      quantity: item.cases,
+      cases: item.cases,
       allocated: item.allocated,
       sku: item.sku,
       dispatched: 0
@@ -144,12 +147,13 @@ export function DispatchDialog({ open, onOpenChange, order, onDispatchComplete }
   useEffect(() => {
     if (open && orderProducts.length > 0) {
       const initialSelected: SelectedProduct[] = orderProducts.map((product) => {
-        const allocated = product.allocated || 0
         return {
           id: product.id,
-          quantity: allocated > 0 ? allocated : 0,
-          maxQuantity: allocated,
-          isSelected: false, // Initially none are selected
+          sku: product.sku,
+          allocated: product.allocated || 0,
+          cases: product.cases,
+          dispatchQuantity: 0,
+          isSelected: false
         }
       })
 
@@ -165,7 +169,7 @@ export function DispatchDialog({ open, onOpenChange, order, onDispatchComplete }
             ...p,
             isSelected: checked,
             // Reset quantity to max if being selected, keep current if just being unselected
-            quantity: checked ? p.maxQuantity : p.quantity,
+            dispatchQuantity: checked ? p.allocated : p.dispatchQuantity,
           }
         }
         return p
@@ -182,7 +186,7 @@ export function DispatchDialog({ open, onOpenChange, order, onDispatchComplete }
         if (p.id === productId) {
           return {
             ...p,
-            quantity: Math.min(Math.max(0, quantity), allocated), // Ensure between 0 and allocated
+            dispatchQuantity: quantity, // Ensure between 0 and allocated
           }
         }
         return p
@@ -191,56 +195,29 @@ export function DispatchDialog({ open, onOpenChange, order, onDispatchComplete }
   }
 
   const handleSubmit = () => {
-    // Filter out products that are not selected or have quantity 0
-    const productsToDispatch = selectedProducts.filter((p) => p.isSelected && p.quantity > 0)
-
-    // In a real app, this would submit the dispatch information
-    console.log("Dispatching order:", order.id)
-    console.log("Products to dispatch:", productsToDispatch)
-    console.log("Vehicle ID:", isCustomVehicle ? customVehicleId : vehicleId)
-    console.log("Driver:", isCustomDriver ? customDriverName : driverId)
-    console.log("Contact Number:", contactNumber)
-    console.log("Delivery Address:", deliveryAddress)
-    console.log("Delivery Note:", deliveryNote)
-
-    // Update the order with vehicle and driver information
-    // In a real app, this would be an API call
-    const updatedOrder = {
-      ...order,
+    const payload = {
+      contactNumber,
+      deliveryAddress,
+      deliveryNote,
+      products: JSON.stringify(selectedProducts.filter(item => item.isSelected).map(item => ({
+        sku: item.sku,
+        totatOrderQuantity: item.cases,
+        allocatedQuantity: item.allocated,
+        dispatchQuantity: item.dispatchQuantity
+      }))),
       status: "dispatched",
-      vehicleId: isCustomVehicle ? customVehicleId : vehicleId,
-      driverName: isCustomDriver
-        ? customDriverName
-        : mockDrivers.find((d) => d.value === driverId)?.label.split(" - ")[1] || driverId,
-      contactNumber: contactNumber,
-      trackingId: `TRK-${Math.floor(Math.random() * 100000)
-        .toString()
-        .padStart(5, "0")}`,
-      carrier: isCustomVehicle
-        ? "Custom"
-        : mockVehicles.find((v) => v.value === vehicleId)?.label.split(" - ")[1] || "Unknown",
-    }
+      vehicleId,
+      driverId,
+      orderId: order.id
+    } as Partial<Logistics>
 
-    // const payload = {
-    //   contactNumber,
-    //   deliveryAddress,
-    //   deliveryNote,
-    //   products:
-    // } as Logistics
-
-    // This would update the order in a real application
-    console.log("Updated order:", updatedOrder)
-
-    // Call the onDispatchComplete callback if provided
-    if (onDispatchComplete) {
-      onDispatchComplete(order.id, updatedOrder)
-    } else {
+    createLogistics(payload).then(() => {
       onOpenChange(false)
-    }
+    })
   }
 
   // Check if any products are selected and have a dispatch quantity greater than 0
-  const hasProductsToDispatch = selectedProducts.some((p) => p.isSelected && p.quantity > 0)
+  const hasProductsToDispatch = selectedProducts.some((p) => p.isSelected && p.dispatchQuantity > 0)
 
   // Get the effective vehicle ID (either selected or custom)
   const effectiveVehicleId = isCustomVehicle ? customVehicleId : vehicleId
@@ -281,19 +258,19 @@ export function DispatchDialog({ open, onOpenChange, order, onDispatchComplete }
                           <Checkbox
                             checked={isSelected}
                             onCheckedChange={(checked) => handleCheckboxChange(product.id, checked === true)}
-                            disabled={allocated <= 0}
+                          // disabled={allocated <= 0}
                           />
                         </TableCell>
                         <TableCell>{product.sku}</TableCell>
-                        <TableCell className="text-right">{product.quantity}</TableCell>
+                        <TableCell className="text-right">{product.cases}</TableCell>
                         <TableCell className="text-right">{allocated}</TableCell>
                         <TableCell className="text-right">
-                          {allocated > 0 ? (
+                          {1 > 0 ? (
                             <Input
                               type="number"
                               min={0}
                               max={allocated}
-                              value={selectedProduct?.quantity || 0}
+                              value={selectedProduct?.dispatchQuantity || 0}
                               onChange={(e) => handleQuantityChange(product.id, Number.parseInt(e.target.value) || 0)}
                               className="w-20 ml-auto"
                               disabled={!isSelected}
@@ -527,14 +504,14 @@ export function DispatchDialog({ open, onOpenChange, order, onDispatchComplete }
           <Button
             type="button"
             onClick={handleSubmit}
-            disabled={
-              !hasProductsToDispatch ||
-              !deliveryAddress ||
-              !effectiveVehicleId ||
-              !(isCustomDriver ? customDriverName : driverId) ||
-              !contactNumber ||
-              (isCustomVehicle && !customVehicleId)
-            }
+            // disabled={
+            //   !hasProductsToDispatch ||
+            //   !deliveryAddress ||
+            //   !effectiveVehicleId ||
+            //   !(isCustomDriver ? customDriverName : driverId) ||
+            //   !contactNumber ||
+            //   (isCustomVehicle && !customVehicleId)
+            // }
             className="bg-[#725af2] text-white hover:bg-[#5e48d0]"
           >
             Mark as Dispatched

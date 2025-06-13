@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/common/status-badge"
 import { DispatchDialog } from "@/components/logistics/dispatch-dialog"
 import { ShipmentDetailsDialog } from "@/components/logistics/shipment-details-dialog"
-import { useLogisticsData } from "@/hooks/use-logistics-data"
+import { useLogisticsContext, useLogisticsData } from "@/hooks/use-logistics-data"
 import { Eye } from "lucide-react"
 import {
   AlertDialog,
@@ -21,7 +21,8 @@ import {
 import { useToast } from "@/components/ui/use-toast"
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
 import { useOrders } from "@/contexts/order-context"
-import { convertDate } from "../generic"
+import { convertDate, getChildObject } from "../generic"
+import { Logistics, LogisticsProduct, useLogistics } from "@/app/logistics/shipment-tracking/logistics-context"
 
 interface LogisticsTableProps {
   status: "all" | "ready" | "dispatched" | "delivered"
@@ -38,22 +39,52 @@ export function LogisticsTable({ status }: LogisticsTableProps) {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
   const { orders } = useOrders()
+  const { data: logisticsData, update } = useLogistics()
 
   const filteredOrders = useMemo(() => {
-    return orders.filter(item => ["approved", "ready"].includes(item.status)).map(item => ({
-      id: item.id,
-      customer: item.customer,
-      sku: "",
-      quantity: item.products.reduce((acc, curr) => {
-        acc += curr.cases
-        return acc;
-      }, 0),
-      status: item.status === "approved" ? "ready" : "",
-      date: convertDate(item.modifiedOn || item.createdAt)
-    }))
-  }, [orders])
+    const mapper: any = {};
+    const saleOrders = orders.map(item => {
+      mapper[item.id] = item.customer;
+      return ({
+        saleId: item.id,
+        clientId: item.customer,
+        trackingId: ``,
+        logisticsId: "",
+        products: JSON.stringify(item.products.map(i => ({
+          allocatedQuantity: i?.allocated || 0,
+          dispatchQuantity: i?.dispatched || 0,
+          sku: i.sku,
+          totatOrderQuantity: i.cases
+        } as LogisticsProduct))),
+        status: item.status === "approved" ? "ready" : "",
+        date: convertDate(item.modifiedOn || item.createdAt),
+        vehicleId: "",
+        driverId: "",
+        contactNumber: "",
+        orderDate: item.modifiedOn || item.createdAt,
+      })
+    }).filter(item => item.status)
+    const list = logisticsData.concat(saleOrders as any).map(item => {
+      const products = JSON.parse(item.products) as LogisticsProduct[]
+      return {
+        logisticsId: item.id,
+        id: item.orderId || getChildObject(item, "saleId", ""),
+        customer: mapper[item.orderId || item.id] || item.clientId || '',
+        trackingId: `TRK-${item.id}`,
+        products: products,
+        status: item.status,
+        date: convertDate(item.modifiedOn || item.createdOn),
+        vehicleId: item.vehicleId,
+        driverId: item.driverId,
+        contactNumber: item.contactNumber,
+        orderDate: item.modifiedOn || item.createdOn
+      }
+    })
+    console.log({ list })
+    if (status === 'all') return list;
+    return list.filter(item => item.status === status)
+  }, [orders, status, logisticsData])
 
-  console.log({ orders })
 
   // Get logistics data from custom hook with shared context
   const { updateOrderStatus } = useLogisticsData(status)
@@ -84,18 +115,10 @@ export function LogisticsTable({ status }: LogisticsTableProps) {
 
   const handleDeliveryConfirmed = () => {
     // Update the shared context state
-    if (selectedOrder) {
-      updateOrderStatus(selectedOrder.id, {
-        status: "delivered",
-        deliveryDate: new Date().toISOString().split("T")[0], // Today's date
+    if (selectedOrder && selectedOrder.logisticsId) {
+      update({ id: selectedOrder.logisticsId, status: "delivered" }).then(() => {
+        setOpenConfirmDialog(false)
       })
-
-      toast({
-        title: "Order Delivered",
-        description: `Order ${selectedOrder.id} has been marked as delivered.`,
-      })
-
-      setOpenConfirmDialog(false)
     }
   }
 
@@ -117,6 +140,9 @@ export function LogisticsTable({ status }: LogisticsTableProps) {
     return ["dispatched", "partial_fulfillment", "delivered"].includes(status)
   }
 
+
+  console.log({ paginatedOrders })
+
   return (
     <div className="space-y-4">
       <div className="w-full overflow-auto">
@@ -132,8 +158,8 @@ export function LogisticsTable({ status }: LogisticsTableProps) {
           </TableHeader>
           <TableBody>
             {paginatedOrders.length > 0 ? (
-              paginatedOrders.map((order) => (
-                <TableRow key={order.id}>
+              paginatedOrders.map((order, index) => (
+                <TableRow key={`${order.id}-${index}`}>
                   <TableCell className="font-medium">{order.id}</TableCell>
                   <TableCell>{order.customer}</TableCell>
                   <TableCell>

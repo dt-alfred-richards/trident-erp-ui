@@ -92,7 +92,8 @@ export type V1Sale = {
   taxesEnabled: boolean,
   taxType: string,
   taxTotal: number,
-  status: string
+  status: string,
+  trackingId: string
 }
 
 export type SaleOrderDetail = {
