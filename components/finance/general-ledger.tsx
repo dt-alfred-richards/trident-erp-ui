@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, use } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -27,6 +27,8 @@ import type { Account } from "@/contexts/finance-context"
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
 import { JournalEntryViewDialog } from "@/components/finance/journal-entry-view-dialog"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useJournalContext } from "./context/journal-context"
+import { useChartAccount } from "./context/chart-accounts"
 
 // Define the trial balance data type
 type TrialBalanceEntry = {
@@ -132,7 +134,7 @@ const trialBalanceData: Record<string, TrialBalancePeriod> = {
 }
 
 export function GeneralLedger() {
-  const { journalEntries, accounts, deleteJournalEntry } = useFinance()
+  const { deleteJournalEntry } = useFinance()
   const [activeTab, setActiveTab] = useState("journal-entries")
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
@@ -150,6 +152,29 @@ export function GeneralLedger() {
   const [isViewAccountDialogOpen, setIsViewAccountDialogOpen] = useState(false)
   const [accountToView, setAccountToView] = useState<Account | null>(null)
 
+  const { data } = useJournalContext()
+  const { data: chartData } = useChartAccount()
+
+  const accounts = useMemo(() => {
+    return chartData.map(item => {
+      return ({ id: item.id, accountCode: item.accountCode, name: item.name, type: item.type, balance: item.balance, parentId: item.parentId }
+      )
+    })
+  }, [chartData])
+  const journalEntries = useMemo(() => {
+    return data.map(item => {
+      return ({
+        id: item.id,
+        date: item.date,
+        description: item.description,
+        debitAccount: item.debitAccount,
+        creditAccount: item.creditAccount,
+        amount: item.amount,
+        reference: item.reference || '',
+        status: item.status,
+      })
+    })
+  }, [data])
   // Pagination state
   const [journalCurrentPage, setJournalCurrentPage] = useState(1)
   const [journalItemsPerPage] = useState(5)
@@ -242,12 +267,15 @@ export function GeneralLedger() {
     setIsDeleteDialogOpen(true)
   }
 
+  const { deleteItem } = useJournalContext()
+
   // Confirm delete
   const confirmDelete = () => {
     if (entryToDelete) {
-      deleteJournalEntry(entryToDelete)
-      setEntryToDelete(null)
-      setIsDeleteDialogOpen(false)
+      deleteItem(parseInt(entryToDelete)).then(() => {
+        setEntryToDelete(null)
+        setIsDeleteDialogOpen(false)
+      })
     }
   }
 
@@ -350,16 +378,16 @@ export function GeneralLedger() {
           </thead>
           <tbody>
             ${trialBalance.entries
-              .map(
-                (entry) => `
+        .map(
+          (entry) => `
               <tr>
                 <td>${entry.account}</td>
                 <td class="amount">${entry.debit ? entry.debit.toLocaleString("en-IN") : "-"}</td>
                 <td class="amount">${entry.credit ? entry.credit.toLocaleString("en-IN") : "-"}</td>
               </tr>
             `,
-              )
-              .join("")}
+        )
+        .join("")}
             <tr class="total-row">
               <td>Total</td>
               <td class="amount">${trialBalance.totalDebit.toLocaleString("en-IN")}</td>
@@ -545,11 +573,10 @@ export function GeneralLedger() {
                         <TableCell>{entry.reference}</TableCell>
                         <TableCell>
                           <span
-                            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
-                              entry.status === "Posted"
-                                ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-400"
-                                : "border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-800 dark:bg-gray-950/30 dark:text-gray-400"
-                            }`}
+                            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${entry.status === "Posted"
+                              ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-400"
+                              : "border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-800 dark:bg-gray-950/30 dark:text-gray-400"
+                              }`}
                           >
                             {entry.status}
                           </span>
@@ -660,7 +687,7 @@ export function GeneralLedger() {
                     paginatedParentAccounts.map((account) => (
                       <React.Fragment key={account.id}>
                         <TableRow className="bg-muted/50">
-                          <TableCell className="font-medium">{account.id}</TableCell>
+                          <TableCell className="font-medium">{account.accountCode}</TableCell>
                           <TableCell className="font-medium">{account.name}</TableCell>
                           <TableCell>{account.type}</TableCell>
                           <TableCell className="text-right font-medium">
@@ -822,14 +849,14 @@ export function GeneralLedger() {
         initialValues={
           selectedEntry
             ? {
-                date: selectedEntry.date,
-                description: selectedEntry.description,
-                debitAccount: selectedEntry.debitAccount,
-                creditAccount: selectedEntry.creditAccount,
-                amount: selectedEntry.amount,
-                reference: selectedEntry.reference,
-                status: selectedEntry.status,
-              }
+              date: selectedEntry.date,
+              description: selectedEntry.description,
+              debitAccount: selectedEntry.debitAccount,
+              creditAccount: selectedEntry.creditAccount,
+              amount: selectedEntry.amount,
+              reference: selectedEntry.reference,
+              status: selectedEntry.status,
+            }
             : undefined
         }
         entryId={selectedEntry?.id}
@@ -845,12 +872,13 @@ export function GeneralLedger() {
         initialValues={
           selectedAccount
             ? {
-                id: selectedAccount.id,
-                name: selectedAccount.name,
-                type: selectedAccount.type,
-                balance: selectedAccount.balance,
-                parentId: selectedAccount.parentId,
-              }
+              id: selectedAccount.id,
+              accountCode: selectedAccount.accountCode,
+              name: selectedAccount.name,
+              type: selectedAccount.type,
+              balance: selectedAccount.balance,
+              parentId: selectedAccount.parentId,
+            }
             : undefined
         }
         accountId={selectedAccount?.id}

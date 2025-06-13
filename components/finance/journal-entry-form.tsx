@@ -18,6 +18,7 @@ import {
 import { useFinance } from "@/contexts/finance-context"
 import { useEffect, useState } from "react"
 import { toast } from "@/components/ui/use-toast"
+import { useJournalContext } from "./context/journal-context"
 
 // Define the form schema
 const formSchema = z.object({
@@ -77,6 +78,8 @@ export function JournalEntryForm({ open, onOpenChange, initialValues, entryId }:
   const [selectedInvoiceBalance, setSelectedInvoiceBalance] = useState<number | null>(null)
   const [selectedBillBalance, setSelectedBillBalance] = useState<number | null>(null)
   const [amountError, setAmountError] = useState<string | null>(null)
+
+  const { create: createJournal, update } = useJournalContext()
 
   // Default values for the form
   const defaultValues: Partial<JournalEntryFormValues> = {
@@ -204,92 +207,17 @@ export function JournalEntryForm({ open, onOpenChange, initialValues, entryId }:
 
   // Handle form submission
   const onSubmit = (values: JournalEntryFormValues) => {
-    // Check if there's an amount error
-    if (amountError) {
-      toast({
-        title: "Validation Error",
-        description: amountError,
-        variant: "destructive",
-      })
-      return
-    }
-
     if (isEditing) {
-      updateJournalEntry(entryId, values)
+      update({ ...values, id: entryId }).then(_ => {
+        onOpenChange(false)
+      })
     } else {
-      addJournalEntry(values)
-
-      // Check if this is a Accounts Receivable/Sales entry and update Total Receivables
-      if (values.debitAccount === "Accounts Receivable" && values.creditAccount === "Sales") {
-        // Get the selected customer name
-        const selectedCustomer = values.debtorCustomer
-          ? customers.find((c) => c.id === values.debtorCustomer)?.name || "Unknown Customer"
-          : "Unknown Customer"
-
-        // Update the Total Receivables KPI with the customer name
-        updateTotalReceivables(values.amount, selectedCustomer)
-
-        // Show a notification
-        toast({
-          title: "Accounts Receivable Updated",
-          description: `₹${values.amount.toLocaleString("en-IN")} has been added to Total Receivables for ${selectedCustomer}.`,
-        })
-      }
-
-      // Check if this is a Cash/Accounts Receivable entry (payment received) and decrease Total Receivables
-      if (values.debitAccount === "Cash" && values.creditAccount === "Accounts Receivable") {
-        // Get the selected customer name
-        const selectedCustomer = values.debtorCustomer
-          ? customers.find((c) => c.id === values.debtorCustomer)?.name || "Unknown Customer"
-          : "Unknown Customer"
-
-        // Decrease the Total Receivables KPI with the customer name and specific invoice if selected
-        decreaseTotalReceivables(values.amount, selectedCustomer, values.activeInvoice)
-
-        // Show a notification
-        const invoiceInfo = values.activeInvoice ? ` for invoice ${values.activeInvoice}` : ""
-        toast({
-          title: "Accounts Receivable Updated",
-          description: `₹${values.amount.toLocaleString("en-IN")} has been deducted from Total Receivables for ${selectedCustomer}${invoiceInfo}.`,
-        })
-      }
-
-      // Check if this is a Raw Material Expenses/Accounts Payable entry and update Total Payables
-      if (values.debitAccount === "Raw Material Expenses" && values.creditAccount === "Accounts Payable") {
-        // Get the selected supplier name
-        const selectedSupplier = values.creditorSupplier
-          ? suppliers.find((s) => s.id === values.creditorSupplier)?.name || "Unknown Supplier"
-          : "Unknown Supplier"
-
-        // Update the Total Payables KPI with the supplier name
-        updateTotalPayables(values.amount, selectedSupplier)
-
-        // Show a notification
-        toast({
-          title: "Accounts Payable Updated",
-          description: `₹${values.amount.toLocaleString("en-IN")} has been added to Total Payables for ${selectedSupplier}.`,
-        })
-      }
-
-      // Check if this is an Accounts Payable/Cash entry (payment made) and decrease Total Payables
-      if (values.debitAccount === "Accounts Payable" && values.creditAccount === "Cash") {
-        // Get the selected supplier name
-        const selectedSupplier = values.creditorSupplier
-          ? suppliers.find((s) => s.id === values.creditorSupplier)?.name || "Unknown Supplier"
-          : "Unknown Supplier"
-
-        // Decrease the Total Payables KPI with the supplier name and specific bill if selected
-        decreaseTotalPayables(values.amount, selectedSupplier, values.activeBill)
-
-        // Show a notification
-        const billInfo = values.activeBill ? ` for bill ${values.activeBill}` : ""
-        toast({
-          title: "Accounts Payable Updated",
-          description: `₹${values.amount.toLocaleString("en-IN")} has been deducted from Total Payables for ${selectedSupplier}${billInfo}.`,
-        })
-      }
+      createJournal({
+        ...values,
+      }).then(_ => {
+        onOpenChange(false)
+      })
     }
-    onOpenChange(false)
   }
 
   return (
@@ -419,34 +347,34 @@ export function JournalEntryForm({ open, onOpenChange, initialValues, entryId }:
               {/* Customer dropdown that appears when Accounts Receivable is selected */}
               {(form.watch("debitAccount") === "Accounts Receivable" ||
                 form.watch("creditAccount") === "Accounts Receivable") && (
-                <FormField
-                  control={form.control}
-                  name="debtorCustomer"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Select Customer</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select customer" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {customers.map((customer) => (
-                            <SelectItem key={customer.id} value={customer.id}>
-                              {customer.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        Please select the customer for this accounts receivable transaction
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
+                  <FormField
+                    control={form.control}
+                    name="debtorCustomer"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Select Customer</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select customer" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {customers.map((customer) => (
+                              <SelectItem key={customer.id} value={customer.id}>
+                                {customer.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          Please select the customer for this accounts receivable transaction
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
               {/* Active Invoices dropdown that appears when Cash/Accounts Receivable entry is being created */}
               {form.watch("debitAccount") === "Cash" &&
@@ -482,7 +410,7 @@ export function JournalEntryForm({ open, onOpenChange, initialValues, entryId }:
                                 (invoice) =>
                                   invoice.balance > 0 &&
                                   invoice.customer ===
-                                    customers.find((c) => c.id === form.watch("debtorCustomer"))?.name,
+                                  customers.find((c) => c.id === form.watch("debtorCustomer"))?.name,
                               )
                               .map((invoice) => (
                                 <SelectItem key={invoice.id} value={invoice.id}>
@@ -501,34 +429,34 @@ export function JournalEntryForm({ open, onOpenChange, initialValues, entryId }:
               {/* Supplier dropdown that appears when Accounts Payable is selected */}
               {(form.watch("debitAccount") === "Accounts Payable" ||
                 form.watch("creditAccount") === "Accounts Payable") && (
-                <FormField
-                  control={form.control}
-                  name="creditorSupplier"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Select Supplier</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select supplier" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {suppliers.map((supplier) => (
-                            <SelectItem key={supplier.id} value={supplier.id}>
-                              {supplier.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        Please select the supplier for this accounts payable transaction
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
+                  <FormField
+                    control={form.control}
+                    name="creditorSupplier"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Select Supplier</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select supplier" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {suppliers.map((supplier) => (
+                              <SelectItem key={supplier.id} value={supplier.id}>
+                                {supplier.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          Please select the supplier for this accounts payable transaction
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
               {/* Active Bills dropdown that appears when Accounts Payable/Cash entry is being created */}
               {form.watch("debitAccount") === "Accounts Payable" &&
@@ -564,7 +492,7 @@ export function JournalEntryForm({ open, onOpenChange, initialValues, entryId }:
                                 (bill) =>
                                   bill.balance > 0 &&
                                   bill.supplier ===
-                                    suppliers.find((s) => s.id === form.watch("creditorSupplier"))?.name,
+                                  suppliers.find((s) => s.id === form.watch("creditorSupplier"))?.name,
                               )
                               .map((bill) => (
                                 <SelectItem key={bill.id} value={bill.id}>

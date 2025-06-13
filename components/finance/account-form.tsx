@@ -16,10 +16,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useFinance, type Account } from "@/contexts/finance-context"
+import { useChartAccount } from "./context/chart-accounts"
+import { removebasicTypes } from "../generic"
+import { useMemo } from "react"
 
 // Define the form schema
 const formSchema = z.object({
-  id: z.string().min(1, { message: "Account code is required" }),
+  id: z.string(),
+  accountCode: z.string().min(1, { message: "Account code is required" }),
   name: z.string().min(1, { message: "Account name is required" }),
   type: z.enum(["Asset", "Liability", "Equity", "Revenue", "Expense"]),
   balance: z.coerce.number().default(0),
@@ -37,20 +41,25 @@ interface AccountFormProps {
 
 export function AccountForm({ open, onOpenChange, initialValues, accountId }: AccountFormProps) {
   const { addAccount, updateAccount, accounts } = useFinance()
+  const { create, update } = useChartAccount()
   const isEditing = !!accountId
+
+  console.log({ initialValues })
 
   // Get parent accounts for dropdown
   const parentAccounts = accounts.filter((account) => !account.parentId)
 
   // Default values for the form
-  const defaultValues: Partial<AccountFormValues> = {
-    id: "",
-    name: "",
-    type: "Asset",
-    balance: 0,
-    parentId: undefined,
-    ...initialValues,
-  }
+  const defaultValues: Partial<AccountFormValues> = useMemo(() => {
+    if (isEditing) return initialValues
+    return ({
+      id: "",
+      name: "",
+      type: "Asset",
+      balance: 0,
+      parentId: undefined,
+    })
+  }, [isEditing, initialValues])
 
   // Initialize the form
   const form = useForm<AccountFormValues>({
@@ -60,14 +69,17 @@ export function AccountForm({ open, onOpenChange, initialValues, accountId }: Ac
 
   // Handle form submission
   const onSubmit = (values: AccountFormValues) => {
-    if (isEditing && accountId) {
-      updateAccount(accountId, values)
+    if (isEditing) {
+      update({ ...values, accountCode: accountId, id: accountId } as any).then(_ => {
+        onOpenChange(false)
+        form.reset(defaultValues)
+      })
     } else {
-      addAccount(values)
+      create(removebasicTypes({ ...values, accountCode: values.accountCode })).then(_ => {
+        onOpenChange(false)
+        form.reset(defaultValues)
+      })
     }
-
-    onOpenChange(false)
-    form.reset(defaultValues)
   }
 
   return (

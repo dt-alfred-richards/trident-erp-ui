@@ -17,6 +17,7 @@ export type JournalEntry = {
 
 export type Account = {
   id: string
+  accountCode: string,
   name: string
   type: "Asset" | "Liability" | "Equity" | "Revenue" | "Expense"
   balance: number
@@ -799,46 +800,46 @@ const FinanceContext = createContext<FinanceContextType>({
   costCenters: [],
   taxFilings: [],
 
-  addJournalEntry: () => {},
-  updateJournalEntry: () => {},
-  deleteJournalEntry: () => {},
+  addJournalEntry: () => { },
+  updateJournalEntry: () => { },
+  deleteJournalEntry: () => { },
 
-  addAccount: () => {},
-  updateAccount: () => {},
-  deleteAccount: () => {},
+  addAccount: () => { },
+  updateAccount: () => { },
+  deleteAccount: () => { },
 
-  addInvoice: () => {},
-  updateInvoice: () => {},
-  deleteInvoice: () => {},
+  addInvoice: () => { },
+  updateInvoice: () => { },
+  deleteInvoice: () => { },
 
-  addBill: () => {},
-  updateBill: () => {},
-  deleteBill: () => {},
+  addBill: () => { },
+  updateBill: () => { },
+  deleteBill: () => { },
 
-  addBankAccount: () => {},
-  updateBankAccount: () => {},
-  deleteBankAccount: () => {},
+  addBankAccount: () => { },
+  updateBankAccount: () => { },
+  deleteBankAccount: () => { },
 
-  addTransaction: () => {},
-  updateTransaction: () => {},
-  deleteTransaction: () => {},
+  addTransaction: () => { },
+  updateTransaction: () => { },
+  deleteTransaction: () => { },
 
-  addAsset: () => {},
-  updateAsset: () => {},
-  deleteAsset: () => {},
+  addAsset: () => { },
+  updateAsset: () => { },
+  deleteAsset: () => { },
 
-  addCostCenter: () => {},
-  updateCostCenter: () => {},
-  deleteCostCenter: () => {},
+  addCostCenter: () => { },
+  updateCostCenter: () => { },
+  deleteCostCenter: () => { },
 
-  addTaxFiling: () => {},
-  updateTaxFiling: () => {},
-  deleteTaxFiling: () => {},
+  addTaxFiling: () => { },
+  updateTaxFiling: () => { },
+  deleteTaxFiling: () => { },
 
-  updateTotalReceivables: () => {},
-  decreaseTotalReceivables: () => {},
-  updateTotalPayables: () => {},
-  decreaseTotalPayables: () => {},
+  updateTotalReceivables: () => { },
+  decreaseTotalReceivables: () => { },
+  updateTotalPayables: () => { },
+  decreaseTotalPayables: () => { },
 })
 
 // Helper function to generate IDs
