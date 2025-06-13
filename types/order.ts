@@ -409,7 +409,8 @@ export type SalesOrderDetails = {
   cases: number,
   quantity: object,
   createdOn: string,
-  status: string
+  status: string,
+  allocated: number
 }
 
 export type OrderSummary = {

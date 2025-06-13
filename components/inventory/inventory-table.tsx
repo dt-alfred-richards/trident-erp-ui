@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -10,6 +10,8 @@ import { DataTablePagination } from "@/components/ui/data-table-pagination"
 import { useRawMaterialsStore } from "@/hooks/use-raw-materials-store"
 import { useInventory } from "@/app/inventory-context"
 import { useOrders } from "@/contexts/order-context"
+import { getChildObject } from "../generic"
+import { useProduction } from "../production/production-context"
 
 // Update the interface to include inventoryData
 interface InventoryTableProps {
@@ -27,6 +29,8 @@ interface InventoryTableProps {
 
 export function InventoryTable({ onAllocate, inventoryData: propInventoryData }: InventoryTableProps) {
   const { inventory = [] } = useInventory()
+  const { productionOrders } = useProduction()
+  const { orders } = useOrders();
   const [searchTerm, setSearchTerm] = useState("")
   const [sortColumn, setSortColumn] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
@@ -38,17 +42,35 @@ export function InventoryTable({ onAllocate, inventoryData: propInventoryData }:
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
 
+  const getCummulativeSum = useCallback(
+    ({ key, refObject, defaultValue = 0 }: { key: string, refObject: any[], defaultValue?: number }) => {
+      return refObject.reduce((acc, curr) => {
+        acc += getChildObject(curr, key, defaultValue)
+        return acc;
+      }, 0)
+    }, [orders])
+  
   // This would come from your API in a real application
   const defaultInventoryData = useMemo(() => {
+    const products = orders.flatMap(item => getChildObject(item, "products", [])).reduce((acc, curr) => {
+      if (!acc[curr.sku]) {
+        acc[curr.sku] = 0
+      }
+      acc[curr.sku] += parseInt(curr.allocated)
+      return acc;
+    }, {})
+
     return Object.values(clientProposedProductMapper).flat().map(item => {
+      const pOrders = productionOrders?.filter(i => i.sku === item.sku)
+      const inProduction = getCummulativeSum({ refObject: pOrders || [], key: "inProduction" })
       return {
         sku: productSkuMapper[item?.productId || ""] || "",
         available: parseInt(item.availableQuantity) || 0,
-        reserved: parseInt(item.reservedQuantity) || 0,
-        inProduction: parseInt(item.inProduction) || 0,
+        reserved: products[item.sku] || 0,
+        inProduction: inProduction,
       }
     })
-  }, [clientProposedProductMapper, productSkuMapper])
+  }, [clientProposedProductMapper, productSkuMapper, productionOrders, orders])
 
   // Process the inventory data when it changes
   useEffect(() => {

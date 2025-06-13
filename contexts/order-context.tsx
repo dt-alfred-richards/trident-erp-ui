@@ -128,7 +128,8 @@ interface OrderContextType {
   eventsLogger: EventLogger[],
   saleOrders: SaleOrderDetail[],
   deleteSaleOrder: (orderId: string[]) => Promise<PromiseSettledResult<any>[]>,
-  updateClientProduct?: (clientPayload: Partial<ClientProposedProduct>) => Promise<void>
+  updateClientProduct?: (clientPayload: Partial<ClientProposedProduct>) => Promise<void>,
+  updateSaleProductOrder: (orderId: string, payload: Partial<SalesOrderDetails>) => Promise<void>,
 }
 
 const emptyFunction = (props: any) => "" as any
@@ -144,6 +145,7 @@ const OrderContext = createContext<OrderContextType>({
   deliverProducts: (orderId: string, productId: string, quantity: number) => { },
   getOrderById: emptyFunction,
   updateOrder: (orderId: string, updatedOrder: any, updatedProducts: any, x: any[]) => Promise.resolve(),
+  updateSaleProductOrder: (orderId: string, payload: Partial<SalesOrderDetails>) => Promise.resolve(),
   addOrder: (order: Partial<V1Sale>, saleOrder: Partial<SaleOrderDetail>[]) => Promise.resolve(),
   addSaleOrder: (saleOrder: Partial<SaleOrderDetail>) => Promise.resolve(),
   cancelOrder: (orderId: string) => { },
@@ -444,6 +446,13 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     })
   }
 
+
+  const updateSaleProductOrder = (orderId: string, payload: Partial<SalesOrderDetails>) => {
+    return saleOrderDetailInstance.patch({ key: "order_id", value: orderId }, payload).catch(error => {
+      console.log({ error })
+    })
+  }
+
   const deleteSaleOrder = (orderIds: string[]) => {
     return Promise.allSettled(
       orderIds.map(id =>
@@ -467,6 +476,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     deliverProducts,
     getOrderById,
     updateOrder,
+    updateSaleProductOrder,
     addOrder,
     cancelOrder,
     clientMapper,

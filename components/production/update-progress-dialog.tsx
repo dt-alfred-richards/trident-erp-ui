@@ -129,14 +129,7 @@ export function UpdateProgressDialog({
   const [updateConfirmDialogOpen, setUpdateConfirmDialogOpen] = useState(false)
   const [progressHistory, setProgressHistory] = useState<ProgressHistoryEntry[]>([])
   const { productionOrders, updateProductionOrder, refetch } = useProduction()
-  const { clientProposedProductMapper, updateClientProduct } = useOrders()
-
-  const productNameMapper = useMemo(() => {
-    return Object.values(clientProposedProductMapper).flat().reduce((acc: Record<string, string>, curr) => {
-      if (!acc[curr.productId || ""]) acc[curr.productId || ""] = curr.name;
-      return acc;
-    }, {})
-  }, [clientProposedProductMapper])
+  const { clientProposedProductMapper, updateClientProduct, refetchContext } = useOrders()
 
   const orders = useMemo(() => {
     return (productionOrders || []).map(item => {
@@ -279,18 +272,29 @@ export function UpdateProgressDialog({
     }
   }
 
-
   const confirmUpdate = () => {
     if (!updateProductionOrder || !refetch || !updateClientProduct) return;
-    const productQuantity = Object.values(clientProposedProductMapper).flat().find(item => item.productId === getChildObject(selectedOrder, "productId", ""))?.availableQuantity || "0"
-    
-    updateClientProduct({ productId: getChildObject(selectedOrder, "productId", ""), availableQuantity: `${parseInt(productQuantity) + parseInt(newCompletedUnits)}` }).then(() => {
-      updateProductionOrder(selectedOrderId, { produced: (selectedOrder?.completedQuantity || 0) + parseInt(newCompletedUnits), inProduction: Math.abs((selectedOrder?.quantity || 0) - parseInt(newCompletedUnits)) }).then(() => {
-        refetch()
-        setUpdateConfirmDialogOpen(true)
-        setUpdateConfirmDialogOpen(false)
-        onOpenChange(false)
-      })
+
+    const productionOrder = productionOrders?.find(item => item.productionOrderId === selectedOrderId)
+    const product = Object.values(clientProposedProductMapper).flat().find(item => item.sku === selectedOrder?.sku)
+
+    if (!product || !productionOrder) return;
+
+    updateClientProduct({
+      productId: product.productId,
+      availableQuantity: `${parseInt(product.availableQuantity) + parseInt(newCompletedUnits)}`
+    }).then(() => {
+      updateProductionOrder(selectedOrderId,
+        {
+          produced: productionOrder.produced + parseInt(newCompletedUnits),
+          inProduction: Math.abs(productionOrder.inProduction - parseInt(newCompletedUnits))
+        }).then(() => {
+          refetch()
+          setUpdateConfirmDialogOpen(true)
+          setUpdateConfirmDialogOpen(false)
+          onOpenChange(false)
+          refetchContext()
+        })
     })
   }
 

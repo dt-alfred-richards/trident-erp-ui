@@ -35,7 +35,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { useOrders } from "@/contexts/order-context"
 import { Order } from "@/types/order"
-import { convertDate } from "../generic"
+import { convertDate, getChildObject } from "../generic"
 import { useInventory } from "@/app/inventory-context"
 interface AllocationOrder {
   id: string
@@ -94,7 +94,7 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
       priority: item.priority,
       status: item.status,
       products: item.products.map(item => ({
-        ...item, quantity: item.cases, reserved: item.allocated || 0
+        ...item, quantity: item.cases, reserved: parseInt(getChildObject(item, "allocated", 0))
       }))
     }))
   }, [saleOrders])
@@ -173,6 +173,9 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
     }))
   }
 
+  const products = useMemo(() => {
+    return saleOrders.flatMap(item => item.products)
+  }, [saleOrders])
   // Handle allocation submission
   const handleSubmitAllocation = () => {
     if (!selectedOrder || !updateSaleAllocation || !inventoryRefetch) return
@@ -486,7 +489,7 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
                                   <div className="text-center p-1 bg-muted/50 rounded">
                                     <div className="text-muted-foreground">Allocated</div>
                                     <div className="font-medium">
-                                      {(product.allocated || 0) + (allocations[product.id] || 0)}
+                                      {parseInt(getChildObject(product, "allocated", 0)) + parseInt(getChildObject(allocations, product.id, 0))}
                                     </div>
                                   </div>
                                   <div className="text-center p-1 bg-muted/50 rounded">

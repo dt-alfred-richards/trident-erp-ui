@@ -42,18 +42,16 @@ export function ProductionOverview({ onProduceClick, onViewOrders, onViewDemand 
 
   const productionData = useMemo(() => {
     return Object.values(clientProposedProductMapper).flat().map(item => {
-      const productOrders = productionOrders.filter(i => i.productId === item.productId),
-        availableStock = parseInt(item.availableQuantity),
-        deficit = getCummulativeSum({ key: "inProduction", refObject: productOrders })
+      const skuProductionOrders = productionOrders.filter(i => i.sku === item.sku);
       return ({
         sku: item.sku,
         productId: item.productId,
-        pendingOrders: productOrders.length || 0,
-        inProduction: getCummulativeSum({ key: "inProduction", refObject: productOrders }),
-        produced: getCummulativeSum({ key: "produced", refObject: productOrders }),
-        availableStock,
-        activeOrders: productOrders.length,
-        deficit
+        pendingOrders: skuProductionOrders.filter(i => i.status === "pending").length || 0,
+        inProduction: getCummulativeSum({ key: "inProduction", refObject: skuProductionOrders }),
+        produced: getCummulativeSum({ key: "produced", refObject: skuProductionOrders }),
+        availableStock: item.availableQuantity,
+        activeOrders: skuProductionOrders.filter(item => item.status !== "completed").length,
+        deficit: getCummulativeSum({ key: "inProduction", refObject: skuProductionOrders })
       })
     })
   }, [clientProposedProductMapper, notCompletedOrders, productionOrders, getCummulativeSum])
