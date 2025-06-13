@@ -83,9 +83,6 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
             const sessionInfoResponse = getChildObject(responses, "1.value.data", []);
             const checkForActiveSessions = sessionInfoResponse.find((item: Session) => item.sessionId === decodeToken.sessionId)
 
-            if (!checkForActiveSessions) {
-                router?.push("/login")
-            }
             setSessionInfo(sessionInfoResponse)
             setUser(employeeResponse)
             setTokenDetails(decodeToken)
