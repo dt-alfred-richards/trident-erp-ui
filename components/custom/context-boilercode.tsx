@@ -99,6 +99,12 @@ export function createBoilerContext<T>(tableName: string) {
         const context = useContext(BoilerContext)
         if (!context) {
             console.log(`useBoiler must be used within a ${tableName} BoilerProvider`)
+            return {
+                data: [],
+                create: async () => { console.warn("create called outside provider"); },
+                update: async () => { console.warn("update called outside provider"); },
+                deleteItem: async () => { console.warn("deleteItem called outside provider"); }
+            };
         }
         return context
     }

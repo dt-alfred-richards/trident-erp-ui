@@ -13,247 +13,80 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { useHrContext } from "@/app/hr/hr-context"
-import { Payroll, usePayroll } from "@/app/hr/payroll-context"
+import { Payroll, usePayrollContext } from "@/app/hr/payroll-context"
 import { convertDate, createType, getChildObject } from "../generic"
+import { useLogistics } from "@/app/logistics/shipment-tracking/logistics-context"
+import moment from "moment"
 
-// Sample payroll data
-const payrollData = [
-  {
-    id: "EMP001",
-    name: "Rajesh Kumar",
-    department: "Production",
-    role: "Production Manager",
-    salary: 65000,
-    attendance: 22,
-    overtime: 5,
-    bonus: 2000,
-    deductions: 1500,
-    netPay: 67500,
-    status: "Pending",
-    month: "2025-03",
-  },
-  {
-    id: "EMP002",
-    name: "Priya Sharma",
-    department: "Production",
-    role: "Line Supervisor",
-    salary: 45000,
-    attendance: 21,
-    overtime: 8,
-    bonus: 1500,
-    deductions: 1000,
-    netPay: 47500,
-    status: "Processed",
-    month: "2025-03",
-  },
-  {
-    id: "EMP003",
-    name: "Amit Patel",
-    department: "Production",
-    role: "Line Worker",
-    salary: 30000,
-    attendance: 20,
-    overtime: 10,
-    bonus: 1000,
-    deductions: 800,
-    netPay: 31700,
-    status: "Pending",
-    month: "2025-03",
-  },
-  {
-    id: "EMP004",
-    name: "Sneha Gupta",
-    department: "Production",
-    role: "Line Worker",
-    salary: 28000,
-    attendance: 22,
-    overtime: 6,
-    bonus: 800,
-    deductions: 700,
-    netPay: 29100,
-    status: "Pending",
-    month: "2025-02",
-  },
-  {
-    id: "EMP005",
-    name: "Vikram Singh",
-    department: "Production",
-    role: "Quality Control",
-    salary: 40000,
-    attendance: 21,
-    overtime: 4,
-    bonus: 1200,
-    deductions: 900,
-    netPay: 41300,
-    status: "Processed",
-    month: "2025-02",
-  },
-  {
-    id: "EMP006",
-    name: "Neha Verma",
-    department: "HR",
-    role: "HR Executive",
-    salary: 50000,
-    attendance: 22,
-    overtime: 2,
-    bonus: 1500,
-    deductions: 1200,
-    netPay: 51300,
-    status: "Processed",
-    month: "2025-01",
-  },
-  {
-    id: "EMP007",
-    name: "Rahul Mehta",
-    department: "Finance",
-    role: "Finance Manager",
-    salary: 60000,
-    attendance: 21,
-    overtime: 3,
-    bonus: 2000,
-    deductions: 1500,
-    netPay: 62000,
-    status: "Processed",
-    month: "2025-03",
-  },
-  {
-    id: "EMP008",
-    name: "Sonia Gupta",
-    department: "Finance",
-    role: "Accountant",
-    salary: 45000,
-    attendance: 22,
-    overtime: 4,
-    bonus: 1200,
-    deductions: 1000,
-    netPay: 46200,
-    status: "Pending",
-    month: "2025-03",
-  },
-  {
-    id: "EMP009",
-    name: "Rohit Srivastava",
-    department: "Sales",
-    role: "Sales Manager",
-    salary: 55000,
-    attendance: 20,
-    overtime: 6,
-    bonus: 2500,
-    deductions: 1400,
-    netPay: 57600,
-    status: "Pending",
-    month: "2025-03",
-  },
-  {
-    id: "EMP010",
-    name: "Ananya Joshi",
-    department: "Marketing",
-    role: "Marketing Executive",
-    salary: 42000,
-    attendance: 21,
-    overtime: 5,
-    bonus: 1000,
-    deductions: 900,
-    netPay: 43100,
-    status: "Processed",
-    month: "2025-02",
-  },
-  {
-    id: "EMP011",
-    name: "Suresh Reddy",
-    department: "IT",
-    role: "IT Manager",
-    salary: 70000,
-    attendance: 22,
-    overtime: 3,
-    bonus: 2000,
-    deductions: 1800,
-    netPay: 71700,
-    status: "Processed",
-    month: "2025-03",
-  },
-  {
-    id: "EMP012",
-    name: "Divya Rao",
-    department: "IT",
-    role: "System Administrator",
-    salary: 50000,
-    attendance: 20,
-    overtime: 8,
-    bonus: 1500,
-    deductions: 1200,
-    netPay: 51800,
-    status: "Pending",
-    month: "2025-03",
-  },
-]
-
-// Get current month in YYYY-MM format
-const getCurrentMonth = () => {
-  const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
-}
-
-// Format month for display
-const formatMonth = (monthStr: string) => {
-  const [year, month] = monthStr.split("-")
-  return new Date(Number.parseInt(year), Number.parseInt(month) - 1).toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-  })
-}
-
-// Get list of available months from data
-const getAvailableMonths = () => {
-  const months = new Set<string>()
-  payrollData.forEach((employee) => {
-    if (employee.month) {
-      months.add(employee.month)
-    }
-  })
-  return Array.from(months).sort().reverse() // Sort in descending order
-}
-
-// Get the most recent month from available months
-const getMaxMonth = () => {
-  const months = getAvailableMonths()
-  return months.length > 0 ? months[0] : getCurrentMonth()
-}
-
-// Helper function to get badge classes based on status
-const getPayrollStatusBadgeClass = (status: string) => {
-  switch (status) {
-    case "Processed":
-      return "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-400"
-    case "Pending":
-      return "border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-400"
-    default:
-      return ""
-  }
-}
 
 export function PayrollManagement() {
-  const { employees } = useHrContext()
-  const { data = [] } = usePayroll()
+  const { data: contextPayrollData, update: updatePayroll } = usePayrollContext()
 
   const payrollData = useMemo(() => {
-    return data.map((item: Payroll) => {
+    return contextPayrollData.filter(item => item.createdOn || item.modifiedOn).map((item: Payroll) => {
+      const date = item.modifiedOn || item.createdOn
+      const year = moment(date).year(), month = moment(date).format("MM");
+
       return {
         id: item.id + '',
-        name: getChildObject(item, "employee", ""),
-        department: getChildObject(item, "department", "Unknown Department"),
-        role: getChildObject(item, "role", "Unknown Role"),
-        salary: getChildObject(item, "salary", 0),
-        attendance: getChildObject(item, "attendance", 0),
-        overtime: getChildObject(item, "overtime", 0),
-        bonus: getChildObject(item, "bonus", 0),
-        deductions: getChildObject(item, "deductions", 0),
-        netPay: getChildObject(item, "netPay", 0),
-        status: getChildObject(item, "status", "Pending"),
-        month: convertDate(getChildObject(item, "createdOn", getChildObject(item, "modifiedOn", new Date()))),
+        name: item.employee,
+        department: item.department,
+        role: item.role,
+        salary: item.basicSalary,
+        attendance: "",
+        overtime: item.overtime,
+        bonus: 0,
+        deductions: 0,
+        netPay: item.basicSalary + item.overtime,
+        status: item.status || "pending",
+        month: `${year}-${month}`,
       }
     })
-  }, [data])
+  }, [contextPayrollData])
+
+  // Get current month in YYYY-MM format
+  const getCurrentMonth = () => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+  }
+
+  // Format month for display
+  const formatMonth = (monthStr: string) => {
+    const [year, month] = monthStr.split("-")
+    return new Date(Number.parseInt(year), Number.parseInt(month) - 1).toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+    })
+  }
+
+  // Get list of available months from data
+  const getAvailableMonths = () => {
+    const months = new Set<string>()
+    payrollData.forEach((employee) => {
+      if (employee.month) {
+        months.add(employee.month)
+      }
+    })
+    return Array.from(months).sort().reverse() // Sort in descending order
+  }
+
+  // Get the most recent month from available months
+  const getMaxMonth = () => {
+    const months = getAvailableMonths()
+    return months.length > 0 ? months[0] : getCurrentMonth()
+  }
+
+  // Helper function to get badge classes based on status
+  const getPayrollStatusBadgeClass = (status: string) => {
+    switch (status) {
+      case "Processed":
+        return "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-400"
+      case "Pending":
+        return "border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-400"
+      default:
+        return ""
+    }
+  }
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("all")
   const [selectedMonth, setSelectedMonth] = useState(getMaxMonth())
@@ -266,7 +99,7 @@ export function PayrollManagement() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
-  
+
   const filteredPayroll = useMemo(
     () =>
       payrollData.filter((employee) => {
@@ -278,11 +111,10 @@ export function PayrollManagement() {
 
         const matchesMonth = employee.month === selectedMonth
 
-        return matchesSearch && matchesStatus
+        return matchesSearch && matchesStatus && matchesMonth
       }),
-    [searchQuery, selectedStatus, selectedMonth, payrollUpdateCounter],
+    [searchQuery, selectedStatus, selectedMonth, payrollUpdateCounter, payrollData],
   )
-
   // Calculate paginated data
   const paginatedPayroll = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage
@@ -329,27 +161,24 @@ export function PayrollManagement() {
     setIsConfirmDialogOpen(true)
   }
 
+  console.log({ processingEmployeeId })
+
   // Actually process payroll after confirmation
   const handleProcessPayroll = () => {
     if (processingEmployeeId) {
-      // Process a single employee
-      const employeeIndex = payrollData.findIndex((emp) => emp.id === processingEmployeeId)
-      if (employeeIndex !== -1) {
-        payrollData[employeeIndex].status = "Processed"
-        // Update the UI
-        setSelectedEmployees((prev) => prev.filter((empId) => empId !== processingEmployeeId))
+      updatePayroll({ id: parseInt(processingEmployeeId), status: "Processed" }).then(_ => {
         alert(`Payroll for employee ${processingEmployeeId} has been processed successfully.`)
-      }
+      })
     } else {
       // Process multiple employees
-      selectedEmployees.forEach((empId) => {
-        const employeeIndex = payrollData.findIndex((emp) => emp.id === empId)
-        if (employeeIndex !== -1) {
-          payrollData[employeeIndex].status = "Processed"
-        }
+      Promise.allSettled(
+        selectedEmployees.map((empId) => {
+          return updatePayroll({ id: parseInt(empId), status: "Processed" })
+        })
+      ).then(() => {
+        alert(`Payroll for ${selectedEmployees.length} employees has been processed successfully.`)
+        setSelectedEmployees([])
       })
-      alert(`Payroll for ${selectedEmployees.length} employees has been processed successfully.`)
-      setSelectedEmployees([])
     }
 
     // Close the dialog and reset the processing employee ID

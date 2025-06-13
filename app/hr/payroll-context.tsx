@@ -1,20 +1,20 @@
 "use client";
 
 import { createBoilerContext } from "@/components/custom/context-boilercode";
+import { Basic } from "@/contexts/types";
 export type Payroll = {
     id: number,
-    dailyAttendanceId: string,
-    employeeId: string,
-    employeeName: string,
-    checkIn: string,
-    checkOut: string,
-    totalHours: string,
-    status: string,
-    createdOn: string,
-    modifiedOn: string,
-    createdBy: string,
-    modifiedBy: string,
-    date: string
-};
+    empId: string,
+    employee: string,
+    department: string,
+    role: string,
+    basicSalary: string,
+    overtime: string,
+    bonus: string,
+    tax: string,
+    providentFund: string,
+    otherDeductions: string,
+    status: string
+} & Basic;
 
-export const { BoilerProvider: PayrollProvider, useBoiler: usePayroll } = createBoilerContext<Payroll>("v1_payroll");
+export const { BoilerProvider: PayrollProvider, useBoiler: usePayrollContext } = createBoilerContext<Payroll>("v1_payroll")
