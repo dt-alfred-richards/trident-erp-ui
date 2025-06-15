@@ -38,7 +38,8 @@ type GloabalPropType = {
     sessionInfo: Session[],
     logout?: () => void,
     logoutSession: (sessionId: string) => void
-    login: (payload: any, rememberMe: boolean) => void
+    login: (payload: any, rememberMe: boolean) => void,
+    isLoggedIn: boolean
 }
 
 const GlobalContext = createContext<GloabalPropType>({
@@ -50,7 +51,8 @@ const GlobalContext = createContext<GloabalPropType>({
     tokenDetails: {} as Token,
     sessionInfo: [] as Session[],
     logoutSession: () => { },
-    login: () => { }
+    login: () => { },
+    isLoggedIn: false
 })
 
 
@@ -72,7 +74,8 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
 
     const sessionInstance = new DataByTableName("v1_user_sessions")
 
-    const fetchData = () => {
+    const fetchData = useCallback(() => {
+        if (!token) return
         const decodeToken = jwtDecode(token) as Token;
 
         Promise.allSettled([
@@ -87,7 +90,7 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
             setUser(employeeResponse)
             setTokenDetails(decodeToken)
         })
-    }
+    }, [token])
 
     useEffect(() => {
         if (!fetchRef.current || !token) return;
@@ -106,7 +109,7 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
             } else {
                 sessionStorage.setItem("token", token)
             }
-            router?.push("/")
+            window.location.href = "/"
         }).then(fetchData)
     }
 
@@ -146,7 +149,8 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
         sessionInfo,
         logout,
         logoutSession,
-        login
+        login,
+        isLoggedIn: !!token
     }}>{children}</GlobalContext.Provider>
 }
 
