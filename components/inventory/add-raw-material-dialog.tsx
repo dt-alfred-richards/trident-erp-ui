@@ -54,14 +54,13 @@ export function AddRawMaterialDialog({ open, onOpenChange }: AddRawMaterialDialo
   }
 
   const handleSubmit = () => {
-    if (!category || !addInventory) return;
+    if (!addInventory) return;
     const payload = {
-      category,
+      category: category || categories[0],
       material: name,
       quantity,
       unit: `per ${getCategoryUnit(category).toLowerCase()}`,
     } as Partial<Inventory>
-
     addInventory(payload).then(() => {
       onOpenChange(false)
     })

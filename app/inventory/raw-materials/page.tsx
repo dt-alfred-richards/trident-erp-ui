@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { DashboardShell } from "@/components/dashboard-shell"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -54,9 +54,11 @@ export default function RawMaterialsPage() {
 
   // Get unique categories and sort them in the specified order
   const categoryOrder = ["Labels", "Pre-Form", "Shrink", "Caps and Handles", "Consumables"]
-  const categories = Array.from(new Set(inventory.map((item) => item.category))).sort(
-    (a, b) => categoryOrder.indexOf(a) - categoryOrder.indexOf(b),
-  )
+  const categories = useMemo(() => {
+    return Array.from(new Set(inventory.map((item) => item.category))).sort(
+      (a, b) => categoryOrder.indexOf(a) - categoryOrder.indexOf(b),
+    )
+  }, [inventory])
 
   // Set default active category to first category on initial load
   useEffect(() => {

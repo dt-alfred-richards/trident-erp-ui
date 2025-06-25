@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -59,13 +59,14 @@ export function UpdateInventoryDialog({
   }, [open])
 
   // Filter items based on search term
-  const filteredItems = items.filter(
-    (item) =>
-      item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.category && item.category.toLowerCase().includes(searchTerm.toLowerCase())),
-  )
+  const filteredItems = useMemo(() => {
+    return items.filter(
+      (item) =>
+        item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (item.category && item.category.toLowerCase().includes(searchTerm.toLowerCase())),
+    )
+  }, [items])
 
-  console.log({ filteredItems, items })
   // Handle selecting an item
   const handleSelectItem = (item: InventoryItem) => {
     // Check if item is already selected
