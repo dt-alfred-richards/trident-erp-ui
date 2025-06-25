@@ -61,10 +61,11 @@ export function UpdateInventoryDialog({
   // Filter items based on search term
   const filteredItems = items.filter(
     (item) =>
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (item.category && item.category.toLowerCase().includes(searchTerm.toLowerCase())),
   )
 
+  console.log({ filteredItems, items })
   // Handle selecting an item
   const handleSelectItem = (item: InventoryItem) => {
     // Check if item is already selected
