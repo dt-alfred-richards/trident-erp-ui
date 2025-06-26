@@ -148,7 +148,9 @@ export default function RawMaterialsPage() {
         return false
     }
   }).length
-  const pendingOrdersCount = 12 // Mock data for pending orders
+  const pendingOrdersCount = useMemo(() => {
+    return inventory.filter(item => !item.status || item.status === "pending").length
+  }, [inventory])
 
   // Get category icon
   const getCategoryIcon = (category: string) => {

@@ -17,6 +17,7 @@ interface AddRawMaterialDialogProps {
 
 export function AddRawMaterialDialog({ open, onOpenChange }: AddRawMaterialDialogProps) {
   const [name, setName] = useState("")
+  const [price, setPrice] = useState(0)
   const [quantity, setQuantity] = useState<number>(0)
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
@@ -39,17 +40,17 @@ export function AddRawMaterialDialog({ open, onOpenChange }: AddRawMaterialDialo
   const getCategoryUnit = (category: string) => {
     switch (category?.toLowerCase()) {
       case "Labels":
-        return "KGs"
+        return "Kgs"
       case "Pre-Form":
-        return "KGs"
+        return "Kgs"
       case "Shrink":
-        return "KGs"
+        return "Kgs"
       case "Caps and Handles":
         return "Pieces"
       case "Consumables":
         return "Pcs"
       default:
-        return ""
+        return "Kgs"
     }
   }
 
@@ -59,7 +60,8 @@ export function AddRawMaterialDialog({ open, onOpenChange }: AddRawMaterialDialo
       category: category || categories[0],
       material: name,
       quantity,
-      unit: `per ${getCategoryUnit(category).toLowerCase()}`,
+      price,
+      unit: `per ${getCategoryUnit(category || '').toLowerCase()}`,
     } as Partial<Inventory>
     addInventory(payload).then(() => {
       onOpenChange(false)
@@ -107,13 +109,28 @@ export function AddRawMaterialDialog({ open, onOpenChange }: AddRawMaterialDialo
                 type="number"
                 value={quantity}
                 onChange={(e) => setQuantity(Number(e.target.value))}
-                className="flex-1"
+                className="col-span-3"
                 min={0}
               />
               <span className="text-sm text-muted-foreground w-16">{getCategoryUnit(category)}</span>
             </div>
           </div>
           {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="price" className="text-right">
+              Price per unit <span className="text-red-500">*</span>
+            </Label>
+            <div className="col-span-3 flex items-center gap-2">
+              <Input
+                id="price"
+                value={price}
+                type="number"
+                onChange={(e) => setPrice(parseInt(e.target.value))}
+                className="col-span-3"
+                placeholder="Enter price per unit"
+              />
+            </div>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

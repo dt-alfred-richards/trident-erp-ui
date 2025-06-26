@@ -279,7 +279,6 @@ export function UpdateProgressDialog({
     const product = Object.values(clientProposedProductMapper).flat().find(item => item.sku === selectedOrder?.sku)
 
     if (!product || !productionOrder) return;
-
     updateClientProduct({
       productId: product.productId,
       availableQuantity: `${parseInt(product.availableQuantity) + parseInt(newCompletedUnits)}`

@@ -49,7 +49,9 @@ export interface Order {
   id: string
   orderDate: Date
   customer: string
-  reference: string
+  reference: string,
+  isEmployeeChecked: boolean,
+  employeeReferenceId: string,
   deliveryDate?: Date
   priority: OrderPriority
   status: OrderStatus

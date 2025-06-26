@@ -44,8 +44,6 @@ export function AccountForm({ open, onOpenChange, initialValues, accountId }: Ac
   const { create, update } = useChartAccount()
   const isEditing = !!accountId
 
-  console.log({ initialValues })
-
   // Get parent accounts for dropdown
   const parentAccounts = accounts.filter((account) => !account.parentId)
 

@@ -18,6 +18,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useToast } from "@/components/ui/use-toast"
 import { ClientProposedPrice, useClient } from "@/app/sales/client-list/client-context"
+import { useOrders } from "@/contexts/order-context"
 
 // Unit options
 const unitOptions = [
@@ -57,6 +58,7 @@ interface AddProductDialogProps {
 export function AddProductDialog({ open, onOpenChange, onAdd, existingIds, clientId }: AddProductDialogProps) {
   const { toast } = useToast()
   const { addClientProduct, refetchContext } = useClient()
+  const { refetchContext: orderRefetch } = useOrders()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Initialize form
@@ -93,6 +95,7 @@ export function AddProductDialog({ open, onOpenChange, onAdd, existingIds, clien
       form.reset()
       onOpenChange(false)
       refetchContext()
+      orderRefetch()
     }).finally(() => {
       setIsSubmitting(false)
     })

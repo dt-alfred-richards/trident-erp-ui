@@ -148,8 +148,6 @@ export default function ProfilePage() {
     })
   }
 
-  console.log({ user, userDetails })
-
   // Add these state variables inside the ProfilePage component (after the existing state variables)
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
     from: undefined,

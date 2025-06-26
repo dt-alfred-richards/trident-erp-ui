@@ -90,7 +90,6 @@ export function ProductionKanban({ onViewDetails, onUpdateProgress }: Production
     })
   }, [productionOrders])
 
-  console.log({ columns })
 
   const selectedOrder = useMemo(() => {
     return productionOrders.find((order) => order.id === selectedOrderId)

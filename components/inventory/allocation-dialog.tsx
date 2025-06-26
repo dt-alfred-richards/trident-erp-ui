@@ -143,7 +143,7 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
     if (priorityFilter !== "all") {
       filtered = filtered.filter((order) => order.priority === priorityFilter)
     }
-    console.log({ filtered, saleOrders, searchTerm })
+
     setFilteredOrders(filtered)
   }, [searchTerm, searchType, orders, priorityFilter])
 

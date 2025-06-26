@@ -229,7 +229,6 @@ export function AddEmployeeDialog({ open, onOpenChange, onAddEmployee }: AddEmpl
     addEmployee(newEmployee as any).then(() => {
       onOpenChange(false)
     })
-    console.log({ newEmployee })
   }
 
   return (

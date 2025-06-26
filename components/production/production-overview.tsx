@@ -49,7 +49,7 @@ export function ProductionOverview({ onProduceClick, onViewOrders, onViewDemand 
         pendingOrders: skuProductionOrders.filter(i => i.status === "pending").length || 0,
         inProduction: getCummulativeSum({ key: "inProduction", refObject: skuProductionOrders }),
         produced: getCummulativeSum({ key: "produced", refObject: skuProductionOrders }),
-        availableStock: item.availableQuantity,
+        availableStock: item.availableQuantity || 0,
         activeOrders: skuProductionOrders.filter(item => item.status !== "completed").length,
         deficit: getCummulativeSum({ key: "inProduction", refObject: skuProductionOrders })
       })
@@ -176,7 +176,7 @@ export function ProductionOverview({ onProduceClick, onViewOrders, onViewDemand 
                   <TableCell className="text-right">{item.pendingOrders.toLocaleString()}</TableCell>
                   <TableCell className="text-right">{item.inProduction.toLocaleString()}</TableCell>
                   <TableCell className="text-right">{item.produced}</TableCell>
-                  <TableCell className="text-right">{item.availableStock.toLocaleString()}</TableCell>
+                  <TableCell className="text-right">{getChildObject(item, 'availableStock', 0).toLocaleString()}</TableCell>
                   <TableCell
                     className={`text-right font-medium ${item.deficit > 0 ? "text-red-500" : "text-green-500"}`}
                   >

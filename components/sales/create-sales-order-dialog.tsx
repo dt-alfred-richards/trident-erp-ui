@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { format } from "date-fns"
 import { CalendarIcon, Plus, Trash2, Check, ChevronsUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -35,6 +35,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from "@/lib/utils"
 import { ClientReference, SaleOrderDetail, ShippingAddress, useOrders, V1Sale } from "@/contexts/order-context"
 import { getChildObject } from "../generic"
+import { DataByTableName } from "../api"
+import { Employee } from "@/app/hr/hr-context"
 // Mock data for products
 
 // Size SKU options
@@ -88,19 +90,13 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<Date | undefined>(undefined)
   const [clientId, setClientId] = useState("")
   const [reference, setReference] = useState<string>("")
+  const [employeeReference, setEmployeeReference] = useState('')
   const [poDate, setPoDate] = useState<Date | undefined>(undefined)
   const [poId, setPoId] = useState("")
   const [poNumber, setPoNumber] = useState("") // New state for Purchase Order Number
   const [remarks, setRemarks] = useState("")
-
-  const referenceNameMapper = useMemo(() => {
-    return Object.values(referenceMapper).flat().reduce((acc: Record<string, string>, curr) => {
-      if (!acc[curr.referenceId]) {
-        acc[curr.referenceId] = curr.name
-      }
-      return acc;
-    }, {})
-  }, [referenceMapper])
+  const [isEmployeeChecked, setIsEmployeeChecked] = useState(false)
+  const [shippingAddress, setShippingAddress] = useState("")
 
   // Client details (auto-populated)
   const [clientName, setClientName] = useState("")
@@ -137,6 +133,20 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
 
   // Confirmation dialog state
   const [showConfirmation, setShowConfirmation] = useState(false)
+
+  const employeeInstance = new DataByTableName("v1_employee")
+
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const employeeRef = useRef(true)
+
+  useEffect(() => {
+    if (!employeeRef.current) return
+    employeeRef.current = false
+    employeeInstance.get().then(response => {
+      const data = getChildObject(response, "data", [])
+      setEmployees(data)
+    })
+  }, [])
 
   // Access the orders context
 
@@ -285,11 +295,9 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
     if (
       !orderDate ||
       !clientId ||
-      !reference ||
+      !(reference || employeeReference) ||
       !expectedDeliveryDate ||
-      orderItems.length === 0 ||
-      (shippingAddresses.length > 0 && !selectedShippingAddressId)
-    ) {
+      orderItems.length === 0) {
       alert("Please fill in all required fields and add at least one item.")
       return
     }
@@ -316,14 +324,16 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
       poId,
       poNumber,
       remarks,
-      shippingAddressId: selectedAddress?.id,
-      referenceId: reference,
+      shippingAddressId: shippingAddress || '',
+      referenceId: reference || '',
       status: "pending_approval",
       subtotal,
       taxTotal,
       taxesEnabled,
       taxType: isInTelangana ? "CGST+SGST" : "IGST",
-      total
+      total,
+      employeeReferenceId: employeeReference,
+      isEmployeeChecked
     }
 
     const saleOrder: Partial<SaleOrderDetail>[] = orderItems.map((item: OrderItem) => ({
@@ -443,26 +453,55 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                   </Select>
                 </div>
 
-                {/* Reference Selection */}
                 <div className="space-y-2">
-                  <Label htmlFor="reference">
-                    Reference <span className="text-red-500">*</span>
-                  </Label>
-                  <Select value={reference} onValueChange={setReference} disabled={availableReferences.length === 0}>
-                    <SelectTrigger id="reference">
-                      <SelectValue
-                        placeholder={availableReferences.length === 0 ? "Select a client first" : "Select reference"}
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableReferences.map((ref) => (
-                        <SelectItem key={ref} value={ref}>
-                          {referenceNameMapper[ref] || ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="employee-reference"
+                      checked={isEmployeeChecked}
+                      onCheckedChange={(checked) => {
+                        setIsEmployeeChecked(checked)
+                      }}
+                    />
+                    <Label htmlFor="employee-reference" className="text-sm font-medium">
+                      Employee Reference
+                    </Label>
+                  </div>
                 </div>
+                {
+                  isEmployeeChecked ? <div className="space-y-2">
+                    <Label htmlFor="client">
+                      Employee reference <span className="text-red-500">*</span>
+                    </Label>
+                    <Select value={employeeReference} onValueChange={setEmployeeReference}>
+                      <SelectTrigger id="employeeReference">
+                        <SelectValue placeholder="Select employee" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {employees.map((employee) => (
+                          <SelectItem key={employee.id} value={employee.id}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{employee.firstName}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {employee.id} - {employee.department}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div> : <div className="space-y-2">
+                    <Label htmlFor="reference">
+                      Reference <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="reference"
+                      value={reference}
+                      onChange={(e) => setReference(e.target.value)}
+                      placeholder="Enter reference"
+                    />
+                  </div>
+                }
+
 
                 {/* Purchase Order Date */}
                 <div className="space-y-2">
@@ -534,31 +573,13 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                   <Label htmlFor="shipping-address">
                     Shipping Address {shippingAddresses.length > 0 && <span className="text-red-500">*</span>}
                   </Label>
-                  <Select
-                    value={selectedShippingAddressId}
-                    onValueChange={setSelectedShippingAddressId}
-                    disabled={shippingAddresses.length === 0}
-                  >
-                    <SelectTrigger id="shipping-address">
-                      <SelectValue
-                        placeholder={
-                          shippingAddresses.length === 0 ? "Select a client first" : "Select shipping address"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {shippingAddresses.map((address) => (
-                        <SelectItem key={address.id} value={address.id}>
-                          {address.name} {address.isDefault && "(Default)"}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {selectedShippingAddressId && (
-                    <div className="mt-2 text-xs text-muted-foreground whitespace-pre-line border p-2 rounded">
-                      {shippingAddresses.find((addr) => addr.id === selectedShippingAddressId)?.address}
-                    </div>
-                  )}
+                  <Textarea
+                    id="shipping-address"
+                    value={shippingAddress}
+                    onChange={(e) => setShippingAddress(e.target.value)}
+                    placeholder="Provide shipping address"
+                    className="min-h-[80px]"
+                  />
                 </div>
               </div>
             </div>
@@ -862,7 +883,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
             <Button
               type="button"
               onClick={handleSubmit}
-              disabled={!orderDate || !clientId || !reference || !expectedDeliveryDate || orderItems.length === 0}
+              disabled={!orderDate || !clientId || !(reference || employeeReference) || !expectedDeliveryDate || orderItems.length === 0}
             >
               Add Order
             </Button>

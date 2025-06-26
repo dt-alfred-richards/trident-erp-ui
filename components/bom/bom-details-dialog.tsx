@@ -17,7 +17,8 @@ import { useInventoryStore } from "@/hooks/use-inventory-store"
 import { Download } from "lucide-react"
 import { BomAndComponent, BomComponent } from "./bom-context"
 import { useCallback, useMemo } from "react"
-import { useInventory } from "@/app/inventory-context"
+import { Inventory, useInventory } from "@/app/inventory-context"
+import { getChildObject } from "../generic"
 
 interface BomDetailsDialogProps {
   open: boolean
@@ -27,6 +28,13 @@ interface BomDetailsDialogProps {
 
 export function BomDetailsDialog({ open, onOpenChange, bom }: BomDetailsDialogProps) {
   const { inventory = [] } = useInventory()
+
+  const inventoryIdMapper = useMemo(() => {
+    return inventory.reduce((acc: Record<string, Inventory>, curr) => {
+      if (!acc[curr.inventoryId]) acc[curr.inventoryId] = curr
+      return acc;
+    }, {})
+  }, [inventory])
 
   const getInventoryItemByName = useCallback((materialId?: string) => {
     return inventory.find(item => item.inventoryId === materialId);
@@ -39,18 +47,20 @@ export function BomDetailsDialog({ open, onOpenChange, bom }: BomDetailsDialogPr
       productName: bom.productName,
       status: bom.status,
       unitCost: bom.unitCost,
-      components: bom.components.map((component) => ({
-        materialId: component.materialId,
-        type: component.type || "Standard",
-        quantity: component.quantity,
-        unit: component.unit,
-        cost: component.cost,
-        stockStatus: getInventoryItemByName(component.materialId)
-          ? (getInventoryItemByName(component.materialId)?.quantity || 0) >= component.quantity
-            ? "In Stock"
-            : "Low Stock"
-          : "Not Found",
-      })),
+      components: bom.components.map((component) => {
+        return ({
+          materialId: component.materialId,
+          type: component.type || "Standard",
+          quantity: component.quantity,
+          unit: component.unit,
+          cost: inventoryIdMapper[component.materialId].price,
+          stockStatus: getInventoryItemByName(component.materialId)
+            ? (getInventoryItemByName(component.materialId)?.quantity || 0) >= component.quantity
+              ? "In Stock"
+              : "Low Stock"
+            : "Not Found",
+        })
+      }),
     }
 
     // Convert to CSV
@@ -148,7 +158,7 @@ export function BomDetailsDialog({ open, onOpenChange, bom }: BomDetailsDialogPr
                       <TableCell>{component.type || "Standard"}</TableCell>
                       <TableCell>{component.quantity}</TableCell>
                       <TableCell>{component.unit}</TableCell>
-                      <TableCell>₹{component.cost?.toFixed(2)}</TableCell>
+                      <TableCell>₹{getChildObject(inventoryIdMapper, `${component.materialId}.price`, 0)?.toFixed(2)}</TableCell>
                       <TableCell>
                         <Badge
                           variant={

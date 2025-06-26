@@ -62,7 +62,6 @@ export function PendingOrdersTable({ filterSku }: PendingOrdersTableProps) {
       })
     })
   }, [productionOrders, productClientMapper, clientMapper])
-  console.log({ productionOrders })
 
   // Filter and sort the pending orders
   const filteredAndSortedOrders = useMemo(() => {

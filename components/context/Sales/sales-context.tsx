@@ -34,7 +34,7 @@ export const SalesProvider = ({ children }: { children: ReactNode }) => {
             clientInstance.get(),
             salesInstance.get()
         ]).then(responses => {
-            console.log({ responses })
+
         })
     }, [fetchRef])
 

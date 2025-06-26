@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { format } from "date-fns"
 import { CalendarIcon, Plus, Trash2, Check, ChevronsUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -27,7 +27,10 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from "@/lib/utils"
 import type { Order, Product, ProductStatus } from "@/types/order"
 import { ClientReference, SaleOrderDetail, ShippingAddress, useOrders } from "@/contexts/order-context"
-import { convertDate } from "../generic"
+import { convertDate, getChildObject } from "../generic"
+import { Switch } from "../ui/switch"
+import { Employee } from "@/app/hr/hr-context"
+import { DataByTableName } from "../api"
 
 interface OrderItem {
   id: string
@@ -71,10 +74,27 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
 
   // Editable fields
   const [reference, setReference] = useState(order.reference)
+  const [isEmployeeChecked, setIsEmployeeChecked] = useState(order.isEmployeeChecked)
+  const [employeeReference, setEmployeeReference] = useState(order.employeeReferenceId)
+
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const employeeRef = useRef(true)
+  const employeeInstance = new DataByTableName("v1_employee")
+
+  useEffect(() => {
+    if (!employeeRef.current) return
+    employeeRef.current = false
+    employeeInstance.get().then(response => {
+      const data = getChildObject(response, "data", [])
+      setEmployees(data)
+    })
+  }, [])
+
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<Date | undefined>(
     order.deliveryDate ? new Date(order.deliveryDate) : undefined,
   )
 
+  const [shippingAddress, setShippingAddress] = useState('')
   const [shippingAddresses, setShippingAddresses] = useState<ShippingAddress[]>([])
   const [selectedShippingAddressId, setSelectedShippingAddressId] = useState(order.shippingAddressId || "")
   // Tax location state
@@ -104,13 +124,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
   }, [shippingAddressMapper])
 
   useEffect(() => {
-    setShippingAddresses(
-      shippingAddressMapper[order.clientId] ?? []
-    )
-    const selectedAddress = contextShippingAddress.find(item => item.addressId === order.shippingAddressId)
-    if (selectedAddress) {
-      setSelectedShippingAddressId(selectedAddress.addressId)
-    }
+    setShippingAddress(order.shippingAddressId)
   }, [order, contextShippingAddress])
   // Initialize order items from order products
   useEffect(() => {
@@ -299,14 +313,16 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
       poId,
       poNumber,
       remarks,
-      shippingAddressId: selectedShippingAddressId,
+      shippingAddressId: shippingAddress,
       referenceId: reference,
       status: "pending_approval",
       subtotal,
       taxTotal,
       taxesEnabled,
       taxType: isInTelangana ? "CGST+SGST" : "IGST",
-      total
+      total,
+      employeeReferenceId: employeeReference,
+      isEmployeeChecked
     }
     // Update the order
     updateOrder(order.id, updatedOrder, updatedProducts, newEntries).then(() => {
@@ -377,22 +393,55 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
                 <Input id="client" value={customer} readOnly className="bg-muted" />
               </div>
 
-              {/* Reference Selection (Editable) */}
               <div className="space-y-2">
-                <Label htmlFor="reference">
-                  Reference <span className="text-red-500">*</span>
-                </Label>
-                <Select value={reference} onValueChange={setReference}>
-                  <SelectTrigger id="reference">
-                    <SelectValue placeholder="Select reference" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {
-                      Object.values(referenceMapper).flat().map((item: any, index: number) => <SelectItem key={`${item.referenceId}-${index}`} value={item.referenceId}>{item.name}</SelectItem>)
-                    }
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="employee-reference"
+                    checked={isEmployeeChecked}
+                    onCheckedChange={(checked) => {
+                      setIsEmployeeChecked(checked)
+                    }}
+                  />
+                  <Label htmlFor="employee-reference" className="text-sm font-medium">
+                    Employee Reference
+                  </Label>
+                </div>
               </div>
+
+              {
+                isEmployeeChecked ? <div className="space-y-2">
+                  <Label htmlFor="client">
+                    Employee reference <span className="text-red-500">*</span>
+                  </Label>
+                  <Select value={parseInt(employeeReference)} onValueChange={setEmployeeReference}>
+                    <SelectTrigger id="employeeReference">
+                      <SelectValue placeholder="Select employee" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {employees.map((employee) => (
+                        <SelectItem key={employee.id} value={employee.id}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{employee.firstName}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {employee.id} - {employee.department}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div> : <div className="space-y-2">
+                  <Label htmlFor="reference">
+                    Reference <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="reference"
+                    value={reference}
+                    onChange={(e) => setReference(e.target.value)}
+                    placeholder="Enter reference"
+                  />
+                </div>
+              }
             </div>
 
             {/* Right Column */}
@@ -425,31 +474,13 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
                 <Label htmlFor="shipping-address">
                   Shipping Address {shippingAddresses.length > 0 && <span className="text-red-500">*</span>}
                 </Label>
-                <Select
-                  value={selectedShippingAddressId}
-                  onValueChange={setSelectedShippingAddressId}
-                  disabled={shippingAddresses.length === 0}
-                >
-                  <SelectTrigger id="shipping-address">
-                    <SelectValue
-                      placeholder={
-                        shippingAddresses.length === 0 ? "No addresses available" : "Select shipping address"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {shippingAddresses.map((address) => (
-                      <SelectItem key={address.id} value={address.addressId + ''}>
-                        {address.name} {address.isDefault && "(Default)"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {selectedShippingAddressId && (
-                  <div className="mt-2 text-xs text-muted-foreground whitespace-pre-line border p-2 rounded">
-                    {shippingAddresses.find((addr) => addr.addressId + '' === selectedShippingAddressId)?.address}
-                  </div>
-                )}
+                <Textarea
+                  id="shipping-address"
+                  value={shippingAddress}
+                  onChange={(e) => setShippingAddress(e.target.value)}
+                  placeholder="Provide shipping address"
+                  className="min-h-[80px]"
+                />
               </div>
             </div>
           </div>

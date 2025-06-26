@@ -161,8 +161,6 @@ export function PayrollManagement() {
     setIsConfirmDialogOpen(true)
   }
 
-  console.log({ processingEmployeeId })
-
   // Actually process payroll after confirmation
   const handleProcessPayroll = () => {
     if (processingEmployeeId) {

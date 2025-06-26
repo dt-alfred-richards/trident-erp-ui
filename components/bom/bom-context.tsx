@@ -90,6 +90,7 @@ export const BomProvider = ({ children }: { children: ReactNode }) => {
 
     const addBomComponent = (bomId: string, payload: Partial<BomComponent>) => {
         return bomComponentsInstance.post({
+            materialId:payload.materialId,
             ...removebasicTypes(payload, ["id", "bomCompId"]),
             bomId
         })
@@ -108,7 +109,11 @@ export const BomProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const addBom = (bomItem: Partial<Bom>, bomComponents: Partial<BomComponent>[]) => {
-        return bomInstance.post(removebasicTypes(bomItem, ["id", "bomId"]))
+        const productId = bomItem.productId
+        return bomInstance.post({
+            productId,
+            ...removebasicTypes(bomItem, ["id", "bomId"])
+        })
             .then(response => {
                 const bomId = getChildObject(response, "data.0.bomId", "");
                 if (!bomId) {

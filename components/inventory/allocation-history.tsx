@@ -63,8 +63,6 @@ export function AllocationHistory({ allocationHistory: propAllocationHistory }: 
     }))
   }, [allocations])
 
-  console.log({ defaultAllocationHistory, allocations })
-
   // Update display history when prop history changes
   useEffect(() => {
     if (propAllocationHistory) {

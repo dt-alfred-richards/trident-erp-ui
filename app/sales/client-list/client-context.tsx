@@ -88,9 +88,10 @@ export const ClientProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const updateClientProduct = ({ key, value }: { key: string, value: string }, payload: any) => {
-        return clientProposedPriceInstance.patch({ key, value: value }, payload).catch(error => {
-            console.log({ error })
-        })
+        return clientProposedPriceInstance.patch({ key, value: value }, payload)
+            .catch(error => {
+                console.log({ error })
+            })
     }
 
     const deleteClientProduct = ({ key, value }: { key: string, value: string }) => {
@@ -100,9 +101,11 @@ export const ClientProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const addClientProduct = (payload: Partial<ClientProposedPrice>) => {
-        return clientProposedPriceInstance.post(payload).catch(error => {
-            console.log({ error })
-        })
+        return clientProposedPriceInstance.post(payload)
+            .then(refetchContext)
+            .catch(error => {
+                console.log({ error })
+            })
     }
 
     const editClient = (data: any, clientId: number | undefined) => {

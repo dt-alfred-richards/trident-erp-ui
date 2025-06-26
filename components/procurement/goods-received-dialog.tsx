@@ -285,8 +285,6 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber, onGoodsRecei
     return poItems.every((item) => item.selected && Number(item.receivedQuantity) === item.quantity)
   }
 
-  console.log({ sub: formData.substitutionItems })
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[800px] h-[85vh] flex flex-col p-0 overflow-hidden">

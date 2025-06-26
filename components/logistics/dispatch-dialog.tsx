@@ -195,8 +195,6 @@ export function DispatchDialog({ open, onOpenChange, order, onDispatchComplete }
     )
   }
 
-  console.log({ vehicleId, driverId })
-
   const handleSubmit = () => {
     const payload = {
       id: getChildObject(order, "logisticsId", ""),
@@ -214,7 +212,7 @@ export function DispatchDialog({ open, onOpenChange, order, onDispatchComplete }
       driver: driverId,
       orderId: order.id
     } as Partial<Logistics>
-    // console.log({ payload })
+
     updateLogistics(payload).then(() => {
       onOpenChange(false)
     })

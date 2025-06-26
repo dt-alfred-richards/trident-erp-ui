@@ -93,7 +93,9 @@ export type V1Sale = {
   taxType: string,
   taxTotal: number,
   status: string,
-  trackingId: string
+  trackingId: string,
+  employeeReferenceId: string,
+  isEmployeeChecked: boolean
 }
 
 export type SaleOrderDetail = {
@@ -223,7 +225,10 @@ export function OrderProvider({ children }: { children: ReactNode }) {
         if (!acc[curr.clientId]) {
           acc[curr.clientId] = []
         }
-        acc[curr.clientId].push(curr)
+        acc[curr.clientId].push({
+          ...curr,
+          availableQuantity: curr.availableQuantity || 0,
+        })
         return acc;
       }, {});
 
@@ -258,6 +263,9 @@ export function OrderProvider({ children }: { children: ReactNode }) {
           modifiedOn: item.modifiedOn,
           clientId: item.clientId,
           remarks: item.remarks,
+          isEmployeeChecked: item.isEmployeeChecked,
+          employeeReferenceId: item.employeeReferenceId,
+          shippingAddressId: item.shippingAddressId,
           statusHistory: _eventsLogger.filter((i: EventLogger) => i.tableName === "v1_sales" && i.tableId === item.id).map((item: EventLogger) => ({
             timestamp: item.createdOn,
             status: item.fieldValue,
