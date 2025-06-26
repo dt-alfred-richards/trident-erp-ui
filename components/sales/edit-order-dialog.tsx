@@ -74,9 +74,13 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
 
   // Editable fields
   const [reference, setReference] = useState(order.reference)
-  const [isEmployeeChecked, setIsEmployeeChecked] = useState(order.isEmployeeChecked)
-  const [employeeReference, setEmployeeReference] = useState(order.employeeReferenceId)
+  const [isEmployeeChecked, setIsEmployeeChecked] = useState(false)
+  const [employeeReference, setEmployeeReference] = useState("")
 
+  useEffect(() => {
+    setIsEmployeeChecked(order.isEmployeeChecked)
+    setEmployeeReference(order.employeeReferenceId)
+  }, [order])
   const [employees, setEmployees] = useState<Employee[]>([])
   const employeeRef = useRef(true)
   const employeeInstance = new DataByTableName("v1_employee")

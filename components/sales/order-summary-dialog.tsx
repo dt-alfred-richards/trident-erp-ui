@@ -17,7 +17,10 @@ import type { Order, OrderProduct } from "@/types/order"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import moment from "moment"
-import { convertDate } from "../generic"
+import { convertDate, getChildObject } from "../generic"
+import { Employee } from "@/app/hr/hr-context"
+import { useState, useRef, useEffect, useMemo } from "react"
+import { DataByTableName } from "../api"
 
 interface OrderSummaryDialogProps {
   open: boolean
@@ -34,6 +37,26 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
   const sgst = taxableAmount * 0.09
   const taxes = cgst + sgst // Keep total taxes for the final calculation
   const total = taxableAmount + taxes
+
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const employeeRef = useRef(true)
+  const employeeInstance = new DataByTableName("v1_employee")
+
+  useEffect(() => {
+    if (!employeeRef.current) return
+    employeeRef.current = false
+    employeeInstance.get().then(response => {
+      const data = getChildObject(response, "data", [])
+      setEmployees(data)
+    })
+  }, [])
+
+  const employeeMapper = useMemo(() => {
+    return employees.reduce((acc: Record<string, Employee>, curr) => {
+      if (!acc[curr.id]) acc[curr.id] = curr
+      return acc;
+    }, {})
+  }, [employees])
 
   const handlePrint = () => {
     window.print()
@@ -108,8 +131,8 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
                       <span className="text-sm font-medium">{order.id}</span>
                     </div>
                     <div className="grid grid-cols-2">
-                      <span className="text-sm text-muted-foreground">Reference:</span>
-                      <span className="text-sm">{order.reference}</span>
+                      <span className="text-sm text-muted-foreground">{order.isEmployeeChecked ? "Employee reference:" : "Reference:"}</span>
+                      <span className="text-sm">{order.isEmployeeChecked ? getChildObject(employeeMapper, `${order.employeeReferenceId}.firstName`, '') : order.reference}</span>
                     </div>
                     <div className="grid grid-cols-2">
                       <span className="text-sm text-muted-foreground">Created By:</span>
@@ -251,10 +274,8 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
                 <CardContent className="p-4 space-y-3">
                   <h3 className="font-medium">Billing Address</h3>
                   <p className="text-sm">
-                    {`${order.customer}
-123 Business Park, Industrial Area
-Bangalore, Karnataka 560001
-India`}
+                    <div>{order.customer}</div>
+                    <div>{order.shippingAddressId}</div>
                   </p>
                 </CardContent>
               </Card>
@@ -264,10 +285,8 @@ India`}
                 <CardContent className="p-4 space-y-3">
                   <h3 className="font-medium">Shipping Address</h3>
                   <p className="text-sm">
-                    {`${order.customer}
-123 Business Park, Industrial Area
-Bangalore, Karnataka 560001
-India`}
+                    <div>{order.customer}</div>
+                    <div>{order.shippingAddressId}</div>
                   </p>
                 </CardContent>
               </Card>
