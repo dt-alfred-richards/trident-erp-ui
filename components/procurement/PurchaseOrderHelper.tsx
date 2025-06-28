@@ -263,6 +263,8 @@ const PurchaseOrderHelper = ({
         return purchaseOrderMaterials.filter(item => item.purchaseOrderId === selectedGrnPo)
     }, [purchaseOrderMaterials, selectedGrnPo])
 
+    console.log({ receivedGoods, purchaseOrderMaterials, currentOrders })
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">

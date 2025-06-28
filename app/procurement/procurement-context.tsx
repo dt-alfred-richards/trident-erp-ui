@@ -174,7 +174,7 @@ export const ProcurementProvider = ({ children }: { children: ReactNode }) => {
     const createPurchaseOrder = (purhcaseOrder: Partial<PurchaseOrder>, purchaseOrderItem: Partial<PurchaseOrderMaterial>[]) => {
         const _purchaseOrder = removebasicTypes(purhcaseOrder, ["id", "purchaseId"])
 
-        return purhchaseOrderInstance.post(_purchaseOrder).then((res) => {
+        return purhchaseOrderInstance.post({ ..._purchaseOrder, supplierId: purhcaseOrder.supplierId }).then((res) => {
             const purchaseOrderId = getChildObject(res, "data.0.purchaseId", "")
             if (!purchaseOrderId) throw new Error("Purchase order not created properly")
             return Promise.allSettled(

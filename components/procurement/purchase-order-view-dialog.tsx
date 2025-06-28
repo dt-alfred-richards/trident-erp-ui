@@ -138,7 +138,7 @@ export function PurchaseOrderViewDialog({ open, onOpenChange, poId }: PurchaseOr
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl">Purchase Order - {po.id}</DialogTitle>
-            {getStatusBadge(po.status, po.received, po.items[0].quantity)}
+            {getStatusBadge(po.status, po.received, po.items[0]?.quantity)}
           </div>
         </DialogHeader>
 

@@ -38,6 +38,7 @@ export function PurchaseOrderDialog({ open, onOpenChange, onCreateOrder }: Purch
   const suppliers = useMemo(() => {
     return contextSuppliers.map(item => ({ value: item.supplierId, label: item.name }))
   }, [contextSuppliers])
+  
   const materials = useMemo(() => {
     return contextMaterials
       .filter(item => item.supplierId === selectedSupplierId)
@@ -111,6 +112,8 @@ export function PurchaseOrderDialog({ open, onOpenChange, onCreateOrder }: Purch
       onOpenChange(false)
     })
   }
+
+  console.log({ selectedSupplierId })
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
