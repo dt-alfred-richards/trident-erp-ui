@@ -422,7 +422,7 @@ export function SalesTable() {
                   <TableCell className="py-3">{convertDate(order?.orderDate)}</TableCell>
                   <TableCell className="font-medium text-primary">{order?.id || ""}</TableCell>
                   <TableCell>{order.customer}</TableCell>
-                  <TableCell>{referenceNameMapper[order.reference] || ""}</TableCell>
+                  <TableCell>{order.isEmployeeChecked ? `Emp-${order.employeeReferenceId}` : order.reference}</TableCell>
                   <TableCell>{convertDate(order.deliveryDate)}</TableCell>
                   <TableCell>
                     <PriorityIndicator priority={order.priority} />

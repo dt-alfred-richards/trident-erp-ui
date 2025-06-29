@@ -56,7 +56,8 @@ interface OrderItem {
   pricePerCase: number
   taxRate: number
   basePay: number
-  taxAmount: number
+  taxAmount: number,
+  category: string
 }
 
 interface CreateSalesOrderDialogProps {
@@ -258,13 +259,14 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
 
     const newItem: OrderItem = {
       id: `item-${Date.now()}`,
-      productId: product.id,
-      productName: `${product.name} (${selectedSizeSku})`,
+      productId: product.id + '',
+      productName: `${product.name}`,
       cases: quantity,
       pricePerCase: product.price,
       taxRate: product.taxRate,
       basePay,
       taxAmount,
+      category: selectedSizeSku
     }
 
     setOrderItems([...orderItems, newItem])
@@ -342,6 +344,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
       productId: item.productId,
       saleId: "",
       status: "pending_approval",
+      category: item.category
     }))
 
     // Add the order to the context (this would be an API call in a real app)
@@ -667,19 +670,13 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
 
                       {/* Size SKU Selection - New Dropdown */}
                       <div className="space-y-2">
-                        <Label htmlFor="size-sku">Size SKU</Label>
-                        <Select value={selectedSizeSku} onValueChange={setSelectedSizeSku}>
-                          <SelectTrigger id="size-sku">
-                            <SelectValue placeholder="Select size..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {SIZE_SKUS.map((size) => (
-                              <SelectItem key={size.id} value={size.id}>
-                                {size.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Label htmlFor="size-sku">Category</Label>
+                        <Input
+                          id="size-sku"
+                          value={selectedSizeSku}
+                          onChange={(e) => setSelectedSizeSku(e.target.value)}
+                          placeholder="Enter category"
+                        />
                       </div>
 
                       {/* Cases */}

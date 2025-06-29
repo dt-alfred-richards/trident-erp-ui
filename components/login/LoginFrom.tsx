@@ -71,6 +71,7 @@ export function LoginForm() {
     const [isLoading, setIsLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
     const [passwordFocused, setPasswordFocused] = useState(false)
+    const [isSubmitting, setIsSubmitting] = useState(false)
     const [formData, setFormData] = useState({
         email: "",
         password: "",
@@ -121,9 +122,9 @@ export function LoginForm() {
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-
         setIsLoading(true)
+        setIsSubmitting(true)
+        e.preventDefault()
 
         try {
             const payload = {
@@ -138,6 +139,7 @@ export function LoginForm() {
             setFormError("Authentication failed. Please check your credentials.")
         } finally {
             setIsLoading(false)
+            setIsSubmitting(false)
         }
     }
 
@@ -236,8 +238,8 @@ export function LoginForm() {
                 </div>
             )}
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? (
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? (
                     <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Signing in...

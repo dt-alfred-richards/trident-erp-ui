@@ -68,6 +68,7 @@ export interface Order {
   shippingAddressId: string,
   remarks: string,
   modifiedOn: Date,
+  total: number,
   statusHistory: {
     timestamp: string
     status: OrderStatus

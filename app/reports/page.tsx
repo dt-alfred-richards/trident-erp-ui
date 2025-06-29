@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { DashboardShell } from "@/components/dashboard-shell"
 import { ReportsDashboard } from "@/components/reports/reports-dashboard"
+import { LogisticsProvider } from "@/hooks/use-logistics-data"
 
 export const metadata: Metadata = {
   title: "Reports & Analytics",
@@ -11,8 +12,10 @@ export const metadata: Metadata = {
 export default function ReportsPage() {
   return (
     <DashboardShell>
-      <DashboardHeader heading="Reports & Analytics" text="View reports and analytics" />
-      <ReportsDashboard />
+      <LogisticsProvider>
+        <DashboardHeader heading="Reports & Analytics" text="View reports and analytics" />
+        <ReportsDashboard />
+      </LogisticsProvider>
     </DashboardShell>
   )
 }

@@ -266,6 +266,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
           isEmployeeChecked: item.isEmployeeChecked,
           employeeReferenceId: item.employeeReferenceId,
           shippingAddressId: item.shippingAddressId,
+          total: item.total,
           statusHistory: _eventsLogger.filter((i: EventLogger) => i.tableName === "v1_sales" && i.tableId === item.id).map((item: EventLogger) => ({
             timestamp: item.createdOn,
             status: item.fieldValue,

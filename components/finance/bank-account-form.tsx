@@ -89,17 +89,6 @@ export function BankAccountForm({ open, onOpenChange, initialValues, accountId }
           form.reset(defaultValues)
         })
     }
-
-    // onOpenChange(false)
-
-    // // Reset form to default empty values
-    // form.reset({
-    //   name: "",
-    //   bank: "",
-    //   accountNumber: "",
-    //   balance: 0,
-    //   type: "Current",
-    // })
   }
 
   return (

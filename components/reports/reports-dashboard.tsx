@@ -28,6 +28,12 @@ import { toast } from "@/components/ui/use-toast"
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
 import { StatusBadge } from "@/components/common/status-badge"
 import { Badge } from "@/components/ui/badge"
+import { ClientProposedProduct, useOrders } from "@/contexts/order-context"
+import { convertDate, getCummulativeSum } from "../generic"
+import { useProduction } from "../production/production-context"
+import { useInventory } from "@/app/inventory-context"
+import { useLogistics } from "@/app/logistics/shipment-tracking/logistics-context"
+import { useProcurement } from "@/app/procurement/procurement-context"
 
 // Sample data for each tab
 const salesData = [
@@ -447,6 +453,9 @@ export function ReportsDashboard() {
     from: new Date(new Date().setDate(new Date().getDate() - 30)),
     to: new Date(),
   })
+
+  const { orders, clientProposedProductMapper } = useOrders();
+  const { productionOrders } = useProduction()
   const [searchQuery, setSearchQuery] = useState("")
 
   // Filter states
@@ -461,6 +470,98 @@ export function ReportsDashboard() {
 
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(5)
+
+  const { inventory = [] } = useInventory()
+  const { data: logisticsContextData } = useLogistics()
+  const { purchaseOrders } = useProcurement()
+  const productMapper = useMemo(() => {
+    return Object.values(clientProposedProductMapper).flat().reduce((acc: Record<string, ClientProposedProduct>, curr) => {
+      if (!acc[curr?.productId || ""]) acc[curr?.productId || ""] = curr
+      return acc;
+    }, {})
+  }, [clientProposedProductMapper])
+
+  const procurementData = useMemo(() => {
+    return purchaseOrders.map(item => ({
+      poNumber: `PO-${item.id}`,
+      supplier: item.supplierId,
+      category: "Raw Materials",
+      orderDate: convertDate(item.createdOn),
+      deliveryDate: convertDate(item.dueDate),
+      items: 3,
+      value: item.total,
+      paymentTerms: item.paymentTerms,
+      status: item?.status || "",
+    }))
+  }, [purchaseOrders])
+
+  const inventoryData = useMemo(() => {
+    return inventory.map(item => {
+      return ({
+        itemCode: `${item.id}`,
+        description: item.material,
+        category: item.category,
+        warehouse: "Mumbai",
+        inStock: 1245,
+        allocated: item?.reserved || 0,
+        available: item?.quantity || 0,
+        value: item.quantity * item.price,
+        status: item?.status || '',
+      })
+    })
+  }, [inventory])
+
+  const logisticsData = useMemo(() => {
+    return logisticsContextData.map(item => {
+      return ({
+        shipmentId: `SH-${item.id}`,
+        orderId: item.orderId,
+        customer: item.clientId,
+        origin: "Mumbai",
+        destination: "Delhi",
+        dispatchDate: convertDate(item.createdOn),
+        deliveryDate: item.modifiedOn ? convertDate(item.modifiedOn) : "",
+        carrier: "Blue Dart",
+        status: item?.status || "",
+      })
+    })
+  }, [logisticsContextData])
+
+  const productionData = useMemo(() => {
+    return productionOrders?.map(item => {
+      return ({
+        batchId: `PB-${item.id}`,
+        product: productMapper[item.productId]?.name || "",
+        startDate: convertDate(item.createdOn),
+        endDate: item.modifiedOn ? convertDate(item.modifiedOn) : "",
+        plannedQty: 500,
+        actualQty: 487,
+        efficiency: "97.4%",
+        defectRate: "1.2%",
+        status: item.status,
+      })
+    })
+  }, [productionOrders, productMapper])
+
+  const salesData = useMemo(() => {
+    return orders.map(item => {
+      return ({
+        orderId: item.id,
+        customer: item.customer,
+        product: "",
+        category: "Dhaara",
+        date: convertDate(item.orderDate),
+        quantity: getCummulativeSum({
+          key: "cases",
+          refObject: item.products,
+          defaultValue: 0
+        }),
+        unitPrice: 1250,
+        total: item?.total || 0,
+        status: "Delivered",
+      })
+    })
+  }, [orders])
 
   // Filtered data based on selections
   const filteredSalesData = useMemo(() => {
@@ -485,10 +586,10 @@ export function ReportsDashboard() {
 
       return true
     })
-  }, [selectedProduct, selectedCustomer, selectedCategory, searchQuery])
+  }, [selectedProduct, selectedCustomer, selectedCategory, searchQuery, salesData])
 
   const filteredProductionData = useMemo(() => {
-    return productionData.filter((item) => {
+    return productionData?.filter((item) => {
       // Filter by product
       if (selectedProduct !== "all" && item.product !== selectedProduct) {
         return false
@@ -526,7 +627,7 @@ export function ReportsDashboard() {
 
       return true
     })
-  }, [selectedProduct, selectedStatus, selectedCategory, searchQuery])
+  }, [selectedProduct, selectedStatus, selectedCategory, searchQuery, productionData])
 
   const filteredInventoryData = useMemo(() => {
     return inventoryData.filter((item) => {
@@ -560,7 +661,7 @@ export function ReportsDashboard() {
 
       return true
     })
-  }, [selectedProduct, selectedCategory, selectedWarehouse, selectedStatus, searchQuery])
+  }, [selectedProduct, selectedCategory, selectedWarehouse, selectedStatus, searchQuery, inventoryData])
 
   const filteredLogisticsData = useMemo(() => {
     return logisticsData.filter((item) => {
@@ -592,7 +693,7 @@ export function ReportsDashboard() {
 
       return true
     })
-  }, [selectedCustomer, selectedStatus, searchQuery])
+  }, [selectedCustomer, selectedStatus, searchQuery, logisticsData])
 
   const filteredProcurementData = useMemo(() => {
     return procurementData.filter((item) => {
@@ -624,7 +725,7 @@ export function ReportsDashboard() {
 
       return true
     })
-  }, [selectedSupplier, selectedCategory, searchQuery])
+  }, [selectedSupplier, selectedCategory, searchQuery, procurementData])
 
   const filteredHrData = useMemo(() => {
     return hrData.filter((item) => {
@@ -702,7 +803,7 @@ export function ReportsDashboard() {
 
   const paginateProductionData = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage
-    return filteredProductionData.slice(startIndex, startIndex + itemsPerPage)
+    return filteredProductionData?.slice(startIndex, startIndex + itemsPerPage)
   }, [filteredProductionData, currentPage, itemsPerPage])
 
   const paginateInventoryData = useMemo(() => {
@@ -861,9 +962,8 @@ export function ReportsDashboard() {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4">
         <Card
-          className={`cursor-pointer transition-all hover:shadow-md ${
-            activeTab === "sales" ? "border-primary bg-primary/5" : "hover:border-primary/50"
-          }`}
+          className={`cursor-pointer transition-all hover:shadow-md ${activeTab === "sales" ? "border-primary bg-primary/5" : "hover:border-primary/50"
+            }`}
           onClick={() => handleTabChange("sales")}
         >
           <CardContent className="p-4 flex items-center space-x-3">
@@ -877,9 +977,8 @@ export function ReportsDashboard() {
         </Card>
 
         <Card
-          className={`cursor-pointer transition-all hover:shadow-md ${
-            activeTab === "production" ? "border-primary bg-primary/5" : "hover:border-primary/50"
-          }`}
+          className={`cursor-pointer transition-all hover:shadow-md ${activeTab === "production" ? "border-primary bg-primary/5" : "hover:border-primary/50"
+            }`}
           onClick={() => handleTabChange("production")}
         >
           <CardContent className="p-4 flex items-center space-x-3">
@@ -893,9 +992,8 @@ export function ReportsDashboard() {
         </Card>
 
         <Card
-          className={`cursor-pointer transition-all hover:shadow-md ${
-            activeTab === "inventory" ? "border-primary bg-primary/5" : "hover:border-primary/50"
-          }`}
+          className={`cursor-pointer transition-all hover:shadow-md ${activeTab === "inventory" ? "border-primary bg-primary/5" : "hover:border-primary/50"
+            }`}
           onClick={() => handleTabChange("inventory")}
         >
           <CardContent className="p-4 flex items-center space-x-3">
@@ -909,9 +1007,8 @@ export function ReportsDashboard() {
         </Card>
 
         <Card
-          className={`cursor-pointer transition-all hover:shadow-md ${
-            activeTab === "logistics" ? "border-primary bg-primary/5" : "hover:border-primary/50"
-          }`}
+          className={`cursor-pointer transition-all hover:shadow-md ${activeTab === "logistics" ? "border-primary bg-primary/5" : "hover:border-primary/50"
+            }`}
           onClick={() => handleTabChange("logistics")}
         >
           <CardContent className="p-4 flex items-center space-x-3">
@@ -925,9 +1022,8 @@ export function ReportsDashboard() {
         </Card>
 
         <Card
-          className={`cursor-pointer transition-all hover:shadow-md ${
-            activeTab === "procurement" ? "border-primary bg-primary/5" : "hover:border-primary/50"
-          }`}
+          className={`cursor-pointer transition-all hover:shadow-md ${activeTab === "procurement" ? "border-primary bg-primary/5" : "hover:border-primary/50"
+            }`}
           onClick={() => handleTabChange("procurement")}
         >
           <CardContent className="p-4 flex items-center space-x-3">
@@ -941,9 +1037,8 @@ export function ReportsDashboard() {
         </Card>
 
         <Card
-          className={`cursor-pointer transition-all hover:shadow-md ${
-            activeTab === "hr" ? "border-primary bg-primary/5" : "hover:border-primary/50"
-          }`}
+          className={`cursor-pointer transition-all hover:shadow-md ${activeTab === "hr" ? "border-primary bg-primary/5" : "hover:border-primary/50"
+            }`}
           onClick={() => handleTabChange("hr")}
         >
           <CardContent className="p-4 flex items-center space-x-3">
@@ -957,9 +1052,8 @@ export function ReportsDashboard() {
         </Card>
 
         <Card
-          className={`cursor-pointer transition-all hover:shadow-md ${
-            activeTab === "finance" ? "border-primary bg-primary/5" : "hover:border-primary/50"
-          }`}
+          className={`cursor-pointer transition-all hover:shadow-md ${activeTab === "finance" ? "border-primary bg-primary/5" : "hover:border-primary/50"
+            }`}
           onClick={() => handleTabChange("finance")}
         >
           <CardContent className="p-4 flex items-center space-x-3">
@@ -1293,12 +1387,12 @@ export function ReportsDashboard() {
                             <Badge
                               variant="outline"
                               className={
-                                item.product.includes("Dhaara")
+                                item.product?.includes("Dhaara")
                                   ? "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400"
                                   : "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-400"
                               }
                             >
-                              {item.product.includes("Dhaara") ? "Dhaara" : "Customised"}
+                              {item.product?.includes("Dhaara") ? "Dhaara" : "Customised"}
                             </Badge>
                           </TableCell>
                           <TableCell>{item.startDate}</TableCell>

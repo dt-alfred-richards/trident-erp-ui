@@ -14,6 +14,7 @@ import { FinanceProvider } from "@/contexts/finance-context"
 import { Button } from "@/components/ui/button"
 import { JournalEntryForm } from "@/components/finance/journal-entry-form"
 import { Plus } from "lucide-react"
+import { TaxDashboard } from "./tax-dashboard"
 
 export function FinanceDashboard() {
   const [activeTab, setActiveTab] = useState("overview")
@@ -68,6 +69,12 @@ export function FinanceDashboard() {
               >
                 Banking & Cash
               </TabsTrigger>
+              <TabsTrigger
+                value="tax"
+                className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff] data-[state=active]:shadow-none h-12 px-4 font-medium text-muted-foreground data-[state=active]:text-[#1b84ff] data-[state=active]:bg-white dark:data-[state=active]:bg-[#0f1729]"
+              >
+                Tax
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -94,6 +101,9 @@ export function FinanceDashboard() {
           </TabsContent>
           <TabsContent value="taxation" className="flex-1 p-0">
             <TaxationCompliance />
+          </TabsContent>
+          <TabsContent value="tax" className="flex-1 p-0">
+            <TaxDashboard />
           </TabsContent>
         </Tabs>
 
