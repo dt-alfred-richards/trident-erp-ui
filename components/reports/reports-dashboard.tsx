@@ -34,6 +34,7 @@ import { useProduction } from "../production/production-context"
 import { useInventory } from "@/app/inventory-context"
 import { useLogistics } from "@/app/logistics/shipment-tracking/logistics-context"
 import { useProcurement } from "@/app/procurement/procurement-context"
+import { useHrContext } from "@/app/hr/hr-context"
 
 // Sample data for each tab
 const salesData = [
@@ -474,12 +475,34 @@ export function ReportsDashboard() {
   const { inventory = [] } = useInventory()
   const { data: logisticsContextData } = useLogistics()
   const { purchaseOrders } = useProcurement()
+
+  const { employees, dailyAttendance } = useHrContext()
+
+  console.log({dailyAttendance})
+
   const productMapper = useMemo(() => {
     return Object.values(clientProposedProductMapper).flat().reduce((acc: Record<string, ClientProposedProduct>, curr) => {
       if (!acc[curr?.productId || ""]) acc[curr?.productId || ""] = curr
       return acc;
     }, {})
   }, [clientProposedProductMapper])
+
+  const hrData = useMemo(() => {
+    return employees.map(item => {
+      return ({
+        employeeId: `EMP-${item.id}`,
+        name: [item.firstName, item.lastName].filter(item => item).join(" "),
+        department: item.department,
+        designation: item.role,
+        location: "Mumbai",
+        workingDays: 22,
+        present: 21,
+        absent: 1,
+        attendance: "95.5%",
+        overtime: 12,
+      })
+    })
+  }, [employees])
 
   const procurementData = useMemo(() => {
     return purchaseOrders.map(item => ({
