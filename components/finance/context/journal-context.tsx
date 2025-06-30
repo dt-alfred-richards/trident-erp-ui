@@ -16,6 +16,17 @@ export type Journal = {
     amount: number,
     reference?: string,
     status: string,
+    dueDate: string,
+    referenceNumber: string,
+    additionalReference: string,
+    taxInformation: boolean,
+    transcationType: string,
+    gst: number,
+    partyType: string,
+    bankAccount: string,
+    baseAmount: number,
+    gstAmount: number,
+    totalAmount: number,
 } & Basic
 
 export const { BoilerProvider: JournalProvider, useBoiler: useJournalContext } = createBoilerContext<Journal>("v1_journals")

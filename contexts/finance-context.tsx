@@ -3,6 +3,24 @@
 import { createContext, useContext, useState, type ReactNode } from "react"
 import { toast } from "@/components/ui/use-toast"
 
+// Sample customer data for integration
+const customers = [
+  { id: "CUST001", name: "Acme Corp" },
+  { id: "CUST002", name: "TechGiant Inc" },
+  { id: "CUST003", name: "Global Traders" },
+  { id: "CUST004", name: "Innovate Solutions" },
+  { id: "CUST005", name: "Prime Industries" },
+]
+
+// Sample supplier data for integration
+const suppliers = [
+  { id: "SUP001", name: "Raw Materials Co." },
+  { id: "SUP002", name: "Industrial Supplies Ltd." },
+  { id: "SUP003", name: "Quality Components Inc." },
+  { id: "SUP004", name: "Packaging Solutions" },
+  { id: "SUP005", name: "Logistics Partners" },
+]
+
 // Define types for our finance data
 export type JournalEntry = {
   id: string
@@ -13,11 +31,21 @@ export type JournalEntry = {
   amount: number
   reference: string
   status: "Draft" | "Posted" | "Pending" | "Rejected"
+  transactionType?: "CGST-SGST" | "IGST"
+  gstPercentage?: number
+  partyType?: "Customer" | "Supplier"
+  debtorCustomer?: string
+  creditorSupplier?: string
+  dueDate?: string
+  gstAmount?: number
+  activeInvoice?: string
+  activeBill?: string
+  bankAccount?: string
+  isNoteRelated?: boolean // Add this new field
 }
 
 export type Account = {
   id: string
-  accountCode: string,
   name: string
   type: "Asset" | "Liability" | "Equity" | "Revenue" | "Expense"
   balance: number
@@ -116,6 +144,202 @@ export type TaxFiling = {
   amount: number
 }
 
+// Add new types for DebitNote and CreditNote
+// Add new state variables for debitNotes and creditNotes
+// Add addDebitNote and addCreditNote functions to the context value
+// Ensure customers and suppliers are exposed in the context value
+
+// Add these types after the existing `TaxFiling` type:
+export type DebitNote = {
+  id: string
+  billId: string // Original Bill ID
+  supplier: string
+  date: string
+  reason: string
+  items: {
+    description: string
+    quantity: number
+    unitPrice: number
+    amount: number
+    taxRate: number
+    taxAmount: number
+  }[]
+  baseAmount: number
+  gstAmount: number
+  totalAmount: number
+  transactionType: "CGST-SGST" | "IGST"
+  status: "Draft" | "Posted"
+}
+
+export type CreditNote = {
+  id: string
+  invoiceId: string // Original Invoice ID
+  customer: string
+  date: string
+  reason: string
+  items: {
+    description: string
+    quantity: number
+    unitPrice: number
+    amount: number
+    taxRate: number
+    taxAmount: number
+  }[]
+  baseAmount: number
+  gstAmount: number
+  totalAmount: number
+  transactionType: "CGST-SGST" | "IGST"
+  status: "Draft" | "Posted"
+}
+
+// Account type mapping for proper accounting principles
+const accountTypeMapping: Record<string, "Asset" | "Liability" | "Equity" | "Revenue" | "Expense"> = {
+  Cash: "Asset",
+  Bank: "Asset",
+  "Accounts Receivable": "Asset",
+  "Raw Materials Inventory": "Asset",
+  "Work-in-Progress": "Asset",
+  "Finished Goods Inventory": "Asset",
+  "Fixed Assets": "Asset",
+  "Other Assets": "Asset",
+  "Prepaid Expenses": "Asset",
+  "Short Term Investment": "Asset",
+  "Other Receivables": "Asset",
+  // GST Input Accounts (Input Tax Credit - Assets)
+  "CGST Input": "Asset",
+  "SGST Input": "Asset",
+  "IGST Input": "Asset",
+  "Accounts Payable": "Liability",
+  "Current Liabilities": "Liability",
+  "Long-term Liabilities": "Liability",
+  "Short Term Loans": "Liability",
+  "Bank Overdrafts": "Liability",
+  "GST Payable": "Liability",
+  "Accrued Expenses": "Liability",
+  "Unearned Revenue": "Liability",
+  "Other Current Liabilities": "Liability",
+  // GST Output Accounts (Tax Payable - Liabilities)
+  "CGST Output": "Liability",
+  "SGST Output": "Liability",
+  "IGST Output": "Liability",
+  Capital: "Equity",
+  "Retained Earnings": "Equity",
+  "Sales Revenue": "Revenue",
+  "Service Revenue": "Revenue",
+  "Other Revenue": "Revenue",
+  "Sales Revenue Returned": "Revenue",
+  "Cost of Goods Sold": "Expense",
+  Wages: "Expense",
+  "Salary Expenses": "Expense",
+  "Utilities Expenses": "Expense",
+  "Operating Expenses": "Expense",
+  "Inventory Loss": "Expense",
+  "Raw Materials Inventory Returned": "Asset",
+  "Fuel Expense": "Expense",
+  "Food Expense": "Expense",
+  "Electricity Expense": "Expense",
+  "Machinery Expense": "Expense",
+  "Telephone Expense": "Expense",
+  "Factory Maintenance": "Expense",
+  "Water Expense": "Expense",
+}
+
+// Add the following mapping and helper function at the top of the file, before `initialTrialBalance`.
+
+const accountDisplayNames: Record<string, string> = {
+  "Sales Revenue": "Sales",
+  "Sales Revenue Returned": "Sales Return (Credit Note)",
+  "Raw Materials Inventory": "Purchase RM",
+  "Raw Materials Inventory Returned": "Purchase RM Return (Debit Note)",
+  // Add other accounts if they need specific display names, otherwise they map to themselves
+  "Accounts Payable": "Accounts Payable",
+  "Accounts Receivable": "Accounts Receivable",
+  "Accrued Expenses": "Accrued Expenses",
+  "Advance from Customer": "Advance from Customer",
+  "Advance to Supplier": "Advance to Supplier",
+  Bank: "Bank",
+  "Bank Overdrafts": "Bank Overdrafts",
+  Cash: "Cash",
+  "CGST Input": "CGST Input",
+  "CGST Output": "CGST Output",
+  "Finished Goods Inventory": "Finished Goods Inventory",
+  "GST Payable": "GST Payable",
+  "IGST Input": "IGST Input",
+  "IGST Output": "IGST Output",
+  "Other Current Liabilities": "Other Current Liabilities",
+  "Other Receivables": "Other Receivables",
+  "Prepaid Expenses": "Prepaid Expenses",
+  "SGST Input": "SGST Input",
+  "SGST Output": "SGST Output",
+  "Short Term Investment": "Short Term Investment",
+  "Short Term Loans": "Short Term Loans",
+  "Unearned Revenue": "Unearned Revenue",
+  Wages: "Wages",
+  "Work-in-Progress": "Work-in-Progress",
+  Inventory: "Inventory",
+  "Utilities Expense": "Utilities Expense",
+  "Salary Expense": "Salary Expense",
+  "Fixed Assets": "Fixed Assets",
+  Capital: "Capital",
+  "Retained Earnings": "Retained Earnings",
+  "Service Revenue": "Service Revenue",
+  "Other Revenue": "Other Revenue",
+  "Cost of Goods Sold": "Cost of Goods Sold",
+  "Operating Expenses": "Operating Expenses",
+  "Inventory Loss": "Inventory Loss",
+  "Fuel Expense": "Fuel Expense",
+  "Food Expense": "Food Expense",
+  "Electricity Expense": "Electricity Expense",
+  "Machinery Expense": "Machinery Expense",
+  "Telephone Expense": "Telephone Expense",
+  "Factory Maintenance": "Factory Maintenance",
+  "Water Expense": "Water Expense",
+}
+
+export const getDisplayAccountName = (internalName: string): string => {
+  return accountDisplayNames[internalName] || internalName
+}
+
+// Trial Balance Entry type
+type TrialBalanceEntry = {
+  account: string
+  accountType: "Asset" | "Liability" | "Equity" | "Revenue" | "Expense"
+  debit: number
+  credit: number
+}
+
+// Initial trial balance state - Add GST accounts
+const initialTrialBalance: TrialBalanceEntry[] = [
+  { account: "Cash", accountType: "Asset", debit: 3500000, credit: 0 },
+  { account: "Bank", accountType: "Asset", debit: 2800000, credit: 0 },
+  { account: "Accounts Receivable", accountType: "Asset", debit: 6300000, credit: 0 },
+  { account: "Raw Materials Inventory", accountType: "Asset", debit: 4200000, credit: 0 },
+  { account: "Work-in-Progress", accountType: "Asset", debit: 2500000, credit: 0 },
+  { account: "Finished Goods Inventory", accountType: "Asset", debit: 3800000, credit: 0 },
+  { account: "Fixed Assets", type: "Asset", debit: 12500000, credit: 0 },
+  { account: "Accounts Payable", accountType: "Liability", debit: 0, credit: 4900000 },
+  { account: "Sales Revenue", accountType: "Revenue", debit: 0, credit: 18500000 },
+  { account: "Wages", accountType: "Expense", debit: 6500000, credit: 0 },
+  { account: "Salary Expenses", accountType: "Expense", debit: 4200000, credit: 0 },
+  { account: "Utilities Expenses", accountType: "Expense", debit: 1200000, credit: 0 },
+  { account: "CGST Input", accountType: "Asset", debit: 0, credit: 0 },
+  { account: "SGST Input", accountType: "Asset", debit: 0, credit: 0 },
+  { account: "IGST Input", accountType: "Asset", debit: 0, credit: 0 },
+  { account: "CGST Output", accountType: "Liability", debit: 0, credit: 0 },
+  { account: "SGST Output", accountType: "Liability", debit: 0, credit: 0 },
+  { account: "IGST Output", accountType: "Liability", debit: 0, credit: 0 },
+  { account: "Capital", accountType: "Equity", debit: 0, credit: 10000000 }, // Example initial capital
+  { account: "Retained Earnings", accountType: "Equity", debit: 0, credit: 4500000 }, // Example initial retained earnings
+  { account: "Accumulated Depreciation", accountType: "Asset", debit: 0, credit: 1000000 }, // Example contra-asset
+  { account: "Fuel Expense", accountType: "Expense", debit: 0, credit: 0 },
+  { account: "Food Expense", accountType: "Expense", debit: 0, credit: 0 },
+  { account: "Electricity Expense", accountType: "Expense", debit: 0, credit: 0 },
+  { account: "Machinery Expense", accountType: "Expense", debit: 0, credit: 0 },
+  { account: "Telephone Expense", accountType: "Expense", debit: 0, credit: 0 },
+  { account: "Factory Maintenance", accountType: "Expense", debit: 0, credit: 0 },
+  { account: "Water Expense", accountType: "Expense", debit: 0, credit: 0 },
+]
+
 // Define the context type
 type FinanceContextType = {
   journalEntries: JournalEntry[]
@@ -127,8 +351,12 @@ type FinanceContextType = {
   assets: Asset[]
   costCenters: CostCenter[]
   taxFilings: TaxFiling[]
+  trialBalance: TrialBalanceEntry[]
+  debitNotes: DebitNote[]
+  creditNotes: CreditNote[]
+  customers: { id: string; name: string }[]
+  suppliers: { id: string; name: string }[]
 
-  // CRUD operations
   addJournalEntry: (entry: Omit<JournalEntry, "id">) => void
   updateJournalEntry: (id: string, entry: Partial<JournalEntry>) => void
   deleteJournalEntry: (id: string) => void
@@ -165,11 +393,15 @@ type FinanceContextType = {
   updateTaxFiling: (id: string, filing: Partial<TaxFiling>) => void
   deleteTaxFiling: (id: string) => void
 
+  addDebitNote: (note: Omit<DebitNote, "id">) => void
+  addCreditNote: (note: Omit<CreditNote, "id">) => void
+
   updateTotalReceivables: (amount: number, customer?: string) => void
   decreaseTotalReceivables: (amount: number, customer?: string, invoiceId?: string) => void
 
   updateTotalPayables: (amount: number, supplier?: string) => void
   decreaseTotalPayables: (amount: number, supplier?: string, billId?: string) => void
+  updateTrialBalance: (debitAccount: string, creditAccount: string, amount: number) => void
 }
 
 // Sample data
@@ -183,6 +415,10 @@ const sampleJournalEntries: JournalEntry[] = [
     amount: 125000,
     reference: "INV-2023-0089",
     status: "Posted",
+    transactionType: "CGST-SGST",
+    gstPercentage: 18,
+    partyType: "Customer",
+    debtorCustomer: "CUST001",
   },
   {
     id: "JE-2023-0144",
@@ -193,6 +429,10 @@ const sampleJournalEntries: JournalEntry[] = [
     amount: 78500,
     reference: "PO-2023-0112",
     status: "Posted",
+    transactionType: "IGST",
+    gstPercentage: 18,
+    partyType: "Supplier",
+    creditorSupplier: "SUP001",
   },
   {
     id: "JE-2023-0143",
@@ -403,7 +643,7 @@ const sampleInvoices: Invoice[] = [
 const sampleBills: Bill[] = [
   {
     id: "BILL-2023-0112",
-    supplier: "RawMaterials Ltd",
+    supplier: "Raw Materials Co.", // Changed from "RawMaterials Ltd"
     date: "2023-06-12",
     dueDate: "2023-07-12",
     amount: 145000,
@@ -432,7 +672,7 @@ const sampleBills: Bill[] = [
   },
   {
     id: "BILL-2023-0111",
-    supplier: "Equipment Suppliers",
+    supplier: "Industrial Supplies Ltd.", // Changed from "Equipment Suppliers"
     date: "2023-06-08",
     dueDate: "2023-07-08",
     amount: 67800,
@@ -519,7 +759,7 @@ const sampleBills: Bill[] = [
   },
   {
     id: "BILL-2023-0108",
-    supplier: "Office Supplies Co",
+    supplier: "Quality Components Inc.", // Changed from "Office Supplies Co"
     date: "2023-05-18",
     dueDate: "2023-06-18",
     amount: 32500,
@@ -532,6 +772,7 @@ const sampleBills: Bill[] = [
         quantity: 1,
         unitPrice: 25000,
         amount: 25000,
+        taxRate: 18,
         taxRate: 18,
         taxAmount: 4500,
       },
@@ -799,47 +1040,56 @@ const FinanceContext = createContext<FinanceContextType>({
   assets: [],
   costCenters: [],
   taxFilings: [],
+  trialBalance: [],
+  debitNotes: [],
+  creditNotes: [],
+  customers: [],
+  suppliers: [],
 
-  addJournalEntry: () => { },
-  updateJournalEntry: () => { },
-  deleteJournalEntry: () => { },
+  addJournalEntry: () => {},
+  updateJournalEntry: () => {},
+  deleteJournalEntry: () => {},
 
-  addAccount: () => { },
-  updateAccount: () => { },
-  deleteAccount: () => { },
+  addAccount: () => {},
+  updateAccount: () => {},
+  deleteAccount: () => {},
 
-  addInvoice: () => { },
-  updateInvoice: () => { },
-  deleteInvoice: () => { },
+  addInvoice: () => {},
+  updateInvoice: () => {},
+  deleteInvoice: () => {},
 
-  addBill: () => { },
-  updateBill: () => { },
-  deleteBill: () => { },
+  addBill: () => {},
+  updateBill: () => {},
+  deleteBill: () => {},
 
-  addBankAccount: () => { },
-  updateBankAccount: () => { },
-  deleteBankAccount: () => { },
+  addBankAccount: () => {},
+  updateBankAccount: () => {},
+  deleteBankAccount: () => {},
 
-  addTransaction: () => { },
-  updateTransaction: () => { },
-  deleteTransaction: () => { },
+  addTransaction: () => {},
+  updateTransaction: () => {},
+  deleteTransaction: () => {},
 
-  addAsset: () => { },
-  updateAsset: () => { },
-  deleteAsset: () => { },
+  addAsset: () => {},
+  updateAsset: () => {},
+  deleteAsset: () => {},
 
-  addCostCenter: () => { },
-  updateCostCenter: () => { },
-  deleteCostCenter: () => { },
+  addCostCenter: () => {},
+  updateCostCenter: () => {},
+  deleteCostCenter: () => {},
 
-  addTaxFiling: () => { },
-  updateTaxFiling: () => { },
-  deleteTaxFiling: () => { },
+  addTaxFiling: () => {},
+  updateTaxFiling: () => {},
+  deleteTaxFiling: () => {},
 
-  updateTotalReceivables: () => { },
-  decreaseTotalReceivables: () => { },
-  updateTotalPayables: () => { },
-  decreaseTotalPayables: () => { },
+  addDebitNote: () => {},
+  addCreditNote: () => {},
+
+  updateTotalReceivables: () => {},
+  decreaseTotalReceivables: () => {},
+  updateTotalPayables: () => {},
+  decreaseTotalPayables: () => {},
+  updateTrialBalance: () => {},
 })
 
 // Helper function to generate IDs
@@ -860,26 +1110,662 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [assets, setAssets] = useState<Asset[]>(sampleAssets)
   const [costCenters, setCostCenters] = useState<CostCenter[]>(sampleCostCenters)
   const [taxFilings, setTaxFilings] = useState<TaxFiling[]>(sampleTaxFilings)
+  const [trialBalance, setTrialBalance] = useState<TrialBalanceEntry[]>(initialTrialBalance)
+  const [debitNotes, setDebitNotes] = useState<DebitNote[]>([])
+  const [creditNotes, setCreditNotes] = useState<CreditNote[]>([])
+  const [customersList, setCustomers] = useState<{ id: string; name: string }[]>(customers)
+  const [suppliersList, setSuppliers] = useState<{ id: string; name: string }[]>(suppliers)
+
+  // Function to update trial balance based on journal entry
+  const updateTrialBalance = (debitAccount: string, creditAccount: string, amount: number) => {
+    setTrialBalance((prevBalance) => {
+      const newBalance = [...prevBalance]
+
+      // Helper function to get account type
+      const getAccountType = (accountName: string): "Asset" | "Liability" | "Equity" | "Revenue" | "Expense" => {
+        return accountTypeMapping[accountName] || "Asset"
+      }
+
+      // Helper function to find or create account entry
+      const findOrCreateAccount = (accountName: string) => {
+        let accountEntry = newBalance.find((entry) => entry.account === accountName)
+        if (!accountEntry) {
+          accountEntry = {
+            account: accountName,
+            accountType: getAccountType(accountName),
+            debit: 0,
+            credit: 0,
+          }
+          newBalance.push(accountEntry)
+        }
+        return accountEntry
+      }
+
+      // Update debit account
+      const debitEntry = findOrCreateAccount(debitAccount)
+      const debitAccountType = debitEntry.accountType
+
+      // Update credit account
+      const creditEntry = findOrCreateAccount(creditAccount)
+      const creditAccountType = creditEntry.accountType
+
+      // Apply accounting principles for debit side
+      if (debitAccountType === "Asset" || debitAccountType === "Expense") {
+        // Assets and Expenses have normal debit balance - increase debit side
+        debitEntry.debit += amount
+      } else {
+        // Liabilities, Equity, Revenue have normal credit balance - decrease credit side when debited
+        debitEntry.credit = Math.max(0, debitEntry.credit - amount)
+        // If credit becomes negative, move to debit side
+        if (debitEntry.credit === 0 && debitEntry.credit - amount < 0) {
+          debitEntry.debit += Math.abs(debitEntry.credit - amount)
+        }
+      }
+
+      // Apply accounting principles for credit side
+      if (creditAccountType === "Liability" || creditAccountType === "Equity" || creditAccountType === "Revenue") {
+        // Liabilities, Equity, Revenue have normal credit balance - increase credit side
+        creditEntry.credit += amount
+      } else {
+        // Assets and Expenses have normal debit balance - decrease debit side when credited
+        creditEntry.debit = Math.max(0, creditEntry.debit - amount)
+        // If debit becomes negative, move to credit side
+        if (creditEntry.debit === 0 && creditEntry.debit - amount < 0) {
+          creditEntry.credit += Math.abs(creditEntry.debit - amount)
+        }
+      }
+
+      return newBalance
+    })
+  }
 
   // Journal Entry CRUD operations
   const addJournalEntry = (entry: Omit<JournalEntry, "id">) => {
     const newEntry = { ...entry, id: generateId("JE") }
+
+    // Identify transaction flavours once so they’re in outer scope
+    const isSalesReturnTransaction =
+      entry.debitAccount === "Sales Revenue Returned" &&
+      ["Cash", "Bank", "Accounts Receivable"].includes(entry.creditAccount)
+
+    const isPurchaseReturnTransaction =
+      entry.creditAccount === "Raw Materials Inventory Returned" &&
+      ["Cash", "Bank", "Accounts Payable"].includes(entry.debitAccount)
+
     setJournalEntries([newEntry, ...journalEntries])
+
+    // Update trial balance with the main journal entry
+    updateTrialBalance(entry.debitAccount, entry.creditAccount, entry.amount)
+
+    // Handle Bank Account Balance Updates
+    if (entry.bankAccount && (entry.debitAccount === "Bank" || entry.creditAccount === "Bank")) {
+      setBankAccounts((prevAccounts) => {
+        return prevAccounts.map((account) => {
+          if (account.id === entry.bankAccount) {
+            let newBalance = account.balance
+
+            // If Bank is debited, money is coming in (increase balance)
+            if (entry.debitAccount === "Bank") {
+              newBalance += entry.amount
+            }
+            // If Bank is credited, money is going out (decrease balance)
+            else if (entry.creditAccount === "Bank") {
+              newBalance -= entry.amount
+            }
+
+            return { ...account, balance: newBalance }
+          }
+          return account
+        })
+      })
+
+      // Create corresponding transaction in Banking & Cash -> Transactions
+      const selectedBankAccount = bankAccounts.find((account) => account.id === entry.bankAccount)
+      if (selectedBankAccount) {
+        const newTransaction: Transaction = {
+          id: `TRX-JE-${newEntry.id}`, // Link to journal entry
+          date: entry.date,
+          description: entry.description,
+          account: selectedBankAccount.name,
+          type: entry.debitAccount === "Bank" ? "Deposit" : "Withdrawal",
+          amount: entry.amount,
+          reference: entry.reference,
+          status: entry.status === "Posted" ? "Cleared" : "Pending",
+        }
+        setTransactions((prev) => [newTransaction, ...prev])
+      }
+    }
+
+    // Handle Cash Account Balance Updates
+    if (entry.debitAccount === "Cash" || entry.creditAccount === "Cash") {
+      // Find the Petty Cash account
+      const pettyCashAccount = bankAccounts.find((account) => account.type === "Cash")
+
+      if (pettyCashAccount) {
+        setBankAccounts((prevAccounts) => {
+          return prevAccounts.map((account) => {
+            if (account.id === pettyCashAccount.id) {
+              let newBalance = account.balance
+
+              // If Cash is debited, money is coming in (increase balance)
+              if (entry.debitAccount === "Cash") {
+                newBalance += entry.amount
+              }
+              // If Cash is credited, money is going out (decrease balance)
+              else if (entry.creditAccount === "Cash") {
+                newBalance -= entry.amount
+              }
+
+              return { ...account, balance: newBalance }
+            }
+            return account
+          })
+        })
+
+        // Create corresponding transaction in Banking & Cash -> Transactions
+        const newTransaction: Transaction = {
+          id: `TRX-CASH-${newEntry.id}`, // Link to journal entry
+          date: entry.date,
+          description: entry.description,
+          account: pettyCashAccount.name,
+          type: entry.debitAccount === "Cash" ? "Deposit" : "Withdrawal",
+          amount: entry.amount,
+          reference: entry.reference,
+          status: entry.status === "Posted" ? "Cleared" : "Pending",
+        }
+        setTransactions((prev) => [newTransaction, ...prev])
+      }
+    }
+
+    // Handle GST entries if applicable
+    if (entry.gstPercentage && entry.gstPercentage > 0) {
+      const gstAmount = entry.amount * (entry.gstPercentage / 100)
+
+      // Check if this is a sales transaction
+      const isSalesTransaction =
+        (entry.debitAccount === "Cash" ||
+          entry.debitAccount === "Bank" ||
+          entry.debitAccount === "Accounts Receivable") &&
+        entry.creditAccount === "Sales Revenue"
+
+      // Check if this is a purchase transaction
+      const isPurchaseTransaction =
+        (entry.debitAccount === "Raw Materials Inventory" ||
+          entry.debitAccount === "Finished Goods Inventory" ||
+          entry.debitAccount === "Work-in-Progress") &&
+        (entry.creditAccount === "Cash" || entry.creditAccount === "Bank" || entry.creditAccount === "Accounts Payable")
+
+      if (isSalesTransaction) {
+        // For sales: Credit GST Output accounts
+        if (entry.transactionType === "IGST") {
+          updateTrialBalance("IGST Output", "IGST Output", 0) // Ensure account exists
+          updateTrialBalance(entry.debitAccount, "IGST Output", gstAmount)
+        } else {
+          // CGST-SGST
+          const cgstAmount = gstAmount / 2
+          const sgstAmount = gstAmount / 2
+          updateTrialBalance("CGST Output", "CGST Output", 0) // Ensure account exists
+          updateTrialBalance("SGST Output", "SGST Output", 0) // Ensure account exists
+          updateTrialBalance(entry.debitAccount, "CGST Output", cgstAmount)
+          updateTrialBalance(entry.debitAccount, "SGST Output", sgstAmount)
+        }
+      } else if (isPurchaseTransaction) {
+        // For purchases: Debit GST Input accounts
+        if (entry.transactionType === "IGST") {
+          updateTrialBalance("IGST Input", "IGST Input", 0) // Ensure account exists
+          updateTrialBalance("IGST Input", entry.creditAccount, gstAmount)
+        } else {
+          // CGST-SGST
+          const cgstAmount = gstAmount / 2
+          const sgstAmount = gstAmount / 2
+          updateTrialBalance("CGST Input", "CGST Input", 0) // Ensure account exists
+          updateTrialBalance("SGST Input", "SGST Input", 0) // Ensure account exists
+          updateTrialBalance("CGST Input", entry.creditAccount, cgstAmount)
+          updateTrialBalance("SGST Input", entry.creditAccount, sgstAmount)
+        }
+      } else if (isSalesReturnTransaction) {
+        // For sales returns: Debit GST Output accounts (reversing)
+        if (entry.transactionType === "IGST") {
+          updateTrialBalance("IGST Output", entry.creditAccount, gstAmount)
+        } else {
+          // CGST-SGST
+          const cgstAmount = gstAmount / 2
+          const sgstAmount = gstAmount / 2
+          updateTrialBalance("CGST Output", entry.creditAccount, cgstAmount)
+          updateTrialBalance("SGST Output", entry.creditAccount, sgstAmount)
+        }
+      } else if (isPurchaseReturnTransaction) {
+        // For purchase returns: Credit GST Input accounts (reversing)
+        if (entry.transactionType === "IGST") {
+          updateTrialBalance(entry.debitAccount, "IGST Input", gstAmount)
+        } else {
+          // CGST-SGST
+          const cgstAmount = gstAmount / 2
+          const sgstAmount = gstAmount / 2
+          updateTrialBalance(entry.debitAccount, "CGST Input", cgstAmount)
+          updateTrialBalance(entry.debitAccount, "SGST Input", sgstAmount)
+        }
+      }
+    }
+
+    // Handle Customer/Supplier Integration
+    if (entry.partyType && (entry.debtorCustomer || entry.creditorSupplier)) {
+      // Handle Customer transactions (Accounts Receivable)
+      if (entry.partyType === "Customer" && entry.debtorCustomer) {
+        const customerName = customers.find((c) => c.id === entry.debtorCustomer)?.name || entry.debtorCustomer
+
+        // Check if this is a sale transaction (creating receivable)
+        if (entry.debitAccount === "Accounts Receivable" && entry.creditAccount === "Sales Revenue") {
+          // Calculate total amount including GST
+          const baseAmount = entry.amount
+          const gstAmount = entry.gstPercentage ? baseAmount * (entry.gstPercentage / 100) : 0
+          const totalAmount = baseAmount + gstAmount
+
+          // Create a new invoice for this sale
+          const newInvoice: Invoice = {
+            id: `INV-${new Date().getTime()}`,
+            customer: customerName,
+            date: entry.date,
+            dueDate: entry.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+            amount: totalAmount, // Total amount including GST
+            balance: totalAmount, // Total amount including GST
+            status: "Open",
+            items: [
+              {
+                id: `ITEM-${new Date().getTime()}`,
+                description: entry.description || "Sales Transaction",
+                quantity: 1,
+                unitPrice: baseAmount, // Base amount per unit
+                amount: baseAmount, // Base amount
+                taxRate: entry.gstPercentage || 0,
+                taxAmount: gstAmount, // GST amount
+              },
+            ],
+          }
+          setInvoices((prev) => [newInvoice, ...prev])
+        }
+
+        // Check if this is a payment against receivable
+        else if (
+          (entry.debitAccount === "Cash" || entry.debitAccount === "Bank") &&
+          entry.creditAccount === "Accounts Receivable"
+        ) {
+          // If specific invoice is selected, update that invoice
+          if (entry.activeInvoice) {
+            const invoice = invoices.find((inv) => inv.id === entry.activeInvoice)
+            if (invoice) {
+              const newBalance = Math.max(0, invoice.balance - entry.amount)
+              const newStatus = newBalance <= 0 ? "Paid" : "Partially Paid"
+
+              setInvoices((prev) =>
+                prev.map((inv) =>
+                  inv.id === entry.activeInvoice ? { ...inv, balance: newBalance, status: newStatus } : inv,
+                ),
+              )
+            }
+          } else {
+            // Find an open invoice for this customer to apply payment
+            const customerInvoice = invoices.find(
+              (inv) => inv.customer === customerName && inv.status === "Open" && inv.balance >= entry.amount,
+            )
+
+            if (customerInvoice) {
+              const newBalance = customerInvoice.balance - entry.amount
+              const newStatus = newBalance <= 0 ? "Paid" : "Partially Paid"
+
+              setInvoices((prev) =>
+                prev.map((inv) =>
+                  inv.id === customerInvoice.id ? { ...inv, balance: newBalance, status: newStatus } : inv,
+                ),
+              )
+            }
+          }
+        }
+        // NEW: Handle Sales Return (Credit Note) against an invoice
+        // Only call if this journal entry was NOT generated by a CreditNote itself
+        else if (!entry.isNoteRelated && isSalesReturnTransaction && entry.activeInvoice) {
+          decreaseTotalReceivables(entry.amount, customerName, entry.activeInvoice)
+        }
+      }
+
+      // Handle Supplier transactions (Accounts Payable)
+      if (entry.partyType === "Supplier" && entry.creditorSupplier) {
+        const supplierName = suppliers.find((s) => s.id === entry.creditorSupplier)?.name || entry.creditorSupplier
+
+        // Check if this is a purchase transaction (creating payable)
+        if (
+          (entry.debitAccount === "Raw Materials Inventory" ||
+            entry.debitAccount === "Finished Goods Inventory" ||
+            entry.debitAccount === "Work-in-Progress") &&
+          entry.creditAccount === "Accounts Payable"
+        ) {
+          // Calculate total amount including GST
+          const baseAmount = entry.amount
+          const gstAmount = entry.gstPercentage ? baseAmount * (entry.gstPercentage / 100) : 0
+          const totalAmount = baseAmount + gstAmount
+
+          // Create a new bill for this purchase
+          const newBill: Bill = {
+            id: `BILL-${new Date().getTime()}`,
+            supplier: supplierName,
+            date: entry.date,
+            dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+            amount: totalAmount, // Total amount including GST
+            balance: totalAmount, // Total amount including GST
+            status: "Open",
+            items: [
+              {
+                id: `ITEM-${new Date().getTime()}`,
+                description: entry.description || "Purchase Transaction",
+                quantity: 1,
+                unitPrice: baseAmount, // Base amount per unit
+                amount: baseAmount, // Base amount
+                taxRate: entry.gstPercentage || 0,
+                taxAmount: gstAmount, // GST amount
+              },
+            ],
+          }
+          setBills((prev) => [newBill, ...prev])
+        }
+
+        // Check if this is a payment against payable
+        else if (
+          entry.debitAccount === "Accounts Payable" &&
+          (entry.creditAccount === "Cash" || entry.creditAccount === "Bank")
+        ) {
+          // If specific bill is selected, update that bill
+          if (entry.activeBill) {
+            const bill = bills.find((b) => b.id === entry.activeBill)
+            if (bill) {
+              const newBalance = Math.max(0, bill.balance - entry.amount)
+              const newStatus = newBalance <= 0 ? "Paid" : "Partially Paid"
+
+              setBills((prev) =>
+                prev.map((b) => (b.id === entry.activeBill ? { ...b, balance: newBalance, status: newStatus } : b)),
+              )
+            }
+          } else {
+            // Find an open bill for this supplier to apply payment
+            const supplierBill = bills.find(
+              (bill) => bill.supplier === supplierName && bill.status === "Open" && bill.balance >= entry.amount,
+            )
+
+            if (supplierBill) {
+              const newBalance = supplierBill.balance - entry.amount
+              const newStatus = newBalance <= 0 ? "Paid" : "Partially Paid"
+
+              setBills((prev) =>
+                prev.map((b) => (b.id === supplierBill.id ? { ...b, balance: newBalance, status: newStatus } : b)),
+              )
+            }
+          }
+        }
+        // NEW: Handle Purchase Return (Debit Note) against a bill
+        // Only call if this journal entry was NOT generated by a DebitNote itself
+        else if (!entry.isNoteRelated && isPurchaseReturnTransaction && entry.activeBill) {
+          decreaseTotalPayables(entry.amount, supplierName, entry.activeBill)
+        }
+      }
+    }
+
     toast({
       title: "Journal Entry Created",
-      description: `Entry ${newEntry.id} has been created successfully.`,
+      description: `Entry ${newEntry.id} has been created successfully. Trial Balance updated.`,
     })
   }
 
   const updateJournalEntry = (id: string, entry: Partial<JournalEntry>) => {
-    setJournalEntries(journalEntries.map((item) => (item.id === id ? { ...item, ...entry } : item)))
-    toast({
-      title: "Journal Entry Updated",
-      description: `Entry ${id} has been updated successfully.`,
+    // Find the original entry before updating it
+    const originalEntry = journalEntries.find((item) => item.id === id)
+
+    if (originalEntry) {
+      // Update the journal entry in the state
+      setJournalEntries(journalEntries.map((item) => (item.id === id ? { ...item, ...entry } : item)))
+
+      // If the debit/credit accounts or amount has changed, update the trial balance
+      if (entry.debitAccount !== undefined || entry.creditAccount !== undefined || entry.amount !== undefined) {
+        // Get the complete updated entry
+        const updatedEntry = { ...originalEntry, ...entry }
+
+        // First, reverse the effect of the original entry (subtract from trial balance)
+        // We do this by applying the opposite effect
+        if (originalEntry.debitAccount && originalEntry.creditAccount) {
+          reverseTrialBalanceEntry(originalEntry.debitAccount, originalEntry.creditAccount, originalEntry.amount)
+        }
+
+        // Then, add the new entry to the trial balance
+        if (updatedEntry.debitAccount && updatedEntry.creditAccount && updatedEntry.amount !== undefined) {
+          updateTrialBalance(updatedEntry.debitAccount, updatedEntry.creditAccount, updatedEntry.amount)
+        }
+      }
+
+      // Handle Bank Account Balance Updates for edited entries
+      const updatedEntry = { ...originalEntry, ...entry }
+      if (
+        originalEntry &&
+        updatedEntry.bankAccount &&
+        (updatedEntry.debitAccount === "Bank" || updatedEntry.creditAccount === "Bank")
+      ) {
+        setBankAccounts((prevAccounts) => {
+          return prevAccounts.map((account) => {
+            if (account.id === updatedEntry.bankAccount) {
+              let newBalance = account.balance
+
+              // First, reverse the original entry's effect on bank balance
+              if (originalEntry.debitAccount === "Bank" && originalEntry.bankAccount === updatedEntry.bankAccount) {
+                newBalance -= originalEntry.amount // Reverse the previous increase
+              } else if (
+                originalEntry.creditAccount === "Bank" &&
+                originalEntry.bankAccount === updatedEntry.bankAccount
+              ) {
+                newBalance += originalEntry.amount // Reverse the previous decrease
+              }
+
+              // Then apply the updated entry's effect
+              if (updatedEntry.debitAccount === "Bank") {
+                newBalance += updatedEntry.amount // Money coming in
+              } else if (updatedEntry.creditAccount === "Bank") {
+                newBalance -= updatedEntry.amount // Money going out
+              }
+
+              return { ...account, balance: newBalance }
+            }
+            return account
+          })
+        })
+
+        // Update corresponding transaction in Banking & Cash -> Transactions
+        const transactionId = `TRX-JE-${id}`
+        const selectedBankAccount = bankAccounts.find((account) => account.id === updatedEntry.bankAccount)
+
+        if (selectedBankAccount) {
+          const updatedTransaction: Partial<Transaction> = {
+            date: updatedEntry.date,
+            description: updatedEntry.description,
+            account: selectedBankAccount.name,
+            type: updatedEntry.debitAccount === "Bank" ? "Deposit" : "Withdrawal",
+            amount: updatedEntry.amount,
+            reference: updatedEntry.reference,
+            status: updatedEntry.status === "Posted" ? "Cleared" : "Pending",
+          }
+
+          setTransactions((prev) =>
+            prev.map((transaction) =>
+              transaction.id === transactionId ? { ...transaction, ...updatedTransaction } : transaction,
+            ),
+          )
+        }
+      }
+
+      // Handle Cash Account Balance Updates for edited entries
+      if (originalEntry && (updatedEntry.debitAccount === "Cash" || updatedEntry.creditAccount === "Cash")) {
+        const pettyCashAccount = bankAccounts.find((account) => account.type === "Cash")
+
+        if (pettyCashAccount) {
+          setBankAccounts((prevAccounts) => {
+            return prevAccounts.map((account) => {
+              if (account.id === pettyCashAccount.id) {
+                let newBalance = account.balance
+
+                // First, reverse the original entry's effect on cash balance
+                if (originalEntry.debitAccount === "Cash") {
+                  newBalance -= originalEntry.amount // Reverse the increase
+                } else if (originalEntry.creditAccount === "Cash") {
+                  newBalance += originalEntry.amount // Reverse the previous decrease
+                }
+
+                // Then apply the updated entry's effect
+                if (updatedEntry.debitAccount === "Cash") {
+                  newBalance += updatedEntry.amount // Money coming in
+                } else if (updatedEntry.creditAccount === "Cash") {
+                  newBalance -= updatedEntry.amount // Money going out
+                }
+
+                return { ...account, balance: newBalance }
+              }
+              return account
+            })
+          })
+
+          // Update corresponding transaction in Banking & Cash -> Transactions
+          const transactionId = `TRX-CASH-${id}`
+
+          const updatedTransaction: Partial<Transaction> = {
+            date: updatedEntry.date,
+            description: updatedEntry.description,
+            account: pettyCashAccount.name,
+            type: updatedEntry.debitAccount === "Cash" ? "Deposit" : "Withdrawal",
+            amount: updatedEntry.amount,
+            reference: updatedEntry.reference,
+            status: updatedEntry.status === "Posted" ? "Cleared" : "Pending",
+          }
+
+          setTransactions((prev) =>
+            prev.map((transaction) =>
+              transaction.id === transactionId ? { ...transaction, ...updatedTransaction } : transaction,
+            ),
+          )
+        }
+      }
+
+      toast({
+        title: "Journal Entry Updated",
+        description: `Entry ${id} has been updated successfully. Trial Balance updated.`,
+      })
+    } else {
+      toast({
+        title: "Update Failed",
+        description: `Could not find journal entry ${id}.`,
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Add this new helper function to reverse a trial balance entry
+  const reverseTrialBalanceEntry = (debitAccount: string, creditAccount: string, amount: number) => {
+    setTrialBalance((prevBalance) => {
+      const newBalance = [...prevBalance]
+
+      // Helper function to get account type
+      const getAccountType = (accountName: string): "Asset" | "Liability" | "Equity" | "Revenue" | "Expense" => {
+        return accountTypeMapping[accountName] || "Asset"
+      }
+
+      // Helper function to find account entry
+      const findAccount = (accountName: string) => {
+        return newBalance.find((entry) => entry.account === accountName)
+      }
+
+      // Find debit and credit accounts
+      const debitEntry = findAccount(debitAccount)
+      const creditEntry = findAccount(creditAccount)
+
+      if (debitEntry && creditEntry) {
+        const debitAccountType = debitEntry.accountType
+        const creditAccountType = creditEntry.accountType
+
+        // Reverse the effect on debit side
+        if (debitAccountType === "Asset" || debitAccountType === "Expense") {
+          // Assets and Expenses have normal debit balance - decrease debit side
+          debitEntry.debit = Math.max(0, debitEntry.debit - amount)
+        } else {
+          // Liabilities, Equity, Revenue have normal credit balance - increase credit side when reversed
+          debitEntry.credit += amount
+        }
+
+        // Reverse the effect on credit side
+        if (creditAccountType === "Liability" || creditAccountType === "Equity" || creditAccountType === "Revenue") {
+          // Liabilities, Equity, Revenue have normal credit balance - decrease credit side
+          creditEntry.credit = Math.max(0, creditEntry.credit - amount)
+        } else {
+          // Assets and Expenses have normal debit balance - increase debit side when reversed
+          creditEntry.debit += amount
+        }
+      }
+
+      return newBalance
     })
   }
 
   const deleteJournalEntry = (id: string) => {
+    // Handle Bank Account Balance Updates for deleted entries
+    const entryToDelete = journalEntries.find((item) => item.id === id)
+    if (
+      entryToDelete &&
+      entryToDelete.bankAccount &&
+      (entryToDelete.debitAccount === "Bank" || entryToDelete.creditAccount === "Bank")
+    ) {
+      setBankAccounts((prevAccounts) => {
+        return prevAccounts.map((account) => {
+          if (account.id === entryToDelete.bankAccount) {
+            let newBalance = account.balance
+
+            // Reverse the entry's effect on bank balance
+            if (entryToDelete.debitAccount === "Bank") {
+              newBalance -= entryToDelete.amount // Reverse the increase
+            } else if (entryToDelete.creditAccount === "Bank") {
+              newBalance += entryToDelete.amount // Reverse the decrease
+            }
+
+            return { ...account, balance: newBalance }
+          }
+          return account
+        })
+      })
+
+      // Delete corresponding transaction in Banking & Cash -> Transactions
+      const transactionId = `TRX-JE-${id}`
+      setTransactions((prev) => prev.filter((transaction) => transaction.id !== transactionId))
+    }
+
+    // Handle Cash Account Balance Updates for deleted entries
+    if (entryToDelete && (entryToDelete.debitAccount === "Cash" || entryToDelete.creditAccount === "Cash")) {
+      const pettyCashAccount = bankAccounts.find((account) => account.type === "Cash")
+
+      if (pettyCashAccount) {
+        setBankAccounts((prevAccounts) => {
+          return prevAccounts.map((account) => {
+            if (account.id === pettyCashAccount.id) {
+              let newBalance = account.balance
+
+              // Reverse the entry's effect on cash balance
+              if (entryToDelete.debitAccount === "Cash") {
+                newBalance -= entryToDelete.amount // Reverse the increase
+              } else if (entryToDelete.creditAccount === "Cash") {
+                newBalance += entryToDelete.amount // Reverse the decrease
+              }
+
+              return { ...account, balance: newBalance }
+            }
+            return account
+          })
+        })
+
+        // Delete corresponding transaction in Banking & Cash -> Transactions
+        const transactionId = `TRX-CASH-${id}`
+        setTransactions((prev) => prev.filter((transaction) => transaction.id !== transactionId))
+      }
+    }
     setJournalEntries(journalEntries.filter((item) => item.id !== id))
     toast({
       title: "Journal Entry Deleted",
@@ -1289,6 +2175,188 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     })
   }
 
+  const addDebitNote = (note: Omit<DebitNote, "id">) => {
+    const newNote = { ...note, id: generateId("DN") }
+    setDebitNotes((prev) => [newNote, ...prev])
+
+    // Update original bill balance directly using totalAmount
+    setBills((prevBills) =>
+      prevBills.map((bill) =>
+        bill.id === newNote.billId ? { ...bill, balance: Math.max(0, bill.balance - newNote.totalAmount) } : bill,
+      ),
+    )
+
+    // Create Journal Entry for Debit Note (Purchase Return)
+    // Debit: Accounts Payable (or Cash/Bank if refund received)
+    // Credit: Raw Materials Inventory Returned (or relevant asset account)
+    // Credit: GST Input (reversing ITC)
+    const debitAccount = newNote.totalAmount > 0 ? "Accounts Payable" : "Bank" // Assuming payment if balance is 0, or Bank if paid from bank
+    const creditAccount = "Raw Materials Inventory Returned" // Or a more general "Purchase Returns"
+
+    // Journal entry for the base amount
+    addJournalEntry({
+      date: newNote.date,
+      description: `Debit Note: ${newNote.reason} for Bill ${newNote.billId}`,
+      debitAccount: debitAccount,
+      creditAccount: creditAccount,
+      amount: newNote.baseAmount,
+      reference: newNote.id,
+      status: "Posted",
+      partyType: "Supplier",
+      creditorSupplier: suppliersList.find((s) => s.name === newNote.supplier)?.id || newNote.supplier,
+      activeBill: newNote.billId,
+      transactionType: newNote.transactionType,
+      gstPercentage: newNote.gstAmount > 0 ? (newNote.gstAmount / newNote.baseAmount) * 100 : 0,
+      isNoteRelated: true, // Mark this journal entry as related to a note
+    })
+
+    // Journal entry for reversing GST Input (if applicable)
+    if (newNote.gstAmount > 0) {
+      if (newNote.transactionType === "IGST") {
+        addJournalEntry({
+          date: newNote.date,
+          description: `Debit Note GST Reversal (IGST) for Bill ${newNote.billId}`,
+          debitAccount: "GST Payable", // Or a temporary clearing account if needed
+          creditAccount: "IGST Input",
+          amount: newNote.gstAmount,
+          reference: newNote.id,
+          status: "Posted",
+          partyType: "Supplier",
+          creditorSupplier: suppliersList.find((s) => s.name === newNote.supplier)?.id || newNote.supplier,
+          activeBill: newNote.billId,
+          transactionType: newNote.transactionType,
+          gstPercentage: newNote.gstAmount > 0 ? (newNote.gstAmount / newNote.baseAmount) * 100 : 0,
+          isNoteRelated: true, // Mark this journal entry as related to a note
+        })
+      } else {
+        addJournalEntry({
+          date: newNote.date,
+          description: `Debit Note GST Reversal (CGST) for Bill ${newNote.billId}`,
+          debitAccount: "GST Payable",
+          creditAccount: "CGST Input",
+          amount: newNote.gstAmount / 2,
+          reference: newNote.id,
+          status: "Posted",
+          partyType: "Supplier",
+          creditorSupplier: suppliersList.find((s) => s.name === newNote.supplier)?.id || newNote.supplier,
+          activeBill: newNote.billId,
+          transactionType: newNote.transactionType,
+          gstPercentage: newNote.gstAmount > 0 ? (newNote.gstAmount / newNote.baseAmount) * 100 : 0,
+          isNoteRelated: true, // Mark this journal entry as related to a note
+        })
+        addJournalEntry({
+          date: newNote.date,
+          description: `Debit Note GST Reversal (SGST) for Bill ${newNote.billId}`,
+          debitAccount: "GST Payable",
+          creditAccount: "SGST Input",
+          amount: newNote.gstAmount / 2,
+          reference: newNote.id,
+          status: "Posted",
+          partyType: "Supplier",
+          creditorSupplier: suppliersList.find((s) => s.name === newNote.supplier)?.id || newNote.supplier,
+          activeBill: newNote.billId,
+          transactionType: newNote.transactionType,
+          gstPercentage: newNote.gstAmount > 0 ? (newNote.gstAmount / newNote.baseAmount) * 100 : 0,
+          isNoteRelated: true, // Mark this journal entry as related to a note
+        })
+      }
+    }
+
+    toast({ title: "Debit Note Created", description: `Debit Note ${newNote.id} created successfully.` })
+  }
+
+  const addCreditNote = (note: Omit<CreditNote, "id">) => {
+    const newNote = { ...note, id: generateId("CN") }
+    setCreditNotes((prev) => [newNote, ...prev])
+
+    // Update original invoice balance directly using totalAmount
+    setInvoices((prevInvoices) =>
+      prevInvoices.map((invoice) =>
+        invoice.id === newNote.invoiceId
+          ? { ...invoice, balance: Math.max(0, invoice.balance - newNote.totalAmount) }
+          : invoice,
+      ),
+    )
+
+    // Create Journal Entry for Credit Note (Sales Return)
+    // Debit: Sales Revenue Returned (or relevant revenue account)
+    // Debit: GST Output (reversing liability)
+    // Credit: Accounts Receivable (or Cash/Bank if refund given)
+    const debitAccount = "Sales Revenue Returned" // Or a more general "Sales Returns"
+    const creditAccount = newNote.totalAmount > 0 ? "Accounts Receivable" : "Bank" // Assuming refund if balance is 0, or Bank if refunded from bank
+
+    // Journal entry for the base amount
+    addJournalEntry({
+      date: newNote.date,
+      description: `Credit Note: ${newNote.reason} for Invoice ${newNote.invoiceId}`,
+      debitAccount: debitAccount,
+      creditAccount: creditAccount,
+      amount: newNote.baseAmount,
+      reference: newNote.id,
+      status: "Posted",
+      partyType: "Customer",
+      debtorCustomer: customersList.find((c) => c.name === newNote.customer)?.id || newNote.customer,
+      activeInvoice: newNote.invoiceId,
+      transactionType: newNote.transactionType,
+      gstPercentage: newNote.gstAmount > 0 ? (newNote.gstAmount / newNote.baseAmount) * 100 : 0,
+      isNoteRelated: true, // Mark this journal entry as related to a note
+    })
+
+    // Journal entry for reversing GST Output (if applicable)
+    if (newNote.gstAmount > 0) {
+      if (newNote.transactionType === "IGST") {
+        addJournalEntry({
+          date: newNote.date,
+          description: `Credit Note GST Reversal (IGST) for Invoice ${newNote.invoiceId}`,
+          debitAccount: "IGST Output",
+          creditAccount: "GST Payable", // Or a temporary clearing account if needed
+          amount: newNote.gstAmount,
+          reference: newNote.id,
+          status: "Posted",
+          partyType: "Customer",
+          debtorCustomer: customersList.find((c) => c.name === newNote.customer)?.id || newNote.customer,
+          activeInvoice: newNote.invoiceId,
+          transactionType: newNote.transactionType,
+          gstPercentage: newNote.gstAmount > 0 ? (newNote.gstAmount / newNote.baseAmount) * 100 : 0,
+          isNoteRelated: true, // Mark this journal entry as related to a note
+        })
+      } else {
+        addJournalEntry({
+          date: newNote.date,
+          description: `Credit Note GST Reversal (CGST) for Invoice ${newNote.invoiceId}`,
+          debitAccount: "CGST Output",
+          creditAccount: "GST Payable",
+          amount: newNote.gstAmount / 2,
+          reference: newNote.id,
+          status: "Posted",
+          partyType: "Customer",
+          debtorCustomer: customersList.find((c) => c.name === newNote.customer)?.id || newNote.customer,
+          activeInvoice: newNote.invoiceId,
+          transactionType: newNote.transactionType,
+          gstPercentage: newNote.gstAmount > 0 ? (newNote.gstAmount / newNote.baseAmount) * 100 : 0,
+          isNoteRelated: true, // Mark this journal entry as related to a note
+        })
+        addJournalEntry({
+          date: newNote.date,
+          description: `Credit Note GST Reversal (SGST) for Invoice ${newNote.invoiceId}`,
+          debitAccount: "SGST Output",
+          creditAccount: "GST Payable",
+          amount: newNote.gstAmount / 2,
+          reference: newNote.id,
+          status: "Posted",
+          partyType: "Customer",
+          debtorCustomer: customersList.find((c) => c.name === newNote.customer)?.id || newNote.customer,
+          activeInvoice: newNote.invoiceId,
+          transactionType: newNote.transactionType,
+          gstPercentage: newNote.gstAmount > 0 ? (newNote.gstAmount / newNote.baseAmount) * 100 : 0,
+          isNoteRelated: true, // Mark this journal entry as related to a note
+        })
+      }
+    }
+
+    toast({ title: "Credit Note Created", description: `Credit Note ${newNote.id} created successfully.` })
+  }
+
   return (
     <FinanceContext.Provider
       value={{
@@ -1301,6 +2369,11 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         assets,
         costCenters,
         taxFilings,
+        trialBalance,
+        debitNotes,
+        creditNotes,
+        customers: customersList,
+        suppliers: suppliersList,
 
         addJournalEntry,
         updateJournalEntry,
@@ -1338,10 +2411,14 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         updateTaxFiling,
         deleteTaxFiling,
 
+        addDebitNote,
+        addCreditNote,
+
         updateTotalReceivables,
         decreaseTotalReceivables,
         updateTotalPayables,
         decreaseTotalPayables,
+        updateTrialBalance,
       }}
     >
       {children}
@@ -1351,3 +2428,5 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
 // Custom hook to use the finance context
 export const useFinance = () => useContext(FinanceContext)
+
+export type { TrialBalanceEntry }
