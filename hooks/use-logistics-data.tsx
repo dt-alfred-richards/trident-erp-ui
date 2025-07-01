@@ -47,7 +47,6 @@ const LogisticsContext = createContext<LogisticsContextType>({
 })
 
 export const LogisticsProvider = ({ children }: { children: React.ReactNode }) => {
-  const { orders: saleOrders } = useOrders()
   const fetchRef = useRef(true)
   const shipmentInstance = new DataByTableName("v1_shipment_tracking")
 

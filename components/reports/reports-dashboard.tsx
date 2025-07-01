@@ -478,8 +478,6 @@ export function ReportsDashboard() {
 
   const { employees, dailyAttendance } = useHrContext()
 
-  console.log({dailyAttendance})
-
   const productMapper = useMemo(() => {
     return Object.values(clientProposedProductMapper).flat().reduce((acc: Record<string, ClientProposedProduct>, curr) => {
       if (!acc[curr?.productId || ""]) acc[curr?.productId || ""] = curr
@@ -544,7 +542,7 @@ export function ReportsDashboard() {
         destination: "Delhi",
         dispatchDate: convertDate(item.createdOn),
         deliveryDate: item.modifiedOn ? convertDate(item.modifiedOn) : "",
-        carrier: "Blue Dart",
+        carrier: "",
         status: item?.status || "",
       })
     })
@@ -781,7 +779,7 @@ export function ReportsDashboard() {
 
       return true
     })
-  }, [selectedDepartment, selectedLocation, searchQuery])
+  }, [selectedDepartment, selectedLocation, searchQuery, hrData])
 
   const filteredFinanceData = useMemo(() => {
     return financeData.filter((item) => {
