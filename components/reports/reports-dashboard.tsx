@@ -498,9 +498,9 @@ export function ReportsDashboard() {
 
   const hrData = useMemo(() => {
     return employees.map(item => {
-      const employeeAttendance = attendanceMapper[item?.employeeId || ""],
-        total = employeeAttendance.length,
-        present = employeeAttendance.filter(item => item.status === "present").length,
+      const employeeAttendance = attendanceMapper[item?.employeeId || ""] || [],
+        total = employeeAttendance?.length || 0,
+        present = employeeAttendance.filter(item => item.status === "present")?.length || 0,
         absent = total - present,
         avgWorkingHours = item.averageWorkingHours,
         overtime = employeeAttendance.filter(item => item.totalHours > avgWorkingHours).length;
@@ -512,7 +512,7 @@ export function ReportsDashboard() {
         workingDays: total,
         present,
         absent,
-        attendance: (present / total) * 100,
+        attendance: present === 0 || total === 0 ? 0 : (present / total) * 100,
         overtime,
       })
     })
