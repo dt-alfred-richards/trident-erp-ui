@@ -26,6 +26,7 @@ import { useToast } from "@/hooks/use-toast"
 import { inventoryWastageDialog, RawMaterialsWastageDialog, type WastageData } from "@/components/inventory/raw-materials-wastage-dialog"
 import { AddRawMaterialDialog } from "@/components/inventory/add-raw-material-dialog"
 import { useInventory } from "@/app/inventory-context"
+import { formatNumberIndian } from "@/components/generic"
 
 interface WastageUpdate {
   id: string
@@ -150,6 +151,13 @@ export default function RawMaterialsPage() {
   }).length
   const pendingOrdersCount = useMemo(() => {
     return inventory.filter(item => !item.status || item.status === "pending").length
+  }, [inventory])
+
+  const totalValues = useMemo(() => {
+    return inventory.reduce((acc, curr) => {
+      acc += (curr.price * curr.quantity)
+      return acc;
+    }, 0)
   }, [inventory])
 
   // Get category icon
@@ -344,7 +352,7 @@ export default function RawMaterialsPage() {
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Value</p>
-                <p className="text-2xl font-semibold">₹24.7M</p>
+                <p className="text-2xl font-semibold">{`₹${formatNumberIndian(totalValues)}`}</p>
               </div>
             </CardContent>
           </Card>

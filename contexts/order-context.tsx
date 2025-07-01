@@ -57,6 +57,7 @@ export type ClientProposedProduct = {
   name: string,
   clientId: string,
   sku: string,
+  category: string,
   price: number,
   unit: string,
   createdOn: string,
@@ -105,7 +106,8 @@ export type SaleOrderDetail = {
   productId: string,
   cases: number,
   status: string,
-  allocated: number
+  allocated: number,
+  category: string
 }
 interface OrderContextType {
   orders: Order[]
@@ -280,6 +282,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
               id: i.orderId,
               name: product?.name || "",
               sku: product.sku,
+              category: i.category,
               cases: i.cases,
               price: product.price,
               status: i.status,

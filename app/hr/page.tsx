@@ -12,9 +12,11 @@ export const metadata: Metadata = {
 export default function HRPage() {
   return (
     <HrProvider>
-      <DashboardShell>
-        <HRDashboard />
-      </DashboardShell>
+      <PayrollProvider>
+        <DashboardShell>
+          <HRDashboard />
+        </DashboardShell>
+      </PayrollProvider>
     </HrProvider>
   )
 }

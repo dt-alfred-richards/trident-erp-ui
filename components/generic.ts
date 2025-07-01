@@ -111,3 +111,15 @@ export const getCummulativeSum = ({ key, refObject, defaultValue = 0 }: { key: s
         return acc;
     }, 0)
 }
+
+export function formatNumberIndian(value: number): string {
+    if (value >= 10000000) {
+        return `${(value / 10000000).toFixed(1).replace(/\.0$/, '')}Cr`; // Crores
+    } else if (value >= 100000) {
+        return `${(value / 100000).toFixed(1).replace(/\.0$/, '')}L`; // Lakhs
+    } else if (value >= 1000) {
+        return `${(value / 1000).toFixed(1).replace(/\.0$/, '')}k`; // Thousands
+    } else {
+        return value.toString();
+    }
+}

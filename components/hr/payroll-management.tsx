@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect, useCallback } from "react"
+import { useState, useMemo, useEffect, useCallback, SetStateAction, Dispatch } from "react"
 import { Search, Download, Printer, Eye, CheckCircle, ChevronLeft, ChevronRight } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
@@ -20,6 +20,7 @@ import moment from "moment"
 
 
 export function PayrollManagement() {
+  const { setCurrentPayrollData } = useHrContext()
   const { data: contextPayrollData, update: updatePayroll } = usePayrollContext()
 
   const payrollData = useMemo(() => {
@@ -101,8 +102,8 @@ export function PayrollManagement() {
   const [itemsPerPage, setItemsPerPage] = useState(10)
 
   const filteredPayroll = useMemo(
-    () =>
-      payrollData.filter((employee) => {
+    () => {
+      const updated = payrollData.filter((employee) => {
         const matchesSearch =
           employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           employee.id.toLowerCase().includes(searchQuery.toLowerCase())
@@ -112,7 +113,10 @@ export function PayrollManagement() {
         const matchesMonth = employee.month === selectedMonth
 
         return matchesSearch && matchesStatus && matchesMonth
-      }),
+      })
+      setCurrentPayrollData(updated as any)
+      return updated
+    },
     [searchQuery, selectedStatus, selectedMonth, payrollUpdateCounter, payrollData],
   )
   // Calculate paginated data

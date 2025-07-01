@@ -24,7 +24,8 @@ import { AddEmployeeDialog } from "@/components/hr/add-employee-dialog"
 import { AddAttendanceDialog } from "@/components/hr/add-attendance-dialog"
 import { useToast } from "@/hooks/use-toast"
 import { useHrContext } from "@/app/hr/hr-context"
-import { PayrollProvider } from "@/app/hr/payroll-context"
+import { Payroll, PayrollProvider } from "@/app/hr/payroll-context"
+import { formatNumberIndian } from "../generic"
 
 // Sample employee data with added aadharImageUrl field
 export const initialEmployees = [
@@ -211,7 +212,8 @@ export interface AttendanceData {
 
 export function HRDashboard() {
   const { toast } = useToast()
-  const { employees, dailyAttendance } = useHrContext()
+  const { employees, dailyAttendance, currentPayrollData } = useHrContext()
+
   const employeeMapper = useMemo(() => {
     return employees.reduce((acc: Record<string, string>, curr) => {
       if (!acc[curr.id]) {
@@ -220,6 +222,7 @@ export function HRDashboard() {
       return acc;
     }, {})
   }, [employees])
+
   const attendanceRecords = useMemo(() => {
     return dailyAttendance.map(item => ({
       id: item.id,
@@ -240,10 +243,24 @@ export function HRDashboard() {
   const [addEmployeeOpen, setAddEmployeeOpen] = useState(false)
   const [addAttendanceOpen, setAddAttendanceOpen] = useState(false)
 
-  // Calculate metrics for the cards
-  const totalEmployees = employees.length
-  const attendanceRate = 92
-  const monthlyPayroll = "₹ 18.5L"
+  const { totalEmployees, attendanceRate, monthlyPayroll, processedSalary, pendingSalaries } = useMemo(() => {
+    return {
+      totalEmployees: currentPayrollData.length,
+      attendanceRate: "",
+      monthlyPayroll: currentPayrollData.reduce((acc: number, curr) => {
+        acc += parseInt(curr?.basicSalary || "0") + parseInt(curr?.bonus || "0") - parseInt(curr?.otherDeductions || "0");
+        return acc;
+      }, 0),
+      processedSalary: currentPayrollData.filter(item => item.status === "Processed").reduce((acc, curr) => {
+        acc += parseInt(curr?.basicSalary || "0") + parseInt(curr?.bonus || "0") - parseInt(curr?.otherDeductions || "0")
+        return acc;
+      }, 0),
+      pendingSalaries: currentPayrollData.filter(item => item.status === "pending").reduce((acc, curr) => {
+        acc += parseInt(curr?.basicSalary || "0") + parseInt(curr?.bonus || "0") - parseInt(curr?.otherDeductions || "0")
+        return acc;
+      }, 0)
+    }
+  }, [currentPayrollData])
 
   // Function to add a new attendance record
   const addAttendanceRecord = (newRecord: Omit<AttendanceData, "id">) => {
@@ -277,12 +294,30 @@ export function HRDashboard() {
   // Update the KPI data section to include colored icons with background similar to the Dashboard Overview tab
 
   // Replace the kpiData object with this updated version that includes proper icon styling
+
+  const currentMonthHires = useMemo(() => {
+    const now = new Date();
+    const firstOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastOfCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return employees.filter(item => item.createdOn >= firstOfCurrentMonth && item.createdOn <= lastOfCurrentMonth)
+  }, [employees])
+
+  const lastMonthHires = useMemo(() => {
+    const now = new Date();
+    const firstOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0); // day 0 of current month = last day of last month
+
+    return employees.filter(item => {
+      const createdDate = new Date(item.createdOn);
+      return createdDate >= firstOfLastMonth && createdDate <= lastOfLastMonth;
+    });
+  }, [employees]);
+
   const kpiData = {
     employees: [
       {
         title: "Total Employees",
         value: totalEmployees,
-        change: { value: 8, isPositive: true },
         icon: <Users className="h-5 w-5 text-blue-500" />,
         iconColor: "text-blue-500",
         iconBgColor: "bg-blue-500/10",
@@ -290,8 +325,8 @@ export function HRDashboard() {
       },
       {
         title: "New Hires",
-        value: 5,
-        change: { value: 2, isPositive: true },
+        value: currentMonthHires.length,
+        change: { value: lastMonthHires.length - currentMonthHires.length, isPositive: lastMonthHires.length - currentMonthHires.length > 0 },
         icon: <UserPlus className="h-5 w-5 text-green-500" />,
         iconColor: "text-green-500",
         iconBgColor: "bg-green-500/10",
@@ -339,8 +374,7 @@ export function HRDashboard() {
     payroll: [
       {
         title: "Monthly Payroll",
-        value: monthlyPayroll,
-        change: { value: 5, isPositive: true },
+        value: `₹${formatNumberIndian(monthlyPayroll)}`,
         icon: <IndianRupee className="h-5 w-5 text-purple-500" />,
         iconColor: "text-purple-500",
         iconBgColor: "bg-purple-500/10",
@@ -348,8 +382,7 @@ export function HRDashboard() {
       },
       {
         title: "Salary Processed",
-        value: "₹ 15.2L",
-        change: { value: 8, isPositive: true },
+        value: `₹${formatNumberIndian(processedSalary)}`,
         icon: <CreditCard className="h-5 w-5 text-green-500" />,
         iconColor: "text-green-500",
         iconBgColor: "bg-green-500/10",
@@ -357,8 +390,7 @@ export function HRDashboard() {
       },
       {
         title: "Pending Payouts",
-        value: "₹ 3.3L",
-        change: { value: 2, isPositive: false },
+        value: `₹${formatNumberIndian(pendingSalaries)}`,
         icon: <AlertCircle className="h-5 w-5 text-amber-500" />,
         iconColor: "text-amber-500",
         iconBgColor: "bg-amber-500/10",
@@ -429,9 +461,7 @@ export function HRDashboard() {
         <TabsContent value="payroll" className="space-y-6">
           <Card>
             <CardContent className="p-0">
-              <PayrollProvider>
-                <PayrollManagement />
-              </PayrollProvider>
+              <PayrollManagement />
             </CardContent>
           </Card>
         </TabsContent>

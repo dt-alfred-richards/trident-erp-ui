@@ -2,7 +2,8 @@
 import { DataByTableName } from "@/components/api";
 import { createType, getChildObject, removebasicTypes } from "@/components/generic";
 import { Basic } from "@/contexts/types";
-import { createContext, ReactNode, useContext, useEffect, useRef, useState } from "react";
+import { createContext, Dispatch, ReactNode, SetStateAction, useContext, useEffect, useRef, useState } from "react";
+import { Payroll } from "./payroll-context";
 
 export type Employee = {
     id: string,
@@ -103,7 +104,9 @@ type Context = {
     deleteEmployee: (employeeId: string) => Promise<void>,
     refetch: VoidFunction,
     addAttendance: (payload: Partial<DailyAttendance>) => Promise<void>,
-    updateAttendance: (attendanceId: string, payload: Partial<DailyAttendance>) => Promise<void>
+    updateAttendance: (attendanceId: string, payload: Partial<DailyAttendance>) => Promise<void>,
+    setCurrentPayrollData: Dispatch<SetStateAction<Payroll[]>>,
+    currentPayrollData: Payroll[]
 }
 
 
@@ -116,13 +119,16 @@ const HrContext = createContext<Context>({
     addEmployee: (payload: Partial<Employee>) => Promise.resolve(),
     updateEmployee: (employeeId: string, payload: Partial<Employee>) => Promise.resolve(),
     deleteEmployee: (employeeId: string) => Promise.resolve(),
-    refetch: () => { }
+    refetch: () => { },
+    setCurrentPayrollData: () => { },
+    currentPayrollData: []
 })
 
 
 export const HrProvider = ({ children }: { children: ReactNode }) => {
     const fetchRef = useRef(true)
     const [employees, setEmployees] = useState([])
+    const [currentPayrollData, setCurrentPayrollData] = useState<Payroll[]>([])
     const [employeeLeaves, setEmployeeLeaves] = useState<Record<string, LeaveData[]>>({})
     const [dailyAttendance, setDailyAttendance] = useState([])
     const employeeInstance = new DataByTableName("v1_employee")
@@ -200,7 +206,9 @@ export const HrProvider = ({ children }: { children: ReactNode }) => {
         dailyAttendance,
         addAttendance,
         updateAttendance,
-        addEmployee, deleteEmployee, updateEmployee, refetch: fetchData
+        addEmployee, deleteEmployee, updateEmployee, refetch: fetchData,
+        setCurrentPayrollData,
+        currentPayrollData
     }}>
         {children}
     </HrContext.Provider>

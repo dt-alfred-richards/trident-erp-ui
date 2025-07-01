@@ -29,12 +29,13 @@ import { DataTablePagination } from "@/components/ui/data-table-pagination"
 import { StatusBadge } from "@/components/common/status-badge"
 import { Badge } from "@/components/ui/badge"
 import { ClientProposedProduct, useOrders } from "@/contexts/order-context"
-import { convertDate, getCummulativeSum } from "../generic"
+import { convertDate, getChildObject, getCummulativeSum } from "../generic"
 import { useProduction } from "../production/production-context"
 import { useInventory } from "@/app/inventory-context"
 import { useLogistics } from "@/app/logistics/shipment-tracking/logistics-context"
 import { useProcurement } from "@/app/procurement/procurement-context"
-import { useHrContext } from "@/app/hr/hr-context"
+import { DailyAttendance, useHrContext } from "@/app/hr/hr-context"
+import { OrderProduct } from "@/types/order"
 
 // Sample data for each tab
 const salesData = [
@@ -485,19 +486,34 @@ export function ReportsDashboard() {
     }, {})
   }, [clientProposedProductMapper])
 
+  const attendanceMapper = useMemo(() => {
+    return dailyAttendance.reduce((acc: Record<string, DailyAttendance[]>, curr) => {
+      if (!acc[curr.employeeId]) {
+        acc[curr.employeeId] = []
+      }
+      acc[curr.employeeId].push(curr)
+      return acc;
+    }, {})
+  }, [dailyAttendance])
+
   const hrData = useMemo(() => {
     return employees.map(item => {
+      const employeeAttendance = attendanceMapper[item?.employeeId || ""],
+        total = employeeAttendance.length,
+        present = employeeAttendance.filter(item => item.status === "present").length,
+        absent = total - present,
+        avgWorkingHours = item.averageWorkingHours,
+        overtime = employeeAttendance.filter(item => item.totalHours > avgWorkingHours).length;
       return ({
-        employeeId: `EMP-${item.id}`,
+        employeeId: item.id,
         name: [item.firstName, item.lastName].filter(item => item).join(" "),
         department: item.department,
         designation: item.role,
-        location: "Mumbai",
-        workingDays: 22,
-        present: 21,
-        absent: 1,
-        attendance: "95.5%",
-        overtime: 12,
+        workingDays: total,
+        present,
+        absent,
+        attendance: (present / total) * 100,
+        overtime,
       })
     })
   }, [employees])
@@ -516,6 +532,16 @@ export function ReportsDashboard() {
     }))
   }, [purchaseOrders])
 
+  const calculateInventoryStatus = (inStock: number, allocated: number) => {
+    if (inStock < allocated) {
+      return "Low stock";
+    } else if (inStock > allocated) {
+      return "Healthy"
+    } else {
+      return ""
+    }
+  }
+
   const inventoryData = useMemo(() => {
     return inventory.map(item => {
       return ({
@@ -523,11 +549,10 @@ export function ReportsDashboard() {
         description: item.material,
         category: item.category,
         warehouse: "Mumbai",
-        inStock: 1245,
+        inStock: item.quantity,
         allocated: item?.reserved || 0,
-        available: item?.quantity || 0,
         value: item.quantity * item.price,
-        status: item?.status || '',
+        status: calculateInventoryStatus(item.quantity, item.reserved),
       })
     })
   }, [inventory])
@@ -557,29 +582,33 @@ export function ReportsDashboard() {
         endDate: item.modifiedOn ? convertDate(item.modifiedOn) : "",
         plannedQty: 500,
         actualQty: 487,
-        efficiency: "97.4%",
-        defectRate: "1.2%",
         status: item.status,
       })
     })
   }, [productionOrders, productMapper])
 
   const salesData = useMemo(() => {
-    return orders.map(item => {
+    const products: Array<OrderProduct & { customer: string, saleId: string, orderDate: Date }> = []
+    orders.forEach(item => {
+      item.products.forEach(element => {
+        products.push({
+          ...element,
+          customer: item.customer,
+          saleId: item.id,
+          orderDate: item.orderDate
+        })
+      })
+    })
+    return products.map(item => {
       return ({
-        orderId: item.id,
+        orderId: item.saleId,
         customer: item.customer,
-        product: "",
-        category: "Dhaara",
+        product: item.name,
+        category: getChildObject(item, "category", ""),
         date: convertDate(item.orderDate),
-        quantity: getCummulativeSum({
-          key: "cases",
-          refObject: item.products,
-          defaultValue: 0
-        }),
-        unitPrice: 1250,
-        total: item?.total || 0,
-        status: "Delivered",
+        quantity: item.cases,
+        unitPrice: item.price,
+        total: item.cases * item.price,
       })
     })
   }, [orders])
@@ -1071,21 +1100,6 @@ export function ReportsDashboard() {
             </div>
           </CardContent>
         </Card>
-
-        <Card
-          className={`cursor-pointer transition-all hover:shadow-md ${activeTab === "finance" ? "border-primary bg-primary/5" : "hover:border-primary/50"
-            }`}
-          onClick={() => handleTabChange("finance")}
-        >
-          <CardContent className="p-4 flex items-center space-x-3">
-            <div className={`p-2 rounded-full ${activeTab === "finance" ? "bg-[#1b84ff] text-white" : "bg-muted"}`}>
-              <DollarSign className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="font-medium text-sm">Finance</h3>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       <div className="mt-4">
@@ -1216,7 +1230,6 @@ export function ReportsDashboard() {
                       <TableHead className="text-right">Quantity</TableHead>
                       <TableHead className="text-right">Unit Price (₹)</TableHead>
                       <TableHead className="text-right">Total (₹)</TableHead>
-                      <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1242,9 +1255,6 @@ export function ReportsDashboard() {
                           <TableCell className="text-right">{item.quantity.toLocaleString()}</TableCell>
                           <TableCell className="text-right">{item.unitPrice.toLocaleString()}</TableCell>
                           <TableCell className="text-right">{item.total.toLocaleString()}</TableCell>
-                          <TableCell>
-                            <StatusBadge status={item.status.toLowerCase().replace(" ", "_") as any} />
-                          </TableCell>
                         </TableRow>
                       ))
                     ) : (
@@ -1393,8 +1403,6 @@ export function ReportsDashboard() {
                       <TableHead>End Date</TableHead>
                       <TableHead className="text-right">Planned Qty</TableHead>
                       <TableHead className="text-right">Actual Qty</TableHead>
-                      <TableHead className="text-right">Efficiency</TableHead>
-                      <TableHead className="text-right">Defect Rate</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1404,24 +1412,10 @@ export function ReportsDashboard() {
                         <TableRow key={index}>
                           <TableCell className="font-medium">{item.batchId}</TableCell>
                           <TableCell>{item.product}</TableCell>
-                          <TableCell>
-                            <Badge
-                              variant="outline"
-                              className={
-                                item.product?.includes("Dhaara")
-                                  ? "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400"
-                                  : "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-400"
-                              }
-                            >
-                              {item.product?.includes("Dhaara") ? "Dhaara" : "Customised"}
-                            </Badge>
-                          </TableCell>
                           <TableCell>{item.startDate}</TableCell>
                           <TableCell>{item.endDate}</TableCell>
                           <TableCell className="text-right">{item.plannedQty}</TableCell>
                           <TableCell className="text-right">{item.actualQty}</TableCell>
-                          <TableCell className="text-right">{item.efficiency}</TableCell>
-                          <TableCell className="text-right">{item.defectRate}</TableCell>
                           <TableCell>
                             <StatusBadge status={item.status.toLowerCase().replace(" ", "_") as any} />
                           </TableCell>
@@ -1568,10 +1562,8 @@ export function ReportsDashboard() {
                       <TableHead>Item Code</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead>Category</TableHead>
-                      <TableHead>Warehouse</TableHead>
                       <TableHead className="text-right">In Stock</TableHead>
                       <TableHead className="text-right">Allocated</TableHead>
-                      <TableHead className="text-right">Available</TableHead>
                       <TableHead className="text-right">Value (₹)</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
@@ -1580,7 +1572,7 @@ export function ReportsDashboard() {
                     {paginateInventoryData.length > 0 ? (
                       paginateInventoryData.map((item, index) => (
                         <TableRow key={index}>
-                          <TableCell className="font-medium">{item.itemCode}</TableCell>
+                          <TableCell className="font-medium">{`INV-${item.itemCode}`}</TableCell>
                           <TableCell>{item.description}</TableCell>
                           <TableCell>
                             <Badge
@@ -1594,10 +1586,8 @@ export function ReportsDashboard() {
                               {item.category}
                             </Badge>
                           </TableCell>
-                          <TableCell>{item.warehouse}</TableCell>
                           <TableCell className="text-right">{item.inStock.toLocaleString()}</TableCell>
                           <TableCell className="text-right">{item.allocated.toLocaleString()}</TableCell>
-                          <TableCell className="text-right">{item.available.toLocaleString()}</TableCell>
                           <TableCell className="text-right">{item.value.toLocaleString()}</TableCell>
                           <TableCell>
                             <StatusBadge status={item.status.toLowerCase().replace(" ", "_") as any} />
@@ -1734,11 +1724,8 @@ export function ReportsDashboard() {
                       <TableHead>Shipment ID</TableHead>
                       <TableHead>Order ID</TableHead>
                       <TableHead>Customer</TableHead>
-                      <TableHead>Origin</TableHead>
-                      <TableHead>Destination</TableHead>
                       <TableHead>Dispatch Date</TableHead>
                       <TableHead>Delivery Date</TableHead>
-                      <TableHead>Carrier</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1749,11 +1736,8 @@ export function ReportsDashboard() {
                           <TableCell className="font-medium">{item.shipmentId}</TableCell>
                           <TableCell>{item.orderId}</TableCell>
                           <TableCell>{item.customer}</TableCell>
-                          <TableCell>{item.origin}</TableCell>
-                          <TableCell>{item.destination}</TableCell>
                           <TableCell>{item.dispatchDate}</TableCell>
                           <TableCell>{item.deliveryDate}</TableCell>
-                          <TableCell>{item.carrier}</TableCell>
                           <TableCell>
                             <StatusBadge status={item.status.toLowerCase().replace(" ", "_") as any} />
                           </TableCell>
@@ -2045,7 +2029,6 @@ export function ReportsDashboard() {
                       <TableHead>Name</TableHead>
                       <TableHead>Department</TableHead>
                       <TableHead>Designation</TableHead>
-                      <TableHead>Location</TableHead>
                       <TableHead className="text-right">Working Days</TableHead>
                       <TableHead className="text-right">Present</TableHead>
                       <TableHead className="text-right">Absent</TableHead>
@@ -2061,7 +2044,6 @@ export function ReportsDashboard() {
                           <TableCell>{item.name}</TableCell>
                           <TableCell>{item.department}</TableCell>
                           <TableCell>{item.designation}</TableCell>
-                          <TableCell>{item.location}</TableCell>
                           <TableCell className="text-right">{item.workingDays}</TableCell>
                           <TableCell className="text-right">{item.present}</TableCell>
                           <TableCell className="text-right">{item.absent}</TableCell>
