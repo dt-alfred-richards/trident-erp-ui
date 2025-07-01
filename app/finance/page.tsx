@@ -5,19 +5,25 @@ import { InvoiceProvider } from "@/components/finance/context/invoice-context"
 import { JournalProvider } from "@/components/finance/context/journal-context"
 import { TranscationProvider } from "@/components/finance/context/trasncations"
 import { FinanceDashboard } from "@/components/finance/finance-dashboard"
+import { ProcurementProvider } from "../procurement/procurement-context"
+import { FilingsProvider } from "@/components/finance/context/filings-context"
 
 export default function FinancePage() {
   return <JournalProvider>
-    <TranscationProvider>
-      <ChartAccountProvider>
-        <BillProvider>
-          <BankAccountProvider>
-            <InvoiceProvider>
-              <FinanceDashboard />
-            </InvoiceProvider>
-          </BankAccountProvider>
-        </BillProvider>
-      </ChartAccountProvider>
-    </TranscationProvider>
+    <ProcurementProvider>
+      <FilingsProvider>
+        <TranscationProvider>
+          <ChartAccountProvider>
+            <BillProvider>
+              <BankAccountProvider>
+                <InvoiceProvider>
+                  <FinanceDashboard />
+                </InvoiceProvider>
+              </BankAccountProvider>
+            </BillProvider>
+          </ChartAccountProvider>
+        </TranscationProvider>
+      </FilingsProvider>
+    </ProcurementProvider>
   </JournalProvider>
 }

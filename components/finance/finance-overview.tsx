@@ -5,6 +5,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { IndianRupee, CreditCard, Building, Receipt } from "lucide-react"
 import { useFinance } from "@/contexts/finance-context"
 import { useState } from "react"
+import { Input } from "../ui/input"
+import { Label } from "../ui/label"
 
 export function FinanceOverview() {
   const { journalEntries, invoices, bills, accounts } = useFinance()
@@ -316,7 +318,7 @@ export function FinanceOverview() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="overflow-hidden border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardHeader className="pb-2 bg-muted/30">
             <CardTitle className="text-sm font-semibold">Pending Invoices</CardTitle>
@@ -374,28 +376,6 @@ export function FinanceOverview() {
                   <div className="text-sm text-muted-foreground">₹98,500</div>
                 </div>
                 <div className="text-sm text-muted-foreground">Due in 10 days</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="overflow-hidden border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-200">
-          <CardHeader className="pb-2 bg-muted/30">
-            <CardTitle className="text-sm font-semibold">Tax Calendar</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="border-b pb-2">
-                <div className="font-medium">GST Filing</div>
-                <div className="text-sm text-muted-foreground">Due in 7 days</div>
-              </div>
-              <div className="border-b pb-2">
-                <div className="font-medium">TDS Payment</div>
-                <div className="text-sm text-muted-foreground">Due in 12 days</div>
-              </div>
-              <div className="border-b pb-2">
-                <div className="font-medium">Advance Tax</div>
-                <div className="text-sm text-muted-foreground">Due in 25 days</div>
               </div>
             </div>
           </CardContent>

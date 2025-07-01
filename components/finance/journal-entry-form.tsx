@@ -22,6 +22,9 @@ import { getDisplayAccountName } from "@/contexts/finance-context" // Add this l
 // Remove the Eye, EyeOff import
 import { Switch } from "@/components/ui/switch"
 import { Journal, useJournalContext } from "./context/journal-context"
+import { useOrders } from "@/contexts/order-context"
+import { useProcurement } from "@/app/procurement/procurement-context"
+import { useBankAccountContext } from "./context/bank-account-context"
 
 // Define the form schema
 const formSchema = z.object({
@@ -45,25 +48,9 @@ const formSchema = z.object({
   dueDate: z.string().optional(),
   status: z.enum(["Draft", "Posted", "Pending", "Rejected"]),
   bankAccount: z.string().optional(), // Add this new field
+  additionalReference: z.string().optional()
 })
 
-// Sample customer data
-const customers = [
-  { id: "CUST001", name: "Acme Corp" },
-  { id: "CUST002", name: "TechGiant Inc" },
-  { id: "CUST003", name: "Global Traders" },
-  { id: "CUST004", name: "Innovate Solutions" },
-  { id: "CUST005", name: "Prime Industries" },
-]
-
-// Sample supplier data
-const suppliers = [
-  { id: "SUP001", name: "Raw Materials Co." },
-  { id: "SUP002", name: "Industrial Supplies Ltd." },
-  { id: "SUP003", name: "Quality Components Inc." },
-  { id: "SUP004", name: "Packaging Solutions" },
-  { id: "SUP005", name: "Logistics Partners" },
-]
 
 type JournalEntryFormValues = z.infer<typeof formSchema>
 
@@ -79,15 +66,14 @@ export function JournalEntryForm({ open, onOpenChange, initialValues, entryId }:
     accounts,
     invoices,
     bills,
-    bankAccounts, // Use bankAccounts from finance context
     updateTotalReceivables,
     decreaseTotalReceivables,
     updateTotalPayables,
     decreaseTotalPayables,
-    journalEntries,
   } = useFinance()
   const isEditing = !!entryId
   const { create: addJournalEntry, data, update: updateJournalEntry } = useJournalContext();
+  const { data: bnkAccounts } = useBankAccountContext()
 
   const editingJournal = useMemo(() => {
     if (isEditing) {
@@ -95,12 +81,46 @@ export function JournalEntryForm({ open, onOpenChange, initialValues, entryId }:
     } else {
       return {} as Journal
     }
-  }, [entryId])
+  }, [entryId, data])
+
+  const bankAccounts = useMemo(() => {
+    return bnkAccounts.map(item => {
+      return ({
+        id: item.id,
+        name: item.name,
+        bank: item.bank,
+        accountNumber: item.accountNumber,
+        balance: item.balance,
+        type: item.type,
+      })
+    })
+  }, [bnkAccounts])
+
   const [selectedInvoiceBalance, setSelectedInvoiceBalance] = useState<number | null>(null)
   const [selectedBillBalance, setSelectedBillBalance] = useState<number | null>(null)
   const [amountError, setAmountError] = useState<string | null>(null)
   const [showTaxesSection, setShowTaxesSection] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const { clientMapper } = useOrders()
+  const { suppliers: supps } = useProcurement();
+
+  const suppliers = useMemo(() => {
+    return supps.map(item => {
+      return ({ id: item.supplierId, name: item.name })
+    })
+  }, [supps])
+
+  // Sample customer data
+  const customers = useMemo(() => {
+    return Object.values(clientMapper).map(item => {
+      return ({
+        id: item.clientId,
+        name: item.name
+      })
+    })
+  }, [clientMapper])
+
 
   const [gstBreakdown, setGstBreakdown] = useState<{
     baseAmount: number
@@ -161,7 +181,7 @@ export function JournalEntryForm({ open, onOpenChange, initialValues, entryId }:
           gstAmount: editingJournal.gstAmount || 0,
           totalAmount: editingJournal.totalAmount || 0,
           amount: editingJournal.amount,
-          reference: editingJournal?.additionalReference || editingJournal?.reference || '',
+          additionalReference: editingJournal?.additionalReference || "",
           referenceNumber: editingJournal.referenceNumber || "",
           dueDate: editingJournal.dueDate || "" as any,
           status: editingJournal.status as any,
@@ -179,7 +199,6 @@ export function JournalEntryForm({ open, onOpenChange, initialValues, entryId }:
       setAmountError(null)
     }
   }, [form, initialValues, open, editingJournal])
-  console.log({ editingJournal })
 
   // Update selected invoice balance when activeInvoice changes
   useEffect(() => {
@@ -371,57 +390,40 @@ export function JournalEntryForm({ open, onOpenChange, initialValues, entryId }:
     try {
       console.log("Form submitted with values:", values)
 
+      const payload = {
+        date: values.date,
+        description: values.description,
+        debitAccount: values.debitAccount,
+        creditAccount: values.creditAccount,
+        amount: values.amount,
+        status: values.status || "Draft",
+        transcationType: values.transactionType,
+        gst: values.gstPercentage,
+        partyType: values.partyType,
+        debtorCustomer: values.debtorCustomer,
+        creditorSupplier: values.creditorSupplier,
+        additionalReference: values.additionalReference,
+        referenceNumber: values.referenceNumber,
+        taxInformation: showTaxesSection,
+        id: entryId,
+        activeInvoice: values.activeInvoice,
+        activeBill: values.activeBill,
+        baseAmount: values.baseAmount,
+        bankAccount: values.bankAccount,
+        totalAmount: values.totalAmount,
+        dueDate: values.dueDate ? new Date(values.dueDate as any) : null,
+        reference: values.reference,
+        gstAmount: values.gstAmount
+      } as Partial<Journal>
       // Force create the journal entry regardless of validation
       if (isEditing) {
         updateJournalEntry({
-          date: values.date,
-          description: values.description,
-          debitAccount: values.debitAccount,
-          creditAccount: values.creditAccount,
-          amount: values.amount,
-          status: values.status || "Draft",
-          transcationType: values.transactionType,
-          gst: values.gstPercentage,
-          partyType: values.partyType,
-          debtorCustomer: values.debtorCustomer,
-          creditorSupplier: values.creditorSupplier,
-          additionalReference: values.reference,
-          referenceNumber: values.referenceNumber,
-          taxInformation: showTaxesSection,
-          id: entryId,
-          activeInvoice: values.activeInvoice,
-          activeBill: values.activeBill,
-          baseAmount: values.baseAmount,
-          bankAccount: values.bankAccount,
-          totalAmount: values.totalAmount,
-          dueDate: values.dueDate,
-          reference: values.reference,
-          gstAmount: values.gstAmount
+          ...payload,
+          id: entryId
         } as Partial<Journal>).then(() => {
           onOpenChange(false)
         })
       } else {
-        const payload = {
-          date: values.date,
-          description: values.description,
-          debitAccount: values.debitAccount,
-          creditAccount: values.creditAccount,
-          amount: values.amount,
-          status: values.status || "Draft",
-          transcationType: values.transactionType,
-          gst: values.gstPercentage,
-          partyType: values.partyType,
-          debtorCustomer: values.debtorCustomer,
-          creditorSupplier: values.creditorSupplier,
-          additionalReference: values.reference,
-          referenceNumber: values.referenceNumber,
-          taxInformation: showTaxesSection
-        } as Partial<Journal>
-
-        if (values.dueDate) {
-          payload["dueDate"] = values.dueDate as any
-        }
-
         return addJournalEntry(payload).then(() => {
           onOpenChange(false)
           toast({
@@ -579,7 +581,7 @@ export function JournalEntryForm({ open, onOpenChange, initialValues, entryId }:
                             </FormControl>
                             <SelectContent>
                               {bankAccounts.map((account) => (
-                                <SelectItem key={account.id} value={account.id}>
+                                <SelectItem key={account.id} value={account.id + ''}>
                                   {account.name} - {account.bank} ({account.accountNumber})
                                 </SelectItem>
                               ))}
@@ -1046,7 +1048,7 @@ export function JournalEntryForm({ open, onOpenChange, initialValues, entryId }:
 
                 <FormField
                   control={form.control}
-                  name="v"
+                  name="additionalReference"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Additional Reference</FormLabel>

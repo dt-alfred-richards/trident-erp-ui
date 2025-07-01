@@ -16,7 +16,7 @@ export type Journal = {
     amount: number,
     reference?: string,
     status: string,
-    dueDate: string,
+    dueDate: Date,
     referenceNumber: string,
     additionalReference: string,
     taxInformation: boolean,

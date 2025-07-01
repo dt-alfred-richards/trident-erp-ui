@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -15,6 +15,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Filings, useFilings } from "./context/filings-context"
+import { getChildObject } from "../generic"
 
 // Sample data for taxation and compliance
 const taxFilings = [
@@ -245,6 +247,7 @@ const complianceCalendar = [
 export function TaxationCompliance() {
   const [activeTab, setActiveTab] = useState("tax-filings")
   const { toast } = useToast()
+  const { data: fillings, create: createFilings } = useFilings()
 
   // Dialog states
   const [newFilingOpen, setNewFilingOpen] = useState(false)
@@ -265,7 +268,19 @@ export function TaxationCompliance() {
   // Tax filings filter states
   const [taxFilingStatus, setTaxFilingStatus] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
-  const [filteredTaxFilings, setFilteredTaxFilings] = useState(taxFilings)
+
+  const filteredTaxFilings = useMemo(() => {
+    return fillings.map(item => {
+      return ({
+        id: `GST-${item.id}`,
+        type: item.type,
+        period: item.period,
+        dueDate: "2023-07-20",
+        status: item.status,
+        amount: item.amount,
+      })
+    })
+  }, [fillings])
 
   // Advanced filter states for tax filings
   const [selectedTypes, setSelectedTypes] = useState({
@@ -368,58 +383,6 @@ export function TaxationCompliance() {
   }, [complianceMonth, complianceResponsibility])
 
   // Update filtered tax filings when filters change
-  useEffect(() => {
-    const filtered = taxFilings.filter((filing) => {
-      // Status filter
-      const statusMatch =
-        taxFilingStatus === "all" ? true : filing.status.toLowerCase() === taxFilingStatus.toLowerCase()
-
-      // Search query filter
-      const searchMatch =
-        searchQuery === ""
-          ? true
-          : filing.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            filing.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            filing.period.toLowerCase().includes(searchQuery.toLowerCase())
-
-      // Type filter
-      const typeMatch = selectedTypes[filing.type]
-
-      // Amount range filter
-      let amountMatch = true
-      if (amountRange === "below-200k") {
-        amountMatch = filing.amount < 200000
-      } else if (amountRange === "200k-500k") {
-        amountMatch = filing.amount >= 200000 && filing.amount <= 500000
-      } else if (amountRange === "above-500k") {
-        amountMatch = filing.amount > 500000
-      }
-
-      // Period filter
-      let periodMatch = true
-      if (periodFilter === "current-quarter") {
-        // Simplified logic for demo - assuming current quarter is Q2 2023
-        periodMatch =
-          filing.period.includes("Q2 2023") ||
-          (filing.period.includes("2023") &&
-            (filing.period.includes("April") || filing.period.includes("May") || filing.period.includes("June")))
-      } else if (periodFilter === "previous-quarter") {
-        // Simplified logic for demo - assuming previous quarter is Q1 2023
-        periodMatch =
-          filing.period.includes("Q1 2023") ||
-          (filing.period.includes("2023") &&
-            (filing.period.includes("January") ||
-              filing.period.includes("February") ||
-              filing.period.includes("March")))
-      } else if (periodFilter === "current-year") {
-        periodMatch = filing.period.includes("2023")
-      }
-
-      return statusMatch && searchMatch && typeMatch && amountMatch && periodMatch
-    })
-
-    setFilteredTaxFilings(filtered)
-  }, [taxFilingStatus, searchQuery, selectedTypes, amountRange, periodFilter])
 
   // Handler functions for buttons
   const handleNewFiling = () => {
@@ -471,23 +434,38 @@ export function TaxationCompliance() {
     setFilterDialogOpen(false)
   }
 
+  const [newFiling, setNewFiling] = useState({
+    amount: 0,
+    type: "",
+    period: ""
+  } as Partial<Filings>)
+
+  const updateState = (event: any) => {
+    const name = getChildObject(event, "target.name", ""),
+      value = getChildObject(event, "target.value", "")
+    setNewFiling(prev => {
+      return ({
+        ...prev,
+        [name]: value
+      })
+    })
+  }
+
   // Submit handlers
   const submitNewFiling = () => {
-    setIsProcessing((prev) => ({ ...prev, filing: true }))
+    const payload = {
+      ...newFiling,
+      status: "Upcoming"
+    } as Partial<Filings>
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsProcessing((prev) => ({ ...prev, filing: false }))
+    createFilings(payload).then(_ => {
       setNewFilingOpen(false)
-
       toast({
         title: "Success!",
         description: "New tax filing has been created successfully.",
         duration: 3000,
       })
-
-      // Add new filing to the list (in a real app)
-    }, 1500)
+    })
   }
 
   const submitGSTReturn = () => {
@@ -624,6 +602,24 @@ export function TaxationCompliance() {
     })
   }
 
+  function getLastThreeMonthsOptions(fromDate = new Date()) {
+    const options = [];
+
+    for (let i = 0; i < 3; i++) {
+      const date = new Date(fromDate.getFullYear(), fromDate.getMonth() - i, 1);
+      const monthName = date.toLocaleString('default', { month: 'long' }); // e.g., "June"
+      const monthValue = monthName.toLowerCase() + date.getFullYear();     // e.g., "june2023"
+
+      options.push({
+        month: monthName,
+        year: date.getFullYear()
+      });
+    }
+
+    return options
+  }
+
+
   return (
     <div className="p-6 space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -664,7 +660,10 @@ export function TaxationCompliance() {
               <label htmlFor="filing-type" className="text-right">
                 Type
               </label>
-              <Select defaultValue="gst">
+              <Select defaultValue="gst" value={newFiling.type} onValueChange={(v: any) => setNewFiling(p => ({
+                ...p,
+                type: v
+              }))}>
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Select filing type" />
                 </SelectTrigger>
@@ -679,14 +678,19 @@ export function TaxationCompliance() {
               <label htmlFor="period" className="text-right">
                 Period
               </label>
-              <Select defaultValue="july2023">
+              <Select defaultValue="july2023" value={newFiling.period} onValueChange={(v: any) => setNewFiling(p => ({
+                ...p,
+                period: v
+              }))}>
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Select period" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="july2023">July 2023</SelectItem>
-                  <SelectItem value="aug2023">August 2023</SelectItem>
-                  <SelectItem value="sep2023">September 2023</SelectItem>
+                  {
+                    getLastThreeMonthsOptions(new Date()).map(item => {
+                      return <SelectItem value={`${item.month} ${item.year}`}>{`${item.month} ${item.year}`}</SelectItem>
+                    })
+                  }
                 </SelectContent>
               </Select>
             </div>
@@ -694,7 +698,10 @@ export function TaxationCompliance() {
               <label htmlFor="amount" className="text-right">
                 Amount (₹)
               </label>
-              <Input id="amount" defaultValue="450000" className="col-span-3" />
+              <Input id="amount" defaultValue="450000" className="col-span-3" value={newFiling.amount} onChange={e => setNewFiling(p => ({
+                ...p,
+                amount: e.target.value
+              }))} />
             </div>
           </div>
           <DialogFooter>
