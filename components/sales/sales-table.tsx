@@ -216,7 +216,7 @@ export function SalesTable() {
   }
 
   const confirmCancellation = () => {
-    if (orderToAction) {
+    if (orderToAction && cancelOrder) {
       cancelOrder(orderToAction).then(() => {
         setOrderToAction(null)
         refetchContext()

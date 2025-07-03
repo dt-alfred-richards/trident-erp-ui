@@ -124,7 +124,7 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
                     </div>
                     <div className="grid grid-cols-2">
                       <span className="text-sm text-muted-foreground">Delivery Date:</span>
-                      <span className="text-sm">{formatDate(order.deliveryDate)}</span>
+                      <span className="text-sm">{convertDate(order.deliveryDate)}</span>
                     </div>
                     <div className="grid grid-cols-2">
                       <span className="text-sm text-muted-foreground">Order ID:</span>
@@ -157,6 +157,7 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
                   <TableHeader>
                     <TableRow>
                       <TableHead>Product</TableHead>
+                      <TableHead className="text-right">Category</TableHead>
                       <TableHead className="text-right">Quantity</TableHead>
                       <TableHead className="text-right">Price</TableHead>
                       <TableHead className="text-right">Total</TableHead>
@@ -172,6 +173,7 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
                           </div>
                         </TableCell>
                         <TableCell className="text-right">{product.cases.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">{product?.category || ''}</TableCell>
                         <TableCell className="text-right">₹{product.price.toFixed(2)}</TableCell>
                         <TableCell className="text-right">₹{(product.cases * product.price).toFixed(2)}</TableCell>
                       </TableRow>

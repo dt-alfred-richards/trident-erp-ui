@@ -123,7 +123,7 @@ interface OrderContextType {
   updateOrder: (orderId: string, updatedOrder: any, updatedProducts: any, newEntries: Partial<SaleOrderDetail>[]) => Promise<any>,
   addOrder: (order: Partial<V1Sale>, saleOrder: Partial<SaleOrderDetail>[]) => Promise<void>,
   addSaleOrder: (saleOrder: Partial<SaleOrderDetail>) => Promise<void>,
-  cancelOrder: (orderId: string) => void,
+  cancelOrder: (orderId: string) => Promise<void>,
   clientMapper: Record<string, Client>
   referenceMapper: Record<string, ClientReference[]>
   shippingAddressMapper: Record<string, ShippingAddress[]>,
@@ -152,7 +152,7 @@ const OrderContext = createContext<OrderContextType>({
   updateSaleProductOrder: (orderId: string, payload: Partial<SalesOrderDetails>) => Promise.resolve(),
   addOrder: (order: Partial<V1Sale>, saleOrder: Partial<SaleOrderDetail>[]) => Promise.resolve(),
   addSaleOrder: (saleOrder: Partial<SaleOrderDetail>) => Promise.resolve(),
-  cancelOrder: (orderId: string) => { },
+  cancelOrder: (orderId: string) => Promise.resolve(),
   clientMapper: {},
   referenceMapper: {},
   shippingAddressMapper: {},
@@ -336,39 +336,11 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   // Add the cancelOrder implementation in the OrderProvider
   // Add this function after the rejectOrder function
   const cancelOrder = (orderId: string) => {
-    try {
-      setOrders((prevOrders) =>
-        prevOrders.map((order) => {
-          if (order.id === orderId) {
-            // Update all products to cancelled status
-            const updatedProducts = order.products.map((product) => ({
-              ...product,
-              status: "cancelled" as ProductStatus,
-            }))
-
-            return {
-              ...order,
-              status: "cancelled" as OrderStatus,
-              products: updatedProducts,
-              statusHistory: [
-                ...order.statusHistory,
-                {
-                  timestamp: new Date().toISOString(),
-                  status: "cancelled",
-                  user: currentUser,
-                  note: "Order cancelled",
-                },
-              ],
-            }
-          }
-          return order
-        }),
-      )
-      console.log(`Order ${orderId} cancelled successfully`)
-    } catch (error) {
-      console.error(`Error cancelling order ${orderId}:`, error)
-      // In a real app, you would show an error notification
-    }
+    return saleInstance.patch({ key: "sale_id", value: orderId }, { status: "cancelled" }).then(() => {
+      saleOrderDetailInstance.patch({ key: "sale_id", value: orderId }, { status: "cancelled" }).catch(error => {
+        console.log({ error })
+      })
+    })
   }
 
   // Allocate inventory to a product
