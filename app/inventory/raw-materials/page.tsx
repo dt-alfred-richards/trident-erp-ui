@@ -102,7 +102,7 @@ export default function RawMaterialsPage() {
       (material) =>
         (activeCategory === null || material.category === activeCategory) &&
         (material.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          material.type.toLowerCase().includes(searchTerm.toLowerCase())),
+          material.type?.toLowerCase().includes(searchTerm.toLowerCase())),
     )
 
     // Apply sorting if a sort column is selected

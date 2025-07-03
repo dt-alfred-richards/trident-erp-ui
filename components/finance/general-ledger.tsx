@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Download, FileText, Plus, Search, Edit, Trash2, Eye } from "lucide-react"
+import { Download, FileText, Plus, Search, Edit, Trash2, Eye, Key } from "lucide-react"
 import { useFinance, type TrialBalanceEntry, getDisplayAccountName } from "@/contexts/finance-context"
 import { JournalEntryForm } from "@/components/finance/journal-entry-form"
 import type { JournalEntry, Account } from "@/contexts/finance-context"
@@ -30,7 +30,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 // Import DebitCreditNoteManager
 import { DebitCreditNoteManager } from "@/components/finance/debit-credit-note-manager"
 import { useJournalContext } from "./context/journal-context"
-import { convertDate } from "../generic"
+import { convertDate, getChildObject } from "../generic"
 
 // Define the trial balance data type (already exists, keeping for context)
 type TrialBalanceEntryType = {
@@ -131,45 +131,9 @@ const trialBalanceData: Record<string, TrialBalancePeriod> = {
   },
 }
 
+
+
 // Define account categories and their components for Chart of Accounts
-const chartOfAccountsCategories = {
-  "Current Assets": [
-    "Cash",
-    "Bank",
-    "Accounts Receivable",
-    "Raw Materials Inventory",
-    "Work-in-Progress",
-    "Finished Goods Inventory",
-    "Prepaid Expenses",
-    "Short Term Investment",
-    "Other Receivables",
-    "CGST Input",
-    "SGST Input",
-    "IGST Input",
-  ],
-  "Fixed Assets": ["Fixed Assets", "Accumulated Depreciation"],
-  "Current Liabilities": [
-    "Accounts Payable",
-    "Short Term Loans",
-    "Taxes Payable",
-    "Accrued Expenses",
-    "CGST Output",
-    "SGST Output",
-    "IGST Output",
-  ],
-  "Long Term Liabilities": ["Long Term Loans", "Bonds Payable", "Deferred Tax Liabilities"],
-  Equity: ["Capital", "Retained Earnings", "Additional Paid-in Capital"],
-  Revenue: ["Sales Revenue", "Service Revenue", "Interest Income", "Other Income"],
-  "Cost of Goods Sold": ["Direct Materials", "Direct Labor", "Manufacturing Overhead"],
-  "Operating Expenses": [
-    "Salary Expenses",
-    "Rent Expense",
-    "Utilities Expenses",
-    "Depreciation Expense",
-    "Marketing Expense",
-  ],
-  "Other Expenses": ["Interest Expense", "Tax Expense", "Loss on Sale of Assets"],
-}
 
 // Define overhead categories for expense accounts
 const overheadCategories: Record<string, "Direct Overhead" | "Indirect Overhead"> = {
@@ -193,6 +157,33 @@ const overheadCategories: Record<string, "Direct Overhead" | "Indirect Overhead"
   "Telephone Expense": "Indirect Overhead",
   "Factory Maintenance": "Direct Overhead",
   "Water Expense": "Indirect Overhead",
+}
+
+const accountParentCategoryMapper = {
+  assests: ["Cash",
+    "Bank",
+    "Accounts Receivable",
+    "Raw Materials Inventory",
+    "Work-in-Progress",
+    "Finished Goods Inventory",
+    "Prepaid Expenses",
+    "Short Term Investment",
+    "Other Receivables",
+    "CGST Input",
+    "SGST Input",
+    "IGST Input",
+    "Fixed Assets", "Accumulated Depreciation", "Other Assets"],
+  liabilities: ["Accounts Payable",
+    "Short Term Loans",
+    "Bank Overdrafts",
+    "GST Payable",
+    "Accrued Expenses",
+    "Unearned Revenue",
+    "Other Current Liabilities",
+    "CGST Output",
+    "SGST Output",
+    "IGST Output", "Long-term Liabilities"],
+  equity: ["Capital", "Retained Earnings"],
 }
 
 // Define account categories for Balance Sheet
@@ -256,7 +247,7 @@ const profitAndLossAccountCategories = {
 }
 
 export function GeneralLedger() {
-  const { accounts, trialBalance = [] } = useFinance()
+  const { accounts } = useFinance()
   const { data, deleteItem: deleteJournalEntry } = useJournalContext()
   const journalEntries = useMemo(() => {
     return data.map(item => {
@@ -276,6 +267,180 @@ export function GeneralLedger() {
       })
     })
   }, [data])
+
+  //debitNature and debitAccount is positive
+  //creditNature and 
+
+  const debitNature = [
+    "Cash",
+    "Bank",
+    "Accounts Receivable",
+    "Raw Materials Inventory",
+    "Work-in-Progress",
+    "Finished Goods Inventory",
+    "Prepaid Expenses",
+    "Short Term Investment",
+    "Other Receivables",
+    "CGST Input",
+    "SGST Input",
+    "IGST Input",
+    "Fixed Assets",
+    "Accumulated Depreciation",
+    "Direct Materials",
+    "Direct Labor",
+    "Manufacturing Overhead",
+    "Salary Expenses",
+    "Rent Expense",
+    "Utilities Expenses",
+    "Depreciation Expense",
+    "Marketing Expense",
+    "Interest Expense", "Tax Expense", "Loss on Sale of Assets"
+  ], creditNature = ["Accounts Payable",
+    "Short Term Loans",
+    "Taxes Payable",
+    "Accrued Expenses",
+    "CGST Output",
+    "SGST Output",
+    "IGST Output",
+    "Long Term Loans", "Bonds Payable", "Deferred Tax Liabilities",
+    "Sales Revenue", "Service Revenue", "Interest Income", "Other Income",
+    "Capital", "Retained Earnings", "Additional Paid-in Capital"
+  ]
+
+  const accountParentCategoryMapper = {
+    assests: ["Cash",
+      "Bank",
+      "Accounts Receivable",
+      "Raw Materials Inventory",
+      "Work-in-Progress",
+      "Finished Goods Inventory",
+      "Prepaid Expenses",
+      "Short Term Investment",
+      "Other Receivables",
+      "CGST Input",
+      "SGST Input",
+      "IGST Input",
+      "Fixed Assets", "Accumulated Depreciation", "Other Assets"],
+    liabilities: ["Accounts Payable",
+      "Short Term Loans",
+      "Bank Overdrafts",
+      "GST Payable",
+      "Accrued Expenses",
+      "Unearned Revenue",
+      "Other Current Liabilities",
+      "CGST Output",
+      "SGST Output",
+      "IGST Output", "Long-term Liabilities"],
+    expenses: ["Salary Expenses"],
+    equity: ["Capital", "Retained Earnings"],
+  }
+
+  const chartOfAccountsCategories = {
+    "Current Assets": [
+      "Cash",
+      "Bank",
+      "Accounts Receivable",
+      "Raw Materials Inventory",
+      "Work-in-Progress",
+      "Finished Goods Inventory",
+      "Prepaid Expenses",
+      "Short Term Investment",
+      "Other Receivables",
+      "CGST Input",
+      "SGST Input",
+      "IGST Input",
+    ],
+    "Fixed Assets": ["Fixed Assets", "Accumulated Depreciation"],
+    "Current Liabilities": [
+      "Accounts Payable",
+      "Short Term Loans",
+      "Taxes Payable",
+      "Accrued Expenses",
+      "CGST Output",
+      "SGST Output",
+      "IGST Output",
+    ],
+    "Long Term Liabilities": ["Long Term Loans", "Bonds Payable", "Deferred Tax Liabilities"],
+    Equity: ["Capital", "Retained Earnings", "Additional Paid-in Capital"],
+    Revenue: ["Sales Revenue", "Service Revenue", "Interest Income", "Other Income"],
+    "Cost of Goods Sold": ["Direct Materials", "Direct Labor", "Manufacturing Overhead"],
+    "Operating Expenses": [
+      "Salary Expenses",
+      "Rent Expense",
+      "Utilities Expenses",
+      "Depreciation Expense",
+      "Marketing Expense",
+    ],
+    "Other Expenses": ["Interest Expense", "Tax Expense", "Loss on Sale of Assets"],
+  }
+
+  const getAccountType = (account: string): string => {
+    const res = Object.entries(chartOfAccountsCategories).find(([key, value]) => {
+      return value.includes(account)
+    })
+    return getChildObject(res, "0", "")
+  }
+
+  const getParentAccount = (account: string): string => {
+    const typeMapper: Record<string, string> = {
+      "assests": "Assest",
+      "liabilities": "Liability",
+      "equity": "Equity",
+      "revenue": "Revenue",
+      "expenses": "Expense"
+    }
+    const res = Object.entries(accountParentCategoryMapper).find(([key, value]) => {
+      return value.includes(account)
+    })
+    return typeMapper[getChildObject(res, "0", '')] || ""
+  }
+
+
+  const trialBalance = useMemo(() => {
+    return data.map(item => {
+      const tempItem = { account: item.debitAccount, accountType: getParentAccount(item.debitAccount), debit: 0, credit: 0 }
+      if (debitNature.includes(item.debitAccount)) {
+        tempItem.debit = item.amount;
+      } else {
+        tempItem.credit = item.amount
+      }
+      return tempItem;
+    })
+  }, [data])
+
+  const getCummulativeCount = (refObject: any[]) => {
+    return refObject.reduce((acc, curr) => {
+      acc += getChildObject(curr, "amount", 0)
+      return acc;
+    }, 0)
+  }
+
+  const sampleAccount = useMemo(() => {
+    const categoryMapper: Record<string, any[]> = {}
+
+    data.forEach(item => {
+      const account = item.debitAccount
+      const accountType = getAccountType(account)
+      if (!categoryMapper[accountType]) {
+        categoryMapper[accountType] = []
+      }
+      categoryMapper[accountType].push({ ...item, accountType, account })
+    })
+
+    const res: any[] = []
+
+    Object.keys(categoryMapper).forEach((category, index) => {
+      const accountType = getChildObject(categoryMapper, `${category}.0.accountType`, "");
+      const account = getChildObject(categoryMapper, `${category}.0.account`, "")
+      res.push({
+        id: index, name: category, type: getParentAccount(account), balance: getCummulativeCount(categoryMapper[category]), parentId: "1000"
+      })
+    })
+
+    return res;
+  }, [data])
+
+
   const [activeTab, setActiveTab] = useState("journal-entries")
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
@@ -1700,12 +1865,6 @@ export function GeneralLedger() {
             className="data-[state=active]:bg-white dark:data-[state=active]:bg-[#0f1729] data-[state=active]:text-[#1b84ff] data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff]"
           >
             Expense Summary
-          </TabsTrigger>
-          <TabsTrigger
-            value="debit-credit-notes"
-            className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff] data-[state=active]:shadow-none h-12 px-4 font-medium text-muted-foreground data-[state=active]:text-[#1b84ff] data-[state=active]:bg-white dark:data-[state=active]:bg-[#0f1729]"
-          >
-            Debit/Credit Notes
           </TabsTrigger>
         </TabsList>
 
