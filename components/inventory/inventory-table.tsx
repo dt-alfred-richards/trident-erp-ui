@@ -49,7 +49,7 @@ export function InventoryTable({ onAllocate, inventoryData: propInventoryData }:
         return acc;
       }, 0)
     }, [orders])
-  
+
   // This would come from your API in a real application
   const defaultInventoryData = useMemo(() => {
     const products = orders.flatMap(item => getChildObject(item, "products", [])).reduce((acc, curr) => {
@@ -80,7 +80,9 @@ export function InventoryTable({ onAllocate, inventoryData: propInventoryData }:
   }, [defaultInventoryData])
 
   // Filter data based on search term
-  const filteredData = useMemo(() => displayData.filter((item) => item.sku.toLowerCase().includes(searchTerm.toLowerCase())), [displayData])
+  const filteredData = useMemo(() => displayData.filter((item) => item.sku.toLowerCase().includes(searchTerm.toLowerCase())),
+    [displayData, searchTerm])
+
 
   // Sort data if a sort column is selected
   const sortedData = [...filteredData].sort((a, b) => {
