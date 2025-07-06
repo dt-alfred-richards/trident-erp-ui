@@ -135,7 +135,7 @@ export function UpdateProgressDialog({
     return (productionOrders || []).map(item => {
       if (item.inProduction === 0) return null
       return ({
-        assignedTo: "",
+        assignedTo: item.assignedTo,
         completedQuantity: item.produced,
         deadline: item.deadline,
         quantity: item.inProduction,
@@ -392,6 +392,9 @@ export function UpdateProgressDialog({
                 <div className="space-y-1 text-sm">
                   <div>
                     <span className="font-medium">SKU:</span> {selectedOrder.sku}
+                  </div>
+                  <div>
+                    <span className="font-medium">Assigned to:</span> {selectedOrder.assignedTo}
                   </div>
                   <div>
                     <span className="font-medium">Deadline:</span>{" "}
