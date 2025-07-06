@@ -31,6 +31,7 @@ import { convertDate, getChildObject } from "../generic"
 import { Switch } from "../ui/switch"
 import { Employee } from "@/app/hr/hr-context"
 import { DataByTableName } from "../api"
+import { DateInput } from "../ui/reusable-components"
 
 interface OrderItem {
   id: string
@@ -69,7 +70,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
   const [customer] = useState(clientMapper[order.clientId]?.clientId || "")
   const [poNumber] = useState(order.poNumber || "")
   const [poId] = useState(order.poId || "")
-  const [poDate] = useState<Date | undefined>(order.poDate ? new Date(order.poDate) : undefined)
+  const [poDate, setPoDate] = useState<Date | undefined>(undefined)
   const [remarks] = useState(order.remarks || "")
 
   // Editable fields
@@ -80,7 +81,12 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
   useEffect(() => {
     setIsEmployeeChecked(order.isEmployeeChecked)
     setEmployeeReference(order.employeeReferenceId)
+    if (order.poDate) {
+      setPoDate(new Date(order.poDate))
+    }
   }, [order])
+
+
   const [employees, setEmployees] = useState<Employee[]>([])
   const employeeRef = useRef(true)
   const employeeInstance = new DataByTableName("v1_employee")
@@ -130,6 +136,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
   useEffect(() => {
     setShippingAddress(order.shippingAddressId)
   }, [order, contextShippingAddress])
+
   // Initialize order items from order products
   useEffect(() => {
     if (open && order.products) {
@@ -368,7 +375,8 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
                 <Label htmlFor="delivery-date">
                   Delivery Date <span className="text-red-500">*</span>
                 </Label>
-                <Popover>
+                <DateInput placeholder="" selectedDate={expectedDeliveryDate} setState={setExpectedDeliveryDate} />
+                {/* <Popover>
                   <PopoverTrigger asChild>
                     <Button
                       id="delivery-date"
@@ -388,7 +396,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
                       initialFocus
                     />
                   </PopoverContent>
-                </Popover>
+                </Popover> */}
               </div>
 
               {/* Client Selection (Non-editable) */}
@@ -465,12 +473,17 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
               {/* Purchase Order Date (Non-editable) */}
               <div className="space-y-2">
                 <Label htmlFor="po-date">Purchase Order Date</Label>
-                <Input
+                <DateInput
+                  selectedDate={poDate}
+                  placeholder="Purchase order date"
+                  disabled={true}
+                />
+                {/* <Input
                   id="po-date"
                   value={poDate ? convertDate(poDate) : "Not specified"}
                   readOnly
                   className="bg-muted"
-                />
+                /> */}
               </div>
 
               {/* Shipping Address Selection (Editable) */}

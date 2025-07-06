@@ -12,22 +12,23 @@ export type Client = {
     contactPerson: string,
     email: string,
     phoneNumber: string,
-    shippingAddress: string,
+    shippingAddresses: string[],
     clientType: string,
     gstNumber: string,
     panNumber: string,
     createdOn: string,
     modifiedOn: string,
     createdBy: string,
-    modifiedBy: string
+    modifiedBy: string,
+    billingAddress: string
 }
 
 
 type ClientContext = {
     clientMapper: Record<string, Client>,
-    addClient: (client: Client) => Promise<void>
+    addClient: (client: Partial<Client>) => Promise<void>
     refetchContext: VoidFunction,
-    editClient: (data: any, clientId: number | undefined) => Promise<void>,
+    editClient: (data: Partial<Client>, clientId: number | undefined) => Promise<void>,
     deleteClient: (data: Client) => Promise<void>,
     clientProposedPriceMapper: Record<string, ClientProposedPrice[]>,
     addClientProduct: (payload: Partial<ClientProposedPrice>) => Promise<void>,
@@ -108,10 +109,11 @@ export const ClientProvider = ({ children }: { children: ReactNode }) => {
             })
     }
 
-    const editClient = (data: any, clientId: number | undefined) => {
-        return clientInstance.patch({ key: "id", value: clientId }, data).catch(error => {
-            console.log({ error })
-        })
+    const editClient = (data: Partial<Client>, clientId: number | undefined) => {
+        return clientInstance.patch({ key: "id", value: clientId }, data)
+            .then(refetchContext).catch(error => {
+                console.log({ error })
+            })
     }
 
     const deleteClient = (data: Client) => {
@@ -120,11 +122,14 @@ export const ClientProvider = ({ children }: { children: ReactNode }) => {
         })
     }
 
-    const addClient = (client: Client) => {
+    const addClient = (client: Partial<Client>) => {
         const payload = removebasicTypes(client, ["id", "clientId"]);
-        return clientInstance.post(payload).catch(error => {
-            console.log({ error })
-        })
+        return clientInstance.post(payload)
+            .then(() => {
+                fetchData()
+            }).catch(error => {
+                console.log({ error })
+            })
     }
 
     const contextValue = useMemo(() => {

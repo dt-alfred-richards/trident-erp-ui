@@ -123,3 +123,4 @@ export function formatNumberIndian(value: number): string {
         return value.toString();
     }
 }
+

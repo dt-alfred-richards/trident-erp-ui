@@ -16,6 +16,7 @@ type V1ProductionOrder = {
     deadline: Date; // ISO string (e.g., from timestamptz)
     bomId: string;
     sku: string;
+    assignedTo: string,
     status: string;
 } & Partial<Basic>;
 

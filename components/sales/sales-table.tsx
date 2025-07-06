@@ -1,41 +1,39 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
-import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import {
-  Eye,
-  Search,
-  CalendarIcon,
-  Filter,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  ArrowUpRight,
-  Check,
-  Edit,
-  Ban,
-} from "lucide-react"
-import { StatusBadge } from "@/components/common/status-badge"
+import { LogisticsProduct } from "@/app/logistics/shipment-tracking/logistics-context"
+import { ConfirmationDialog } from "@/components/common/confirmation-dialog"
 import { PriorityIndicator } from "@/components/common/priority-indicator"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
-import { format } from "date-fns"
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/common/status-badge"
+import { EditOrderDialog } from "@/components/sales/edit-order-dialog"
 import { OrderSummaryDialog } from "@/components/sales/order-summary-dialog"
 import { TrackOrderDialog } from "@/components/sales/track-order-dialog"
-import { EditOrderDialog } from "@/components/sales/edit-order-dialog"
-import type { OrderStatus } from "@/types/order"
-import { useOrders } from "@/contexts/order-context"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
+import { Input } from "@/components/ui/input"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { ConfirmationDialog } from "@/components/common/confirmation-dialog"
-import { convertDate } from "../generic"
-import { useContextBoilerCode } from "../custom/context-boilercode"
-import { Sale } from "@/contexts/types"
-import { LogisticsProduct } from "@/app/logistics/shipment-tracking/logistics-context"
+import { useOrders } from "@/contexts/order-context"
+import type { OrderStatus } from "@/types/order"
+import { format } from "date-fns"
+import {
+  ArrowUpRight,
+  Ban,
+  CalendarIcon,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Edit,
+  Eye,
+  Filter,
+  Search,
+  X,
+} from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
 import { DataByTableName } from "../api"
+import { convertDate } from "../generic"
 
 export function SalesTable() {
   // Use order context
@@ -77,9 +75,10 @@ export function SalesTable() {
       const matchesId = order.id.toLowerCase().includes(query)
       const matchesCustomer = order.customer.toLowerCase().includes(query)
       const matchesReference = order.reference.toLowerCase().includes(query)
-      const matchesSku = order.products.some((p) => p.sku.toLowerCase().includes(query))
+      const matchesEmployee = order.isEmployeeChecked ? `Emp-${order.employeeReferenceId}`.toLowerCase().includes(query) : ""
+      // const matchesSku = order.products.some((p) => p.sku.toLowerCase().includes(query))
 
-      if (!(matchesId || matchesCustomer || matchesReference || matchesSku)) {
+      if (!(matchesId || matchesCustomer || matchesReference || matchesEmployee)) {
         return false
       }
     }
@@ -205,13 +204,14 @@ export function SalesTable() {
       }
 
       const logisticsInstance = new DataByTableName("v1_logistics");
-      approveOrder(orderToAction).then(() => {
-        return logisticsInstance.post(logisticsPayload)
-      }).then(() => {
-        setOrderToAction(null)
-        refetchContext()
+      approveOrder(orderToAction)
+        .then(() => {
+          return logisticsInstance.post(logisticsPayload)
+        }).then(() => {
+          setOrderToAction(null)
+          refetchContext()
 
-      })
+        })
     }
   }
 

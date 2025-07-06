@@ -37,6 +37,7 @@ import { ClientReference, SaleOrderDetail, ShippingAddress, useOrders, V1Sale } 
 import { getChildObject } from "../generic"
 import { DataByTableName } from "../api"
 import { Employee } from "@/app/hr/hr-context"
+import { DateInput } from "../ui/reusable-components"
 // Mock data for products
 
 // Size SKU options
@@ -79,14 +80,17 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
       gstNumber: item.gstNumber,
       panNumber: item.panNumber,
       references: (referenceMapper[item?.clientId || ""] || []).map(item => item.referenceId),
-      shippingAddresses: getChildObject(shippingAddressMapper, item?.clientId || "", []).map((item: ShippingAddress) => ({
-        id: item.addressId,
-        name: item.name,
-        address: item.address,
-        isDefault: item.isDefault,
-      })),
+      shippingAddresses: (item?.shippingAddresses || []).map((element, index) => {
+        return ({
+          id: index,
+          name: element,
+          address: element,
+          isDefault: element === item.billingAddress,
+        })
+      }),
     }))
-  }, [clientMapper, shippingAddressMapper])
+  }, [clientMapper])
+
   const [orderDate] = useState<Date>(new Date()) // Remove setOrderDate since it's now fixed
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<Date | undefined>(undefined)
   const [clientId, setClientId] = useState("")
@@ -162,6 +166,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
   useEffect(() => {
     if (clientId) {
       const selectedClient = CLIENTS.find((client) => client.id === clientId)
+
       if (selectedClient) {
         setClientName(selectedClient.name)
         setGstNumber(selectedClient.gstNumber)
@@ -171,15 +176,15 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
 
         // Set shipping addresses
         if (selectedClient.shippingAddresses) {
-          setShippingAddresses(selectedClient.shippingAddresses)
+          setShippingAddresses(selectedClient.shippingAddresses as any)
 
           // Auto-select if there's only one address or a default address
           if (selectedClient.shippingAddresses.length === 1) {
-            setSelectedShippingAddressId(selectedClient.shippingAddresses[0].id)
+            setSelectedShippingAddressId(selectedClient.shippingAddresses[0].id + '')
           } else {
             const defaultAddress = selectedClient.shippingAddresses.find((addr) => addr.isDefault)
             if (defaultAddress) {
-              setSelectedShippingAddressId(defaultAddress.id)
+              setSelectedShippingAddressId(defaultAddress.address)
             } else {
               setSelectedShippingAddressId("") // Reset if no default
             }
@@ -310,9 +315,6 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
 
   // Handle final submission after confirmation
   const handleConfirmedSubmit = () => {
-    // Get the selected shipping address details
-    const selectedAddress = shippingAddresses.find((addr) => addr.id === selectedShippingAddressId)
-
     // Generate a new order ID
     const newOrderId = generateOrderId()
 
@@ -326,7 +328,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
       poId,
       poNumber,
       remarks,
-      shippingAddressId: shippingAddress || '',
+      shippingAddressId: selectedShippingAddressId || '',
       referenceId: reference || '',
       status: "pending_approval",
       subtotal,
@@ -414,27 +416,19 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                   <Label htmlFor="delivery-date">
                     Delivery Date <span className="text-red-500">*</span>
                   </Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        id="delivery-date"
-                        variant={"outline"}
-                        className="w-full justify-start text-left font-normal"
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {expectedDeliveryDate ? format(expectedDeliveryDate, "PPP") : <span>Select date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={expectedDeliveryDate}
-                        onSelect={(date) => date && setExpectedDeliveryDate(date)}
-                        disabled={(date) => date < new Date()}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <DateInput
+                    placeholder="Select delivery date"
+                    selectedDate={expectedDeliveryDate}
+                    setState={setExpectedDeliveryDate} />
+                  {/* <Input
+                    placeholder="Select delivery date"
+                    value={expectedDeliveryDate ? expectedDeliveryDate.toISOString().split('T')[0] : ''}
+                    onChange={e => {
+                      const dateStr = e.target.value;
+                      setExpectedDeliveryDate(dateStr ? new Date(dateStr) : undefined);
+                    }}
+                    type='date'
+                  /> */}
                 </div>
 
                 {/* Client Selection */}
@@ -509,28 +503,11 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                 {/* Purchase Order Date */}
                 <div className="space-y-2">
                   <Label htmlFor="po-date">Purchase Order Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button id="po-date" variant={"outline"} className="w-full justify-start text-left font-normal">
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {poDate ? format(poDate, "PPP") : <span>Select date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={poDate}
-                        onSelect={setPoDate}
-                        initialFocus
-                        disabled={(date) => date > orderDate}
-                        footer={
-                          <p className="text-xs text-center text-muted-foreground p-2">
-                            Purchase Order Date cannot be after Order Date
-                          </p>
-                        }
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <DateInput
+                    placeholder="Select po date"
+                    selectedDate={poDate}
+                    setState={setPoDate}
+                  />
                 </div>
               </div>
 
@@ -570,9 +547,38 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                     placeholder="Enter PO Number"
                   />
                 </div>
-
-                {/* Shipping Address Selection */}
                 <div className="space-y-2">
+                  <Label htmlFor="shipping-address">
+                    Shipping Address {shippingAddresses.length > 0 && <span className="text-red-500">*</span>}
+                  </Label>
+                  <Select
+                    value={selectedShippingAddressId}
+                    onValueChange={setSelectedShippingAddressId}
+                    disabled={shippingAddresses.length === 0}
+                  >
+                    <SelectTrigger id="shipping-address">
+                      <SelectValue
+                        placeholder={
+                          shippingAddresses.length === 0 ? "Select a client first" : "Select shipping address"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {shippingAddresses.map((address) => (
+                        <SelectItem key={address.address + address.id} value={address.address}>
+                          {address.name} {address.isDefault && "(Default)"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedShippingAddressId && (
+                    <div className="mt-2 text-xs text-muted-foreground whitespace-pre-line border p-2 rounded">
+                      {shippingAddresses.find((addr) => addr.address === selectedShippingAddressId)?.address}
+                    </div>
+                  )}
+                </div>
+                {/* Shipping Address Selection */}
+                {/* <div className="space-y-2">
                   <Label htmlFor="shipping-address">
                     Shipping Address {shippingAddresses.length > 0 && <span className="text-red-500">*</span>}
                   </Label>
@@ -583,7 +589,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                     placeholder="Provide shipping address"
                     className="min-h-[80px]"
                   />
-                </div>
+                </div> */}
               </div>
             </div>
 

@@ -25,8 +25,9 @@ export type Client = {
   contactPerson: string,
   email: string,
   phoneNumber: string,
-  shippingAddress: string,
+  shippingAddresses: string[],
   clientType: string,
+  billingAddress: string,
   gstNumber: string,
   panNumber: string,
   createdOn: string,
@@ -269,6 +270,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
           employeeReferenceId: item.employeeReferenceId,
           shippingAddressId: item.shippingAddressId,
           total: item.total,
+          poDate: item.poDate,
           statusHistory: _eventsLogger.filter((i: EventLogger) => i.tableName === "v1_sales" && i.tableId === item.id).map((item: EventLogger) => ({
             timestamp: item.createdOn,
             status: item.fieldValue,
@@ -328,9 +330,11 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 
   // Reject an order
   const rejectOrder = (orderId: string) => {
-    return saleInstance.patch({ key: "sale_id", value: orderId }, { status: "cancelled" }).catch(error => {
-      console.log({ error })
-    }).then(fetchData)
+    return saleInstance.patch({ key: "sale_id", value: orderId }, { status: "cancelled" })
+      .then(fetchData)
+      .catch(error => {
+        console.log({ error })
+      }).then(fetchData)
   }
 
   // Add the cancelOrder implementation in the OrderProvider

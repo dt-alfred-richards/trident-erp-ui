@@ -376,7 +376,7 @@ export function ClientViewDialog({ open, onOpenChange, client }: ClientViewDialo
                   <p className="text-sm text-muted-foreground flex items-center gap-1">
                     <MapPinIcon className="h-3 w-3" /> Address
                   </p>
-                  <p className="font-medium">{client?.shippingAddress}</p>
+                  <p className="font-medium">{client?.billingAddress || ''}</p>
                 </div>
               </CardContent>
             </Card>

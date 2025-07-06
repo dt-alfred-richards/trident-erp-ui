@@ -133,7 +133,7 @@ export function LoginForm() {
                 "location": `${[routerInfo.city, routerInfo.country].filter(item => item).join(",")}`,
                 "deviceInfo": `${result.browser?.name || ""} on ${result.os?.name || ""}`
             }
-            login(payload, formData.rememberMe)
+            return login(payload, formData.rememberMe)
         } catch (error) {
             console.error("Login error:", error)
             setFormError("Authentication failed. Please check your credentials.")
@@ -191,33 +191,6 @@ export function LoginForm() {
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                 </div>
-
-                {/* Password requirements checklist */}
-                {/* {(passwordFocused || formData.password) && (
-                    <div className="mt-2 rounded-md bg-slate-50 p-3 dark:bg-slate-700">
-                        <p className="mb-2 text-xs font-medium text-slate-700 dark:text-slate-300">Password requirements:</p>
-                        <ul className="space-y-1 text-xs">
-                            {PASSWORD_REQUIREMENTS.map((requirement) => (
-                                <li key={requirement.id} className="flex items-center">
-                                    {validations[requirement.id] ? (
-                                        <CheckCircle2 className="mr-2 h-3 w-3 text-green-500" />
-                                    ) : (
-                                        <XCircle className="mr-2 h-3 w-3 text-red-500" />
-                                    )}
-                                    <span
-                                        className={
-                                            validations[requirement.id]
-                                                ? "text-green-700 dark:text-green-400"
-                                                : "text-slate-600 dark:text-slate-400"
-                                        }
-                                    >
-                                        {requirement.label}
-                                    </span>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                )} */}
             </div>
 
             <div className="flex items-center space-x-2">

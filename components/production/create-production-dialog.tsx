@@ -32,6 +32,7 @@ import { useOrders } from "@/contexts/order-context"
 import { BomAndComponent, MaterialOptions, useBomContext } from "../bom/bom-context"
 import { useProduction } from "./production-context"
 import { getChildObject } from "../generic"
+import { DateInput } from "../ui/reusable-components"
 
 interface CreateProductionDialogProps {
   open: boolean
@@ -58,13 +59,13 @@ const materialCategoryMap: Record<string, string> = {
 }
 
 export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProductionDialogProps) {
-  const { clientProposedProductMapper, productSkuMapper } = useOrders()
+  const { clientProposedProductMapper, productSkuMapper, clientMapper } = useOrders()
   const { createProductionOrder, refetch, updateProductionOrder } = useProduction()
   const { bom = [], materialOptions = [] } = useBomContext()
   const [quantity, setQuantity] = useState("")
   const [selectedSku, setSelectedSku] = useState("")
   const [assignedTo, setAssignedTo] = useState("")
-  const [date, setDate] = useState<Date | null>(null)
+  const [date, setDate] = useState<Date | undefined>(undefined)
   const [openDatePicker, setOpenDatePicker] = useState(false)
   const [bomComponents, setBomComponents] = useState<BomComponentWithAvailability[]>([])
   const [bomId, setBomId] = useState<string>("")
@@ -118,7 +119,9 @@ export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProduc
   }, [clientProposedProductMapper])
 
   const existingProduction = selectedSku === "500ml" ? 2000 : selectedSku === "1000ml" ? 1000 : 0
-  const teamMembers = ["John D.", "Sarah M.", "Mike T.", "Lisa R.", "David K."]
+  const teamMembers = useMemo(() => {
+    return Array.from(new Set(Object.values(clientMapper).map(item => item.name)))
+  }, [clientMapper])
 
   // Material-type mapping for default types
   const materialTypeMap: Record<string, string[]> = {
@@ -182,18 +185,19 @@ export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProduc
     e.preventDefault()
     setIsSubmitting(true)
 
-    if (!createProductionOrder || !date || !refetch || !updateProductionOrder) return
+    const bomId = getChildObject(bomComponents, `0.bomId`, "")
 
-    Promise.allSettled(
-      bomComponents.map(item => createProductionOrder({
-        bomId: item.bomId,
-        deadline: date,
-        productId: selectedSku,
-        sku: productSkuMapper[selectedSku],
-        inProduction: parseInt(quantity),
-        quantity: parseInt(quantity)
-      }))
-    ).then(() => {
+    if (!createProductionOrder || !date || !bomId || !refetch || !updateProductionOrder) return
+    
+    createProductionOrder({
+      bomId: bomId,
+      deadline: date,
+      assignedTo,
+      productId: selectedSku,
+      sku: productSkuMapper[selectedSku],
+      inProduction: parseInt(quantity),
+      quantity: parseInt(quantity)
+    }).then(_ => {
       refetch()
       onOpenChange(false)
       setSelectedSku("")
@@ -261,26 +265,23 @@ export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProduc
                   {/* Deadline Date Picker */}
                   <div className="space-y-2">
                     <Label htmlFor="deadline">Deadline</Label>
-                    <Popover open={openDatePicker} onOpenChange={setOpenDatePicker}>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className="w-full justify-start text-left font-normal" id="deadline">
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {date ? format(date, "PPP") : <span>Pick a date</span>}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={date}
-                          onSelect={(date) => {
-                            setDate(date)
-                            setOpenDatePicker(false)
-                          }}
-                          disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <DateInput placeholder="" selectedDate={date} setState={setDate} />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="assignedTo">Assign To</Label>
+                    <Select value={assignedTo} onValueChange={setAssignedTo}>
+                      <SelectTrigger id="assignedTo">
+                        <SelectValue placeholder="Select team member" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {teamMembers.map((member) => (
+                          <SelectItem key={member} value={member}>
+                            {member}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </CardContent>
