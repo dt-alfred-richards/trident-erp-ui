@@ -246,8 +246,8 @@ export function CreateBomDialog({ open, onOpenChange }: CreateBomDialogProps) {
                             <SelectValue placeholder="Select material" />
                           </SelectTrigger>
                           <SelectContent>
-                            {materialOptions.map((item) => (
-                              <SelectItem key={item.name} value={item.materialId}>
+                            {materialOptions.map((item, idx) => (
+                              <SelectItem key={item.name + idx} value={item.materialId}>
                                 {item.name}
                               </SelectItem>
                             ))}

@@ -4,31 +4,30 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { IndianRupee, CreditCard, Building, Receipt } from "lucide-react"
 import { useFinance } from "@/contexts/finance-context"
-import { useState } from "react"
-import { Input } from "../ui/input"
-import { Label } from "../ui/label"
+import { useMemo, useState } from "react"
+import { formatNumberIndian, formatRelativeTime } from "../generic"
 
 export function FinanceOverview() {
   const { journalEntries, invoices, bills, accounts } = useFinance()
-  const [isJournalEntryFormOpen, setIsJournalEntryFormOpen] = useState(false)
-  const [isInvoiceFormOpen, setIsInvoiceFormOpen] = useState(false)
 
   // Calculate financial metrics
-  const totalRevenue = accounts
+  const totalRevenue = useMemo(() => accounts
     .filter((account) => account.type === "Revenue")
     .reduce((sum, account) => sum + account.balance, 0)
+    , [accounts])
 
-  const totalReceivables = invoices.reduce((sum, inv) => sum + inv.balance, 0)
+  const totalReceivables = useMemo(() => invoices.reduce((sum, inv) => sum + inv.balance, 0), [invoices])
 
-  const totalPayables = bills.reduce((sum, bill) => sum + bill.balance, 0)
+  const totalPayables = useMemo(() => bills.reduce((sum, bill) => sum + bill.balance, 0), [bills])
 
-  const netProfit =
-    totalRevenue -
-    accounts.filter((account) => account.type === "Expense").reduce((sum, account) => sum + account.balance, 0)
+  const netProfit = useMemo(() => {
+    return totalRevenue -
+      accounts.filter((account) => account.type === "Expense").reduce((sum, account) => sum + account.balance, 0)
+  }, [accounts])
 
   // Group receivables by age
   const today = new Date()
-  const accountsReceivableData = [
+  const accountsReceivableData = useMemo(() => [
     {
       name: "Current",
       value: invoices.filter((inv) => new Date(inv.dueDate) >= today).reduce((sum, inv) => sum + inv.balance, 0),
@@ -73,7 +72,7 @@ export function FinanceOverview() {
         })
         .reduce((sum, inv) => sum + inv.balance, 0),
     },
-  ]
+  ], [invoices])
 
   // Group payables by age
   const accountsPayableData = [
@@ -149,7 +148,7 @@ export function FinanceOverview() {
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
                 <div className="flex items-baseline gap-2">
-                  <h3 className="text-2xl font-bold">₹{(totalRevenue / 1000000).toFixed(1)}M</h3>
+                  <h3 className="text-2xl font-bold">{`₹${formatNumberIndian((totalRevenue / 1000000))}`}</h3>
                 </div>
               </div>
               <div className="rounded-full p-3 bg-green-500/10">
@@ -181,7 +180,7 @@ export function FinanceOverview() {
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">Accounts Payable</p>
                 <div className="flex items-baseline gap-2">
-                  <h3 className="text-2xl font-bold">₹{(totalPayables / 1000000).toFixed(1)}M</h3>
+                  <h3 className="text-2xl font-bold">₹{formatNumberIndian((totalPayables / 1000000))}</h3>
                 </div>
               </div>
               <div className="rounded-full p-3 bg-amber-500/10">
@@ -197,7 +196,7 @@ export function FinanceOverview() {
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">Net Profit</p>
                 <div className="flex items-baseline gap-2">
-                  <h3 className="text-2xl font-bold">₹{(netProfit / 1000000).toFixed(1)}M</h3>
+                  <h3 className="text-2xl font-bold">₹{formatNumberIndian((netProfit / 1000000))}</h3>
                 </div>
               </div>
               <div className="rounded-full p-3 bg-purple-500/10">
@@ -232,38 +231,38 @@ export function FinanceOverview() {
               </TabsList>
               <TabsContent value="receivables" className="pt-4">
                 <div className="space-y-4">
-                  {accountsReceivableData.map((item) => (
-                    <div key={item.name} className="flex items-center justify-between">
+                  {accountsReceivableData.map((item, idx) => (
+                    <div className="flex items-center justify-between" key={`${idx}-${item.name}`}>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full bg-primary"></div>
                         <span>{item.name}</span>
                       </div>
-                      <span className="font-medium">₹{(item.value / 1000000).toFixed(2)}M</span>
+                      <span className="font-medium">₹{formatNumberIndian((item.value / 1000000))}</span>
                     </div>
                   ))}
                   <div className="flex items-center justify-between pt-2 border-t">
                     <span className="font-semibold">Total</span>
                     <span className="font-semibold">
-                      ₹{(accountsReceivableData.reduce((acc, item) => acc + item.value, 0) / 1000000).toFixed(2)}M
+                      ₹{formatNumberIndian((accountsReceivableData.reduce((acc, item) => acc + item.value, 0) / 1000000))}
                     </span>
                   </div>
                 </div>
               </TabsContent>
               <TabsContent value="payables" className="pt-4">
                 <div className="space-y-4">
-                  {accountsPayableData.map((item) => (
-                    <div key={item.name} className="flex items-center justify-between">
+                  {accountsPayableData.map((item, idx) => (
+                    <div className="flex items-center justify-between" key={`${item.name}-${idx}`}>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full bg-primary"></div>
                         <span>{item.name}</span>
                       </div>
-                      <span className="font-medium">₹{(item.value / 1000000).toFixed(2)}M</span>
+                      <span className="font-medium">₹{formatNumberIndian((item.value / 1000000))}</span>
                     </div>
                   ))}
                   <div className="flex items-center justify-between pt-2 border-t">
                     <span className="font-semibold">Total</span>
                     <span className="font-semibold">
-                      ₹{(accountsPayableData.reduce((acc, item) => acc + item.value, 0) / 1000000).toFixed(2)}M
+                      ₹{formatNumberIndian((accountsPayableData.reduce((acc, item) => acc + item.value, 0) / 1000000))}
                     </span>
                   </div>
                 </div>
@@ -278,41 +277,17 @@ export function FinanceOverview() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="border-b pb-2">
-                <div className="flex justify-between items-center">
-                  <div className="font-medium">JE-2023-0145</div>
-                  <div className="text-sm text-muted-foreground">₹125,000</div>
-                </div>
-                <div className="text-sm text-muted-foreground">Sales Revenue - Acme Corp</div>
-              </div>
-              <div className="border-b pb-2">
-                <div className="flex justify-between items-center">
-                  <div className="font-medium">JE-2023-0144</div>
-                  <div className="text-sm text-muted-foreground">₹78,500</div>
-                </div>
-                <div className="text-sm text-muted-foreground">Raw Material Purchase</div>
-              </div>
-              <div className="border-b pb-2">
-                <div className="flex justify-between items-center">
-                  <div className="font-medium">JE-2023-0143</div>
-                  <div className="text-sm text-muted-foreground">₹45,200</div>
-                </div>
-                <div className="text-sm text-muted-foreground">Utility Expenses</div>
-              </div>
-              <div className="border-b pb-2">
-                <div className="flex justify-between items-center">
-                  <div className="font-medium">JE-2023-0142</div>
-                  <div className="text-sm text-muted-foreground">₹92,750</div>
-                </div>
-                <div className="text-sm text-muted-foreground">Equipment Maintenance</div>
-              </div>
-              <div className="border-b pb-2">
-                <div className="flex justify-between items-center">
-                  <div className="font-medium">JE-2023-0141</div>
-                  <div className="text-sm text-muted-foreground">₹134,200</div>
-                </div>
-                <div className="text-sm text-muted-foreground">Employee Salaries</div>
-              </div>
+              {
+                journalEntries.slice(0, 5).map((item, idx) => {
+                  return (<div className="border-b pb-2" key={`${item.id}-${idx}`}>
+                    <div className="flex justify-between items-center">
+                      <div className="font-medium">{`JE-${item.id}`}</div>
+                      <div className="text-sm text-muted-foreground">{`₹${item.amount}`}</div>
+                    </div>
+                    <div className="text-sm text-muted-foreground">{item.debitAccount}</div>
+                  </div>)
+                })
+              }
             </div>
           </CardContent>
         </Card>
@@ -325,27 +300,17 @@ export function FinanceOverview() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="border-b pb-2">
-                <div className="flex justify-between items-center">
-                  <div className="font-medium">INV-2023-0089</div>
-                  <div className="text-sm text-muted-foreground">₹185,000</div>
-                </div>
-                <div className="text-sm text-muted-foreground">Due in 5 days</div>
-              </div>
-              <div className="border-b pb-2">
-                <div className="flex justify-between items-center">
-                  <div className="font-medium">INV-2023-0088</div>
-                  <div className="text-sm text-muted-foreground">₹92,750</div>
-                </div>
-                <div className="text-sm text-muted-foreground">Due in 7 days</div>
-              </div>
-              <div className="border-b pb-2">
-                <div className="flex justify-between items-center">
-                  <div className="font-medium">INV-2023-0087</div>
-                  <div className="text-sm text-muted-foreground">₹134,200</div>
-                </div>
-                <div className="text-sm text-muted-foreground">Due in 12 days</div>
-              </div>
+              {
+                invoices.filter(item => item.status === "Open").map((item, idx) => {
+                  return (<div className="border-b pb-2" key={`${item.id}-${idx}`}>
+                    <div className="flex justify-between items-center">
+                      <div className="font-medium">{`INV-${item.id}`}</div>
+                      <div className="text-sm text-muted-foreground">{`₹${item.amount}`}</div>
+                    </div>
+                    <div className="text-sm text-muted-foreground">{formatRelativeTime(new Date(item.dueDate))}</div>
+                  </div>)
+                })
+              }
             </div>
           </CardContent>
         </Card>

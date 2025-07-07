@@ -141,6 +141,7 @@ export function ProductionDashboard() {
           open={detailsDialogOpen}
           onOpenChange={setDetailsDialogOpen}
           orderId={selectedOrderId}
+          order={productionOrders.find(item => item.id === selectedOrderId)}
         />
       )}
 

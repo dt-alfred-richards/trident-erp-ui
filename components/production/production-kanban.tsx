@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input"
 import { ConfirmationDialog } from "@/components/common/confirmation-dialog"
 import { progressHistoryStore } from "./update-progress-dialog"
 import { useProduction } from "./production-context"
+import { useInventory } from "@/app/inventory-context"
 import { useOrders } from "@/contexts/order-context"
 import { convertDate } from "../generic"
 
@@ -29,6 +30,10 @@ interface ProductionKanbanProps {
 }
 
 export function ProductionKanban({ onViewDetails, onUpdateProgress }: ProductionKanbanProps) {
+  // const { productionOrders } = useProductionStore()
+  const { clientProposedProductMapper } = useOrders()
+  const { productionOrders: contextProductionOrder } = useProduction()
+  const { inventory } = useInventory()
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false)
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
   const [unitsCompleted, setUnitsCompleted] = useState<number>(0)
@@ -38,43 +43,56 @@ export function ProductionKanban({ onViewDetails, onUpdateProgress }: Production
   const [progressPercentage, setProgressPercentage] = useState<number>(0)
   const [updateConfirmDialogOpen, setUpdateConfirmDialogOpen] = useState(false)
   const [previousCompletedUnits, setPreviousCompletedUnits] = useState<number>(0)
-  const { productionOrders: contextOrders = [] } = useProduction()
-  const { clientProposedProductMapper } = useOrders()
-  const productNameMapper = useMemo(() => {
-    return Object.values(clientProposedProductMapper).flat().reduce((acc: Record<string, string>, curr) => {
-      if (!acc[curr.productId || ""]) acc[curr.productId || ""] = curr.name;
-      return acc;
-    }, {})
-  }, [clientProposedProductMapper])
 
-  const calculateProgressByQuantity = (produced: number, quantity: number): number => {
-    if (!quantity || quantity === 0) return 0;
-    const progress = (produced / quantity) * 100;
-    return Math.min(Math.max(progress, 0), 100); // Clamp between 0–100
-  };
+  const getProductInfo = (sku: string) => {
+    return Object.values(clientProposedProductMapper).flat().find(item => item.sku === sku)
+  }
+
+  const getNumber = (value: string = "") => {
+    return value ? parseInt(value) : 0
+  }
 
   const productionOrders = useMemo(() => {
-    return contextOrders.map(item => {
+    return (contextProductionOrder || [])?.map((item, index) => {
+      const product = getProductInfo(item.sku);
+      const deficit = getNumber(product?.availableQuantity) - getNumber(product?.inProduction)
+
+      const inProduction = getNumber(product?.inProduction);
+      const availableStock = getNumber(product?.availableQuantity);
+
+      const total = inProduction + availableStock;
+      const progress = total > 0 ? (availableStock / total) * 100 : 0;
+
+      const pendingOrders = contextProductionOrder?.filter(item => item.status === "pending").reduce((acc, curr) => {
+        acc += curr.inProduction
+        return acc;
+      }, 0)
+
       return ({
-        id: item.productionOrderId,
-        sku: item.productId,
+        id: item.id + '',
+        sku: item.sku,
+        pendingOrders,
+        inProduction: product?.inProduction || 0,
+        availableStock: product?.availableQuantity || 0,
+        deficit,
+        status: deficit > 0 ? "deficit" : "sufficient",
+        progress,
         quantity: item.quantity,
-        startDate: item.createdOn,
-        deadline: item.deadline,
-        progress: calculateProgressByQuantity(item.produced, item.quantity),
-        status: item.status
+        startDate: item.createdOn || undefined,
+        assignedTo: item?.assignedTo || "",
+        deadline: item.deadline
       })
     })
-  }, [contextOrders])
+  }, [contextProductionOrder])
 
   // Group orders by status
   const columns = useMemo(() => {
-    return ({
+    return {
       inProgress: {
         id: "inProgress",
         title: "In Progress",
         items: productionOrders.filter(
-          (order) => order.status !== "cancelled",
+          (order) => order.progress > 0 && order.progress < 100 && order.status !== "cancelled",
         ),
       },
       completed: {
@@ -87,13 +105,10 @@ export function ProductionKanban({ onViewDetails, onUpdateProgress }: Production
         title: "Cancelled Orders",
         items: productionOrders.filter((order) => order.status === "cancelled"),
       },
-    })
+    }
   }, [productionOrders])
 
-
-  const selectedOrder = useMemo(() => {
-    return productionOrders.find((order) => order.id === selectedOrderId)
-  }, [selectedOrderId])
+  const selectedOrder = productionOrders.find((order) => order.id === selectedOrderId)
 
   // Calculate remaining units and progress percentage
   const totalUnits = selectedOrder?.quantity || 0
@@ -119,7 +134,7 @@ export function ProductionKanban({ onViewDetails, onUpdateProgress }: Production
         // Create an initial history entry if none exists
         progressHistoryStore[orderId] = [
           {
-            timestamp: new Date(order?.startDate || "").toISOString(),
+            timestamp: new Date(order.startDate).toISOString(),
             completedUnits: completed,
             totalUnits: order.quantity,
             progressPercentage: order.progress,
@@ -236,9 +251,9 @@ export function ProductionKanban({ onViewDetails, onUpdateProgress }: Production
                   No {column.title.toLowerCase()}
                 </div>
               ) : (
-                column.items.map((item) => (
+                column.items.map((item, index) => (
                   <Card
-                    key={item.id}
+                    key={`${item.id}-${index}`}
                     className={`border-l-4 ${column.id === "completed"
                       ? "border-l-green-500"
                       : column.id === "cancelled"
@@ -248,7 +263,7 @@ export function ProductionKanban({ onViewDetails, onUpdateProgress }: Production
                   >
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-center">
-                        <CardTitle className="text-base">{productNameMapper[item.sku] || ""}</CardTitle>
+                        <CardTitle className="text-base">{item.sku}</CardTitle>
                         <Badge
                           variant="outline"
                           className={`
@@ -292,6 +307,13 @@ ${column.id === "inProgress"
                       </div>
                     </CardContent>
                     <CardFooter className="flex justify-between pt-0">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Avatar className="h-6 w-6">
+                          <AvatarImage src="/placeholder-user.jpg" alt={item.assignedTo} />
+                          <AvatarFallback>{item.assignedTo.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <span>{item.assignedTo}</span>
+                      </div>
                       <div className="flex gap-1">
                         <Button
                           variant="ghost"

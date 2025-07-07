@@ -1,7 +1,11 @@
 "use client"
 
-import { createContext, useContext, useState, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
 import { toast } from "@/components/ui/use-toast"
+import { useJournalContext } from "@/components/finance/context/journal-context"
+import { useInvoiceContext } from "@/components/finance/context/invoice-context"
+import { useBankAccountContext } from "@/components/finance/context/bank-account-context"
+import { useBillContext } from "@/components/finance/context/bill-context"
 
 // Sample customer data for integration
 const customers = [
@@ -1046,50 +1050,50 @@ const FinanceContext = createContext<FinanceContextType>({
   customers: [],
   suppliers: [],
 
-  addJournalEntry: () => {},
-  updateJournalEntry: () => {},
-  deleteJournalEntry: () => {},
+  addJournalEntry: () => { },
+  updateJournalEntry: () => { },
+  deleteJournalEntry: () => { },
 
-  addAccount: () => {},
-  updateAccount: () => {},
-  deleteAccount: () => {},
+  addAccount: () => { },
+  updateAccount: () => { },
+  deleteAccount: () => { },
 
-  addInvoice: () => {},
-  updateInvoice: () => {},
-  deleteInvoice: () => {},
+  addInvoice: () => { },
+  updateInvoice: () => { },
+  deleteInvoice: () => { },
 
-  addBill: () => {},
-  updateBill: () => {},
-  deleteBill: () => {},
+  addBill: () => { },
+  updateBill: () => { },
+  deleteBill: () => { },
 
-  addBankAccount: () => {},
-  updateBankAccount: () => {},
-  deleteBankAccount: () => {},
+  addBankAccount: () => { },
+  updateBankAccount: () => { },
+  deleteBankAccount: () => { },
 
-  addTransaction: () => {},
-  updateTransaction: () => {},
-  deleteTransaction: () => {},
+  addTransaction: () => { },
+  updateTransaction: () => { },
+  deleteTransaction: () => { },
 
-  addAsset: () => {},
-  updateAsset: () => {},
-  deleteAsset: () => {},
+  addAsset: () => { },
+  updateAsset: () => { },
+  deleteAsset: () => { },
 
-  addCostCenter: () => {},
-  updateCostCenter: () => {},
-  deleteCostCenter: () => {},
+  addCostCenter: () => { },
+  updateCostCenter: () => { },
+  deleteCostCenter: () => { },
 
-  addTaxFiling: () => {},
-  updateTaxFiling: () => {},
-  deleteTaxFiling: () => {},
+  addTaxFiling: () => { },
+  updateTaxFiling: () => { },
+  deleteTaxFiling: () => { },
 
-  addDebitNote: () => {},
-  addCreditNote: () => {},
+  addDebitNote: () => { },
+  addCreditNote: () => { },
 
-  updateTotalReceivables: () => {},
-  decreaseTotalReceivables: () => {},
-  updateTotalPayables: () => {},
-  decreaseTotalPayables: () => {},
-  updateTrialBalance: () => {},
+  updateTotalReceivables: () => { },
+  decreaseTotalReceivables: () => { },
+  updateTotalPayables: () => { },
+  decreaseTotalPayables: () => { },
+  updateTrialBalance: () => { },
 })
 
 // Helper function to generate IDs
@@ -1101,11 +1105,12 @@ const generateId = (prefix: string): string => {
 
 // Provider component
 export function FinanceProvider({ children }: { children: ReactNode }) {
-  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>(sampleJournalEntries)
+  const { data: contextJournalEntries } = useJournalContext()
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([])
   const [accounts, setAccounts] = useState<Account[]>(sampleAccounts)
-  const [invoices, setInvoices] = useState<Invoice[]>(sampleInvoices)
-  const [bills, setBills] = useState<Bill[]>(sampleBills)
-  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>(sampleBankAccounts)
+  const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [bills, setBills] = useState<Bill[]>([])
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>(sampleTransactions)
   const [assets, setAssets] = useState<Asset[]>(sampleAssets)
   const [costCenters, setCostCenters] = useState<CostCenter[]>(sampleCostCenters)
@@ -1115,6 +1120,100 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([])
   const [customersList, setCustomers] = useState<{ id: string; name: string }[]>(customers)
   const [suppliersList, setSuppliers] = useState<{ id: string; name: string }[]>(suppliers)
+
+  const { data: invoiceContext } = useInvoiceContext()
+  const { data: bnkContext } = useBankAccountContext()
+  const { data: billData } = useBillContext()
+
+  const billMemo = useMemo(() => {
+    return billData.map(item => {
+      const items = JSON.parse(item.items) as BillItem[]
+      return ({
+
+        id: item.id,
+        supplier: item.supplier, // Changed from "RawMaterials Ltd"
+        date: item.date,
+        dueDate: item.dueDate,
+        amount: item.amount,
+        balance: item.balance,
+        status: item.status as any,
+        items: items.map((el, index) => {
+          return ({
+            id: `${el.id}-${index}`,
+            description: el.description,
+            quantity: el.quantity,
+            unitPrice: el.unitPrice,
+            amount: el.amount,
+            taxRate: el.taxRate,
+            taxAmount: el.taxAmount,
+          })
+        }),
+      })
+    })
+  }, [billData])
+  const bnk = useMemo(() => {
+    return bnkContext.map(item => {
+      return ({
+        id: item.id + '',
+        name: item.name,
+        bank: item.bank,
+        accountNumber: item.accountNumber,
+        balance: item.balance,
+        type: item.type as any,
+      })
+    })
+  }, [bnkContext])
+  const entries = useMemo(() => {
+    return contextJournalEntries.map(item => {
+      return ({
+        id: item.id,
+        date: item.date,
+        description: item.description,
+        debitAccount: item.debitAccount,
+        creditAccount: item.creditAccount,
+        amount: item.amount,
+        reference: item?.reference || "",
+        status: item.status,
+        transactionType: item.transcationType,
+        gstPercentage: item.gst,
+        partyType: item.partyType,
+        debtorCustomer: item.debtorCustomer,
+      })
+    })
+  }, [contextJournalEntries])
+
+  const inv = useMemo(() => {
+    return invoiceContext.map(item => {
+      const items = JSON.parse(item.items) as InvoiceItem[];
+      return ({
+        id: item.id,
+        customer: item.customer,
+        date: item.date,
+        dueDate: item.dueDate,
+        amount: item.total,
+        balance: 0,
+        status: item.status,
+        items: items.map((el, index) => {
+          return ({
+            id: `${el.id}-${index}`,
+            description: el.description,
+            quantity: el.quantity,
+            unitPrice: el.unitPrice,
+            amount: el.amount,
+            taxRate: el.taxRate,
+            taxAmount: el.taxAmount
+          })
+        })
+      })
+    })
+  }, [invoiceContext])
+
+  useEffect(() => {
+    setJournalEntries(entries as any[])
+    setInvoices(inv as any)
+    setBankAccounts(bnk)
+    setBills(billMemo)
+  }, [entries, inv, bnk, billMemo])
 
   // Function to update trial balance based on journal entry
   const updateTrialBalance = (debitAccount: string, creditAccount: string, amount: number) => {

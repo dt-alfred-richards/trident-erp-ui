@@ -17,16 +17,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useProductionStore } from "@/hooks/use-production-store"
 import { progressHistoryStore } from "./update-progress-dialog"
 import { Clock } from "lucide-react"
+import { useClient } from "@/app/sales/client-list/client-context"
+import { convertDate } from "../generic"
+import { useProduction } from "./production-context"
 
 interface ProductionOrderDetailsProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  orderId: string
+  orderId: string,
+  order: any
 }
 
-export function ProductionOrderDetails({ open, onOpenChange, orderId }: ProductionOrderDetailsProps) {
-  const { getOrderById } = useProductionStore()
-  const order = getOrderById(orderId)
+export function ProductionOrderDetails({ open, onOpenChange, orderId, order }: ProductionOrderDetailsProps) {
+  const { clientMapper } = useClient()
+
+  const getClientType = (name: string) => {
+    return Object.values(clientMapper).find(item => item.name === name)?.clientType || ''
+  }
 
   if (!order) return null
 
@@ -36,10 +43,10 @@ export function ProductionOrderDetails({ open, onOpenChange, orderId }: Producti
 
   // Sample products used data - in a real app, this would come from your data store
   const productsUsed = [
-    { name: "Raw Material A", quantity: "250 units", status: "In Stock" },
-    { name: "Raw Material B", quantity: "150 units", status: "In Stock" },
-    { name: "Packaging", quantity: "100 units", status: "In Stock" },
-    { name: "Labels", quantity: "100 units", status: "Low Stock" },
+    // { name: "Raw Material A", quantity: "250 units", status: "In Stock" },
+    // { name: "Raw Material B", quantity: "150 units", status: "In Stock" },
+    // { name: "Packaging", quantity: "100 units", status: "In Stock" },
+    // { name: "Labels", quantity: "100 units", status: "Low Stock" },
   ]
 
   return (
@@ -84,7 +91,7 @@ export function ProductionOrderDetails({ open, onOpenChange, orderId }: Producti
                 <div>
                   <h4 className="text-sm font-medium text-muted-foreground mb-1">Deadline</h4>
                   <p className="text-lg font-semibold">
-                    {new Date(order.deadline).toLocaleDateString()}
+                    {convertDate(order.deadline)}
                     {isLate ? (
                       <span className="text-sm text-red-500 ml-2">{Math.abs(daysLeft)} days overdue</span>
                     ) : (
@@ -105,7 +112,7 @@ export function ProductionOrderDetails({ open, onOpenChange, orderId }: Producti
                   </Avatar>
                   <div>
                     <p className="font-medium">{order.assignedTo}</p>
-                    <p className="text-sm text-muted-foreground">Production Supervisor</p>
+                    <p className="text-sm text-muted-foreground">{getClientType(order.assignedTo)}</p>
                   </div>
                 </div>
               </div>
@@ -117,9 +124,9 @@ export function ProductionOrderDetails({ open, onOpenChange, orderId }: Producti
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Completion:</span>
-                    <span className="font-medium">{order.progress}%</span>
+                    <span className="font-medium">{order?.progress}%</span>
                   </div>
-                  <Progress value={order.progress} className="h-2" />
+                  <Progress value={order?.progress} className="h-2" />
                 </div>
               </div>
             </CardContent>
@@ -158,7 +165,7 @@ export function ProductionOrderDetails({ open, onOpenChange, orderId }: Producti
                         <div className="flex justify-between items-center">
                           <div className="flex items-center text-sm font-medium">
                             <Clock className="h-3 w-3 mr-1 text-muted-foreground" />
-                            {new Date(entry.timestamp).toLocaleDateString()} at{" "}
+                            {new Date().toLocaleDateString()} at{" "}
                             {new Date(entry.timestamp).toLocaleTimeString()}
                           </div>
                           <div className="text-sm font-semibold">{entry.progressPercentage}%</div>

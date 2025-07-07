@@ -245,7 +245,7 @@ export function HRDashboard() {
 
   const { totalEmployees, attendanceRate, monthlyPayroll, processedSalary, pendingSalaries } = useMemo(() => {
     return {
-      totalEmployees: currentPayrollData.length,
+      totalEmployees: employees.length,
       attendanceRate: "",
       monthlyPayroll: currentPayrollData.reduce((acc: number, curr) => {
         acc += parseInt(curr?.basicSalary || "0") + parseInt(curr?.bonus || "0") - parseInt(curr?.otherDeductions || "0");
@@ -260,7 +260,7 @@ export function HRDashboard() {
         return acc;
       }, 0)
     }
-  }, [currentPayrollData])
+  }, [currentPayrollData, employees])
 
   // Function to add a new attendance record
   const addAttendanceRecord = (newRecord: Omit<AttendanceData, "id">) => {
