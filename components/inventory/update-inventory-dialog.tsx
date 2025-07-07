@@ -60,12 +60,13 @@ export function UpdateInventoryDialog({
 
   // Filter items based on search term
   const filteredItems = useMemo(() => {
+    if (searchTerm.length === 0) return items
     return items.filter(
       (item) =>
         item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (item.category && item.category.toLowerCase().includes(searchTerm.toLowerCase())),
     )
-  }, [items])
+  }, [items, searchTerm])
 
   // Handle selecting an item
   const handleSelectItem = (item: InventoryItem) => {
@@ -151,7 +152,7 @@ export function UpdateInventoryDialog({
           </div>
 
           {/* Search Results */}
-          {searchTerm && (
+          {true && (
             <div className="border rounded-md">
               <ScrollArea className="h-[200px]">
                 <Table>

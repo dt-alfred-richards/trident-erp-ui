@@ -26,7 +26,6 @@ import { useOrders } from "@/contexts/order-context"
 import { getChildObject } from "../generic"
 
 export function BomTable() {
-  const { clientProposedProductMapper } = useOrders()
   // const { boms, deleteBom } = useBomStore()
   const { bom: boms = [], deleteBom, refetch = () => { } } = useBomContext()
   const [searchTerm, setSearchTerm] = useState("")
@@ -51,7 +50,7 @@ export function BomTable() {
         bom.productName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         bom.bomId.toLowerCase().includes(searchTerm.toLowerCase()),
     )
-  }, [displayBoms])
+  }, [displayBoms, searchTerm])
 
   // Calculate pagination
   const indexOfLastItem = currentPage * itemsPerPage

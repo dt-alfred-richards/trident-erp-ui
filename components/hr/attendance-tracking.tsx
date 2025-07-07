@@ -20,6 +20,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import type { AttendanceData } from "./hr-dashboard"
 import { useHrContext } from "@/app/hr/hr-context"
 import { convertDate } from "../generic"
+import { DateInput } from "../ui/reusable-components"
 
 export function AttendanceTracking({
   attendanceData: x,
@@ -56,7 +57,7 @@ export function AttendanceTracking({
 
         return matchesSearch && matchesStatus
       }),
-    [attendanceData, searchQuery, selectedStatus],
+    [attendanceData, searchQuery, selectedStatus, date],
   )
 
   const leaveBalanceData = useMemo(() => {
@@ -163,18 +164,7 @@ export function AttendanceTracking({
 
         <div className="bg-card rounded-lg border shadow-sm p-4">
           <div className="flex flex-wrap items-center gap-3">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9">
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP") : "Select date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <CalendarComponent mode="single" selected={date} onSelect={setDate} initialFocus />
-              </PopoverContent>
-            </Popover>
-
+            <div><DateInput selectedDate={date} setState={setDate} /></div>
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input

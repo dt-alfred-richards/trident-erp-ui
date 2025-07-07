@@ -76,7 +76,6 @@ const initialMaterials = [
 
 // Global materials state (simulating a database)
 // Using a variable outside the component to persist between renders
-
 interface ViewSupplierDialogProps {
   supplier: any
   open: boolean
@@ -324,7 +323,32 @@ export function ViewSupplierDialog({ supplier, open, onOpenChange }: ViewSupplie
       setEditedPrices({})
       setEditedUnits({})
       setHasUnsavedChanges(false)
+    })
+  }
 
+  const saveAllChanges = () => {
+    console.log("Saving all changes to global state")
+    console.log("Local materials before save:", localMaterials)
+
+    // Update the global materials state
+    globalMaterials = [...localMaterials]
+
+    console.log("Global materials after save:", globalMaterials)
+
+    setIsDataSaved(true)
+    setShowSaveSuccess(true)
+
+    // Hide success message after 3 seconds
+    setTimeout(() => {
+      if (isMounted.current) {
+        setShowSaveSuccess(false)
+      }
+    }, 3000)
+
+    toast({
+      title: "Changes saved",
+      description: "All changes have been successfully saved.",
+      variant: "default",
     })
   }
 
@@ -375,8 +399,24 @@ export function ViewSupplierDialog({ supplier, open, onOpenChange }: ViewSupplie
                   <p className="font-medium">{supplier.phone || "Not specified"}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Address</p>
+                  <p className="text-sm text-muted-foreground">Billing Address</p>
                   <p className="font-medium">{supplier.address || "Not specified"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Bank Account</p>
+                  <p className="font-medium">{supplier.bankAccount || "Not specified"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">UPI</p>
+                  <p className="font-medium">{supplier.upi || "Not specified"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">GST</p>
+                  <p className="font-medium">{supplier.gst || "Not specified"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">PAN</p>
+                  <p className="font-medium">{supplier.pan || "Not specified"}</p>
                 </div>
               </div>
             </div>
@@ -527,6 +567,14 @@ export function ViewSupplierDialog({ supplier, open, onOpenChange }: ViewSupplie
               variant="outline"
             >
               Close
+            </Button>
+            <Button
+              onClick={saveAllChanges}
+              disabled={isDataSaved && !hasUnsavedChanges}
+              className={!isDataSaved || hasUnsavedChanges ? "bg-green-600 hover:bg-green-700" : ""}
+            >
+              <Save className="h-4 w-4 mr-2" />
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>

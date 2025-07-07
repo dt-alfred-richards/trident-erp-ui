@@ -18,7 +18,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { AddSupplierDialog } from "./add-supplier-dialog"
 import { ViewSupplierDialog } from "./view-supplier-dialog"
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
-import { useProcurement } from "@/app/procurement/procurement-context"
+import { Suppliers, useProcurement } from "@/app/procurement/procurement-context"
 
 export function SupplierListTab() {
   const { suppliers: contextSuppliers, deleteSupplier } = useProcurement();
@@ -27,7 +27,7 @@ export function SupplierListTab() {
   useEffect(() => {
     setSuppliers(
       contextSuppliers.map(item => ({
-        id: item.supplierId,
+        id: item.supplierId as any,
         name: item.name,
         materialName: "",
         materialType: "",
@@ -37,7 +37,14 @@ export function SupplierListTab() {
         contactPerson: item.contactPerson,
         email: item.email,
         phone: item.phoneNumber,
-      }))
+        bankAccount: item.bankAccount,
+        bankName: item.bankName,
+        gst: item.gst,
+        ifscCode: item.ifscCode,
+        pan: item.pan,
+        phoneNumber: item.phoneNumber,
+        upi: item.upi
+      } as Partial<Suppliers>))
     )
   }, [contextSuppliers])
   const [searchQuery, setSearchQuery] = useState("")

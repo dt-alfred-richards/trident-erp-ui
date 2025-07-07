@@ -15,7 +15,13 @@ export type Suppliers = {
     createdOn: Date,
     modifiedOn: Date,
     createdBy: string,
-    modifiedBy: string
+    modifiedBy: string,
+    bankName: string,
+    ifscCode: string,
+    bankAccount: string,
+    upi: string,
+    gst: string,
+    pan: string;
 }
 
 export type Material = {

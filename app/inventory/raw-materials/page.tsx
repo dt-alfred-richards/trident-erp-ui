@@ -102,6 +102,7 @@ export default function RawMaterialsPage() {
       (material) =>
         (activeCategory === null || material.category === activeCategory) &&
         (material.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          material.material.toLowerCase().includes(searchTerm.toLowerCase()) ||
           material.type?.toLowerCase().includes(searchTerm.toLowerCase())),
     )
 
@@ -408,7 +409,7 @@ export default function RawMaterialsPage() {
                 <Table>
                   <TableHeader className="bg-muted/10">
                     <TableRow>
-                      <TableHead className="w-[40%]">Material Type</TableHead>
+                      <TableHead className="w-[40%]">Material</TableHead>
                       <TableHead className="text-right cursor-pointer" onClick={() => handleSort("quantity")}>
                         <div className="flex items-center justify-end">
                           Quantity

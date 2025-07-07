@@ -16,6 +16,7 @@ import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { PurchaseOrder, PurchaseOrderMaterial, useProcurement } from "@/app/procurement/procurement-context"
+import { DateInput } from "../ui/reusable-components"
 
 interface PurchaseOrderDialogProps {
   open: boolean
@@ -38,7 +39,7 @@ export function PurchaseOrderDialog({ open, onOpenChange, onCreateOrder }: Purch
   const suppliers = useMemo(() => {
     return contextSuppliers.map(item => ({ value: item.supplierId, label: item.name }))
   }, [contextSuppliers])
-  
+
   const materials = useMemo(() => {
     return contextMaterials
       .filter(item => item.supplierId === selectedSupplierId)
@@ -113,8 +114,6 @@ export function PurchaseOrderDialog({ open, onOpenChange, onCreateOrder }: Purch
     })
   }
 
-  console.log({ selectedSupplierId })
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[900px] max-h-[90vh] flex flex-col">
@@ -149,30 +148,7 @@ export function PurchaseOrderDialog({ open, onOpenChange, onCreateOrder }: Purch
 
                       <div className="space-y-2">
                         <Label htmlFor="due-date">Due Date</Label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              id="due-date"
-                              variant="outline"
-                              className={cn(
-                                "w-full justify-start text-left font-normal",
-                                !dueDate && "text-muted-foreground",
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {dueDate ? format(dueDate, "PPP") : "Select date"}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={dueDate}
-                              onSelect={setDueDate}
-                              initialFocus
-                              disabled={(date) => date < new Date()}
-                            />
-                          </PopoverContent>
-                        </Popover>
+                        <DateInput selectedDate={dueDate} setState={setDueDate} />
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">

@@ -19,18 +19,21 @@ interface AddSupplierDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onAdd: (newSupplier: any) => void
-  existingIds: string[]
 }
 
-export function AddSupplierDialog({ open, onOpenChange, onAdd, existingIds }: AddSupplierDialogProps) {
-  const { addSupplier } = useProcurement()
+export function AddSupplierDialog({ open, onOpenChange, onAdd }: AddSupplierDialogProps) {
   const [formData, setFormData] = useState({
-    id: "",
     name: "",
     contactPerson: "",
     email: "",
     phone: "",
-    address: "",
+    billingAddress: "",
+    bankName: "",
+    ifscCode: "",
+    bankAccount: "",
+    upi: "",
+    gst: "",
+    pan: "",
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -52,19 +55,38 @@ export function AddSupplierDialog({ open, onOpenChange, onAdd, existingIds }: Ad
       newErrors.name = "Supplier name is required"
     }
 
+    // Validate contact person
+    if (!formData.contactPerson.trim()) {
+      newErrors.contactPerson = "Contact person is required"
+    }
+
+    // Validate phone
+    if (!formData.phone.trim()) {
+      newErrors.phone = "Phone number is required"
+    } else if (!/^[+]?[\d\s-]+$/.test(formData.phone)) {
+      newErrors.phone = "Please enter a valid phone number"
+    }
+
+    // Validate billing address
+    if (!formData.billingAddress.trim()) {
+      newErrors.billingAddress = "Billing address is required"
+    }
+
+    // Validate GST
+    if (!formData.gst.trim()) {
+      newErrors.gst = "GST number is required"
+    }
+
     // Validate email format if provided
     if (formData.email && !/^\S+@\S+\.\S+$/.test(formData.email)) {
       newErrors.email = "Please enter a valid email address"
     }
 
-    // Validate phone format if provided (simple validation)
-    if (formData.phone && !/^[+]?[\d\s-]+$/.test(formData.phone)) {
-      newErrors.phone = "Please enter a valid phone number"
-    }
-
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
+
+  const { addSupplier } = useProcurement()
 
   const handleSubmit = () => {
     if (validateForm()) {
@@ -74,18 +96,29 @@ export function AddSupplierDialog({ open, onOpenChange, onAdd, existingIds }: Ad
         contactPerson: formData.contactPerson,
         email: formData.email,
         phoneNumber: formData.phone,
-        address: formData.address,
+        address: formData.billingAddress,
+        bankAccount: formData.bankAccount,
+        bankName: formData.bankName,
+        gst: formData.gst,
+        ifscCode: formData.ifscCode,
+        pan: formData.pan,
+        upi: formData.upi
       }
 
       addSupplier(newSupplier).then(() => {
         // Reset form
         setFormData({
-          id: "",
           name: "",
           contactPerson: "",
           email: "",
           phone: "",
-          address: "",
+          billingAddress: "",
+          bankName: "",
+          ifscCode: "",
+          bankAccount: "",
+          upi: "",
+          gst: "",
+          pan: "",
         })
 
         // Close dialog
@@ -103,76 +136,172 @@ export function AddSupplierDialog({ open, onOpenChange, onAdd, existingIds }: Ad
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Supplier</DialogTitle>
           <DialogDescription>Enter supplier details to add a new supplier to the system.</DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="supplier-name" className="text-right">
-              Supplier Name*
-            </Label>
-            <div className="col-span-3 space-y-1">
-              <Input
-                id="supplier-name"
-                value={formData.name}
-                onChange={(e) => handleChange("name", e.target.value)}
-                className={errors.name ? "border-destructive" : ""}
-              />
-              {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
+
+        <div className="space-y-6 py-4">
+          {/* Basic Information Section */}
+          <div className="bg-gray-50 p-4 rounded-lg border">
+            <h3 className="text-sm font-medium text-gray-900 mb-3">Basic Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="supplier-name">
+                  Supplier Name<span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="supplier-name"
+                  value={formData.name}
+                  onChange={(e) => handleChange("name", e.target.value)}
+                  className={errors.name ? "border-destructive" : ""}
+                  placeholder="Enter supplier name"
+                />
+                {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="contact-person">
+                  Contact Person<span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="contact-person"
+                  value={formData.contactPerson}
+                  onChange={(e) => handleChange("contactPerson", e.target.value)}
+                  className={errors.contactPerson ? "border-destructive" : ""}
+                  placeholder="Enter contact person name"
+                />
+                {errors.contactPerson && <p className="text-sm text-destructive">{errors.contactPerson}</p>}
+              </div>
             </div>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="contact-person" className="text-right">
-              Contact Person
-            </Label>
-            <div className="col-span-3">
-              <Input
-                id="contact-person"
-                value={formData.contactPerson}
-                onChange={(e) => handleChange("contactPerson", e.target.value)}
-              />
+
+          {/* Contact Information Section */}
+          <div className="bg-gray-50 p-4 rounded-lg border">
+            <h3 className="text-sm font-medium text-gray-900 mb-3">Contact Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleChange("email", e.target.value)}
+                  className={errors.email ? "border-destructive" : ""}
+                  placeholder="Enter email address"
+                />
+                {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">
+                  Phone<span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) => handleChange("phone", e.target.value)}
+                  className={errors.phone ? "border-destructive" : ""}
+                  placeholder="Enter phone number"
+                />
+                {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
+              </div>
             </div>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="email" className="text-right">
-              Email
-            </Label>
-            <div className="col-span-3 space-y-1">
+
+          {/* Address Information Section */}
+          <div className="bg-gray-50 p-4 rounded-lg border">
+            <h3 className="text-sm font-medium text-gray-900 mb-3">Address Information</h3>
+            <div className="space-y-2">
+              <Label htmlFor="billing-address">
+                Billing Address<span className="text-red-500">*</span>
+              </Label>
               <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleChange("email", e.target.value)}
-                className={errors.email ? "border-destructive" : ""}
+                id="billing-address"
+                value={formData.billingAddress}
+                onChange={(e) => handleChange("billingAddress", e.target.value)}
+                className={errors.billingAddress ? "border-destructive" : ""}
+                placeholder="Enter complete billing address"
               />
-              {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+              {errors.billingAddress && <p className="text-sm text-destructive">{errors.billingAddress}</p>}
             </div>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="phone" className="text-right">
-              Phone
-            </Label>
-            <div className="col-span-3 space-y-1">
-              <Input
-                id="phone"
-                value={formData.phone}
-                onChange={(e) => handleChange("phone", e.target.value)}
-                className={errors.phone ? "border-destructive" : ""}
-              />
-              {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
+
+          {/* Payment Information Section */}
+          <div className="bg-gray-50 p-4 rounded-lg border">
+            <h3 className="text-sm font-medium text-gray-900 mb-3">Payment Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div className="space-y-2">
+                <Label htmlFor="bank-name">Bank Name</Label>
+                <Input
+                  id="bank-name"
+                  value={formData.bankName}
+                  onChange={(e) => handleChange("bankName", e.target.value)}
+                  placeholder="Enter bank name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ifsc-code">IFSC Code</Label>
+                <Input
+                  id="ifsc-code"
+                  value={formData.ifscCode}
+                  onChange={(e) => handleChange("ifscCode", e.target.value)}
+                  placeholder="Enter IFSC code"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="bank-account">Bank Account</Label>
+                <Input
+                  id="bank-account"
+                  value={formData.bankAccount}
+                  onChange={(e) => handleChange("bankAccount", e.target.value)}
+                  className=""
+                  placeholder="Enter bank account number"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="upi">UPI</Label>
+                <Input
+                  id="upi"
+                  value={formData.upi}
+                  onChange={(e) => handleChange("upi", e.target.value)}
+                  placeholder="Enter UPI ID"
+                />
+              </div>
             </div>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="address" className="text-right">
-              Address
-            </Label>
-            <div className="col-span-3 space-y-1">
-              <Input id="address" value={formData.address} onChange={(e) => handleChange("address", e.target.value)} />
+
+          {/* Business Information Section */}
+          <div className="bg-gray-50 p-4 rounded-lg border">
+            <h3 className="text-sm font-medium text-gray-900 mb-3">Business Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="gst">
+                  GST<span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="gst"
+                  value={formData.gst}
+                  onChange={(e) => handleChange("gst", e.target.value)}
+                  className={errors.gst ? "border-destructive" : ""}
+                  placeholder="Enter GST number"
+                />
+                {errors.gst && <p className="text-sm text-destructive">{errors.gst}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="pan">PAN</Label>
+                <Input
+                  id="pan"
+                  value={formData.pan}
+                  onChange={(e) => handleChange("pan", e.target.value)}
+                  placeholder="Enter PAN number"
+                />
+              </div>
             </div>
           </div>
         </div>
+
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel

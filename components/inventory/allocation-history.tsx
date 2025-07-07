@@ -15,6 +15,7 @@ import { DataTablePagination } from "@/components/ui/data-table-pagination"
 import { useInventory } from "@/app/inventory-context"
 import { getChildObject } from "../generic"
 import { useOrders } from "@/contexts/order-context"
+import { DateInput } from "../ui/reusable-components"
 
 interface AllocationHistoryProps {
   allocationHistory?: {
@@ -115,32 +116,12 @@ export function AllocationHistory({ allocationHistory: propAllocationHistory }: 
       <div className="flex flex-col md:flex-row gap-4">
         <div className="space-y-2">
           <Label htmlFor="date-range-start">Start Date</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button id="date-range-start" variant={"outline"} className="w-full justify-start text-left font-normal">
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus />
-            </PopoverContent>
-          </Popover>
+          <DateInput selectedDate={startDate} setState={setStartDate} />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="date-range-end">End Date</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button id="date-range-end" variant={"outline"} className="w-full justify-start text-left font-normal">
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {endDate ? format(endDate, "PPP") : <span>Pick a date</span>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus />
-            </PopoverContent>
-          </Popover>
+          <DateInput selectedDate={endDate} setState={setEndDate} />
         </div>
 
         <div className="space-y-2">
