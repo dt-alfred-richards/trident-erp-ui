@@ -18,12 +18,16 @@ interface ShipmentDetailsDialogProps {
 }
 
 export function ShipmentDetailsDialog({ open, onOpenChange, order }: ShipmentDetailsDialogProps) {
-  const { clientProposedProductMapper } = useOrders()
+  const { clientProposedProductMapper, orders } = useOrders()
   const { drivers } = useVehicleContext()
 
   const driverDetails = useMemo(() => {
     return drivers.find(item => item.id === parseInt(order.driverId))
   }, [drivers, order])
+
+  const saleOrder = useMemo(() => {
+    return orders.find(item => item.id === order.id)
+  }, [order])
 
   if (!order) return null
 
@@ -126,7 +130,7 @@ export function ShipmentDetailsDialog({ open, onOpenChange, order }: ShipmentDet
                 <p className="text-sm text-muted-foreground">Shipping Address</p>
                 <div className="flex items-start gap-1.5">
                   <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                  <span>123 Shipping Lane, Delivery City, DC 12345</span>
+                  <span>{saleOrder?.shippingAddressId || ''}</span>
                 </div>
               </div>
               {order.deliveryDate && (

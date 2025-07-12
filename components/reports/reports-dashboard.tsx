@@ -36,6 +36,10 @@ import { useLogistics } from "@/app/logistics/shipment-tracking/logistics-contex
 import { useProcurement } from "@/app/procurement/procurement-context"
 import { DailyAttendance, useHrContext } from "@/app/hr/hr-context"
 import { OrderProduct } from "@/types/order"
+import * as XLSX from "xlsx"
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
+
 
 // Sample data for each tab
 const salesData = [
@@ -882,7 +886,6 @@ export function ReportsDashboard() {
   }, [filteredFinanceData, currentPage, itemsPerPage])
 
   const handleExport = (format: "pdf" | "excel" | "csv") => {
-    // Get the current tab data
     let data: any[] = []
     let filename = ""
 
@@ -926,10 +929,30 @@ export function ReportsDashboard() {
     const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
     filename = `${filename}-${formattedDate}`
 
+    if (data.length === 0) {
+      toast({
+        title: "Export Error",
+        description: "No data to export",
+        variant: "destructive",
+        duration: 3000,
+      })
+      return // Exit if no data
+    }
+
     // Handle different export formats
     switch (format) {
       case "pdf":
-        // In a real app, this would use a PDF library
+        const doc = new jsPDF()
+        const headers = Object.keys(data[0])
+        const body = data.map((row) => headers.map((header) => row[header]))
+
+        doc.text(`${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Report`, 14, 15)
+        autoTable(doc, {
+          head: [headers],
+          body,
+          startY: 20,
+        })
+        doc.save(`${filename}.pdf`)
         toast({
           title: "PDF Export",
           description: `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} report has been exported as PDF.`,
@@ -937,58 +960,73 @@ export function ReportsDashboard() {
         })
         break
 
-      case "excel":
-        // In a real app, this would use an Excel library
+      case "excel": {
+        // Build the worksheet and workbook.
+        const ws = XLSX.utils.json_to_sheet(data)
+        const wb = XLSX.utils.book_new()
+        XLSX.utils.book_append_sheet(wb, ws, activeTab.charAt(0).toUpperCase() + activeTab.slice(1))
+
+        // Generate an ArrayBuffer and turn it into a Blob.
+        const arrayBuffer = XLSX.write(wb, {
+          bookType: "xlsx",
+          type: "array",
+        }) as ArrayBuffer
+
+        const blob = new Blob([arrayBuffer], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        })
+
+        // Trigger a client-side download.
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement("a")
+        link.href = url
+        link.download = `${filename}.xlsx`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+
         toast({
           title: "Excel Export",
           description: `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} report has been exported as Excel.`,
           duration: 3000,
         })
         break
+      }
 
       case "csv":
-        // Convert data to CSV
-        if (data.length > 0) {
-          const headers = Object.keys(data[0])
-          const csvContent = [
-            headers.join(","),
-            ...data.map((row) =>
-              headers
-                .map((header) => {
-                  const cell = row[header]
-                  // Handle commas and quotes in the data
-                  return typeof cell === "string" && (cell.includes(",") || cell.includes('"'))
-                    ? `"${cell.replace(/"/g, '""')}"`
-                    : cell
-                })
-                .join(","),
-            ),
-          ].join("\n")
+        const headersCsv = Object.keys(data[0])
+        const csvContent = [
+          headersCsv.join(","),
+          ...data.map((row) =>
+            headersCsv
+              .map((header) => {
+                const cell = row[header]
+                // Handle commas and quotes in the data
+                return typeof cell === "string" && (cell.includes(",") || cell.includes('"'))
+                  ? `"${cell.replace(/"/g, '""')}"`
+                  : cell
+              })
+              .join(","),
+          ),
+        ].join("\n")
 
-          // Create and download the file
-          const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
-          const url = URL.createObjectURL(blob)
-          const link = document.createElement("a")
-          link.setAttribute("href", url)
-          link.setAttribute("download", `${filename}.csv`)
-          link.style.visibility = "hidden"
-          document.body.appendChild(link)
-          link.click()
-          document.body.removeChild(link)
+        // Create and download the file
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement("a")
+        link.setAttribute("href", url)
+        link.setAttribute("download", `${filename}.csv`)
+        link.style.visibility = "hidden"
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
 
-          toast({
-            title: "CSV Export",
-            description: `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} report has been exported as CSV.`,
-            duration: 3000,
-          })
-        } else {
-          toast({
-            title: "Export Error",
-            description: "No data to export",
-            variant: "destructive",
-            duration: 3000,
-          })
-        }
+        toast({
+          title: "CSV Export",
+          description: `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} report has been exported as CSV.`,
+          duration: 3000,
+        })
         break
     }
   }

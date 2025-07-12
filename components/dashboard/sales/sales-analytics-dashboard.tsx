@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -45,6 +45,34 @@ export function SalesAnalyticsDashboard() {
         break
     }
   }
+
+  const chartValues = useMemo(() => {
+    return {
+      value: {
+        label: "Sales",
+      },
+      "500ml": {
+        label: "500ml",
+        color: "#7db1f5",
+      },
+      "750ml": {
+        label: "750ml",
+        color: "#c3d3db",
+      },
+      "1000ml": {
+        label: "1000ml",
+        color: "#77878f",
+      },
+      "2000ml": {
+        label: "2000ml",
+        color: "#3284f0",
+      },
+      "Custom-A": {
+        label: "Custom-A",
+        color: "#9ad9ca",
+      },
+    }
+  }, [])
 
   return (
     <div className="space-y-6">
@@ -161,31 +189,7 @@ export function SalesAnalyticsDashboard() {
           </CardHeader>
           <CardContent className="flex-1 pb-0">
             <ChartContainer
-              config={{
-                value: {
-                  label: "Sales",
-                },
-                "500ml": {
-                  label: "500ml",
-                  color: "#7db1f5",
-                },
-                "750ml": {
-                  label: "750ml",
-                  color: "#c3d3db",
-                },
-                "1000ml": {
-                  label: "1000ml",
-                  color: "#77878f",
-                },
-                "2000ml": {
-                  label: "2000ml",
-                  color: "#3284f0",
-                },
-                "Custom-A": {
-                  label: "Custom-A",
-                  color: "#9ad9ca",
-                },
-              }}
+              config={chartValues}
               className="mx-auto aspect-square max-h-[250px] pb-0 [&_.recharts-pie-label-text]:fill-foreground"
             >
               <PieChart>
@@ -219,35 +223,35 @@ export function SalesAnalyticsDashboard() {
                   data={
                     timeRange === "week"
                       ? [
-                          { name: "500ml", value: 120000, percentage: 38 },
-                          { name: "750ml", value: 85000, percentage: 27 },
-                          { name: "1000ml", value: 65000, percentage: 20 },
-                          { name: "2000ml", value: 35000, percentage: 11 },
-                          { name: "Custom-A", value: 15000, percentage: 4 },
-                        ]
+                        { name: "500ml", value: 120000, percentage: 38 },
+                        { name: "750ml", value: 85000, percentage: 27 },
+                        { name: "1000ml", value: 65000, percentage: 20 },
+                        { name: "2000ml", value: 35000, percentage: 11 },
+                        { name: "Custom-A", value: 15000, percentage: 4 },
+                      ]
                       : timeRange === "month"
                         ? [
-                            { name: "500ml", value: 520000, percentage: 36 },
-                            { name: "750ml", value: 420000, percentage: 29 },
-                            { name: "1000ml", value: 280000, percentage: 19 },
-                            { name: "2000ml", value: 160000, percentage: 11 },
-                            { name: "Custom-A", value: 70000, percentage: 5 },
-                          ]
+                          { name: "500ml", value: 520000, percentage: 36 },
+                          { name: "750ml", value: 420000, percentage: 29 },
+                          { name: "1000ml", value: 280000, percentage: 19 },
+                          { name: "2000ml", value: 160000, percentage: 11 },
+                          { name: "Custom-A", value: 70000, percentage: 5 },
+                        ]
                         : timeRange === "quarter"
                           ? [
-                              { name: "500ml", value: 1520000, percentage: 35 },
-                              { name: "750ml", value: 1280000, percentage: 30 },
-                              { name: "1000ml", value: 850000, percentage: 20 },
-                              { name: "2000ml", value: 450000, percentage: 11 },
-                              { name: "Custom-A", value: 180000, percentage: 4 },
-                            ]
+                            { name: "500ml", value: 1520000, percentage: 35 },
+                            { name: "750ml", value: 1280000, percentage: 30 },
+                            { name: "1000ml", value: 850000, percentage: 20 },
+                            { name: "2000ml", value: 450000, percentage: 11 },
+                            { name: "Custom-A", value: 180000, percentage: 4 },
+                          ]
                           : [
-                              { name: "500ml", value: 850000, percentage: 35 },
-                              { name: "750ml", value: 720000, percentage: 29 },
-                              { name: "1000ml", value: 480000, percentage: 20 },
-                              { name: "2000ml", value: 280000, percentage: 11 },
-                              { name: "Custom-A", value: 130000, percentage: 5 },
-                            ]
+                            { name: "500ml", value: 850000, percentage: 35 },
+                            { name: "750ml", value: 720000, percentage: 29 },
+                            { name: "1000ml", value: 480000, percentage: 20 },
+                            { name: "2000ml", value: 280000, percentage: 11 },
+                            { name: "Custom-A", value: 130000, percentage: 5 },
+                          ]
                   }
                   dataKey="value"
                   nameKey="name"

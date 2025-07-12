@@ -6,39 +6,140 @@ import { useOrders } from "@/contexts/order-context"
 import { useProcurementData } from "@/hooks/use-procurement-data"
 import { useFinance } from "@/contexts/finance-context"
 import { useProductionStore } from "@/hooks/use-production-store"
+import { useInventoryStore } from "@/hooks/use-inventory-store"
 import { initialEmployees } from "@/components/hr/hr-dashboard"
 import { SalesByDayChart } from "@/components/dashboard/sales-by-day-chart"
 import { PendingOrdersChart } from "@/components/dashboard/pending-orders-chart"
-import { useState, useEffect } from "react"
+import { useCallback, useMemo } from "react"
+import { useProduction } from "./production/production-context"
+import { getNumber } from "./generic"
+import { useProcurement } from "@/app/procurement/procurement-context"
+import { useInventory } from "@/app/inventory-context"
+import { useBankAccountContext } from "./finance/context/bank-account-context"
+import { useTranscation } from "./finance/context/trasncations"
 
 export function Overview() {
-  const { orders } = useOrders()
-  const { openPOs } = useProcurementData()
-  const { bankAccounts } = useFinance()
-  const { productionData } = useProductionStore()
-  const [availableStock, setAvailableStock] = useState(0)
+  const { orders = [], clientProposedProductMapper } = useOrders() ?? {}
+  const { productionOrders } = useProduction()
+  const { inventory } = useInventory()
+  const { data: bankContext } = useBankAccountContext()
+  const { data: trasncationsContext } = useTranscation()
+  const { purchaseOrders, purchaseOrderMaterials, suppliers, materials } = useProcurement()
 
-  // Calculate total in production from production data
-  const totalInProduction = productionData.reduce((sum, item) => sum + item.inProduction, 0)
+  const getSupplier = useCallback((id: string) => {
+    return suppliers.find(item => item.supplierId === id)
+  }, [suppliers])
 
-  // Filter orders with status "pending_approval", "approved", or "partial_fulfillment"
-  const pendingOrdersCount = orders.filter((order) =>
-    ["pending_approval", "approved", "partial_fulfillment"].includes(order.status),
-  ).length
+  const getMaterial = useCallback((id: string) => {
+    return materials.find(item => item.materialId === id)
+  }, [materials])
+
+  const openPOs = useMemo(() => {
+    return purchaseOrderMaterials.map(item => {
+      const poOrder = purchaseOrders.find(el => el.purchaseId === item.purchaseOrderId);
+      return ({
+        id: item.id,
+        supplier: getSupplier(poOrder?.supplierId || '')?.name || '',
+        material: getMaterial(item.materialId)?.name || '',
+        quantity: item.quantity,
+        unit: item.unit,
+        orderDate: item.createdOn,
+        expectedDelivery: poOrder?.dueDate,
+        status: poOrder?.status,
+      })
+    }).filter(item => item.supplier)
+  }, [purchaseOrderMaterials, purchaseOrders])
+
+  const transactions = useMemo(() => {
+    return trasncationsContext.map(item => {
+      return ({
+        id: item.id,
+        date: item.date,
+        description: item.description,
+        account: item.account,
+        type: item.type,
+        amount: item.amount,
+        reference: item?.reference || "",
+        status: item.status,
+      })
+    })
+  }, [trasncationsContext])
+
+  const bankAccounts = useMemo(() => {
+    return bankContext.map(item => {
+      return ({
+        id: item.id,
+        name: item.name,
+        bank: item.bank,
+        accountNumber: item.accountNumber,
+        balance: item.balance,
+        type: item.type,
+      })
+    })
+  }, [bankContext])
+
+  const finishedGoods = useMemo(() => {
+    return (inventory || []).map(item => {
+      return ({
+        id: item.id,
+        name: item.material,
+        quantity: item.quantity,
+        unit: item.unit,
+        reorderLevel: 100,
+        supplier: "",
+        lastRestocked: item.modifiedOn,
+        cost: item.price,
+      })
+    })
+  }, [inventory])
+
+  const productionData = useMemo(() => {
+    return Object.values(clientProposedProductMapper).flat()?.map(item => {
+      const sku = item.sku, deficit = getNumber(item.availableQuantity) - getNumber(item.reservedQuantity)
+      return ({
+        sku: item.sku,
+        pendingOrders: productionOrders?.filter(el => el.status === "pending" && el.sku === sku).length,
+        inProduction: getNumber(item.inProduction),
+        availableStock: item.availableQuantity,
+        deficit,
+        status: deficit < 0 ? "deficit" : 'sufficient'
+      })
+    })
+  }, [productionOrders])
+
+  const totalInProduction = useMemo(
+    () => productionData.reduce((sum, item) => sum + item.inProduction, 0),
+    [productionData],
+  )
+
+  const pendingOrdersCount = useMemo(
+    () => orders.filter((o) => ["pending_approval", "approved", "partial_fulfillment"].includes(o.status)).length,
+    [orders],
+  )
 
   // Get current date in YYYY-MM-DD format
   const today = new Date().toISOString().split("T")[0]
 
-  // Filter purchase orders that are ready to receive (pending or partial and due today)
-  const readyToReceiveCount = openPOs.filter(
-    (po) => (po.status === "sent" || po.status === "partial") && po.expectedDelivery === today,
-  ).length
+  const readyToReceiveCount = useMemo(
+    () =>
+      openPOs.filter((po) => (po.status === "sent" || po.status === "partial") && po.expectedDelivery === today).length,
+    [openPOs, today],
+  )
 
-  // For Cash in Hand, directly use 50000 as specified
-  const cashInHand = 50000
+  // Calculate cash in hand from transactions (petty cash transactions)
+  const cashInHand = useMemo(() => {
+    const pettyCashTransactions = transactions.filter((transaction) => transaction.account === "Petty Cash")
+    return pettyCashTransactions.reduce((sum, transaction) => {
+      return transaction.type === "Deposit" ? sum + transaction.amount : sum - transaction.amount
+    }, 50000) // Starting with base amount
+  }, [transactions])
 
-  // For Cash in Bank, directly use 4700000 (sum of Current accounts: 3500000 + 1200000)
-  const cashInBank = 4700000
+  // Calculate cash in bank from bank accounts
+  const cashInBank = useMemo(() => {
+    return bankAccounts
+      .filter((account) => account.type === "Current")
+      .reduce((sum, account) => sum + account.balance, 0)
+  }, [bankAccounts])
 
   // Calculate today's attendance
   const totalEmployees = initialEmployees.length
@@ -46,8 +147,12 @@ export function Overview() {
   const presentEmployees = 10
   const attendancePercentage = Math.round((presentEmployees / totalEmployees) * 100)
 
+  const availableStock = useMemo(() => finishedGoods.reduce((sum, item) => sum + item.quantity, 0), [finishedGoods])
+
+  const readyForDispatchCount = useMemo(() => orders.filter((o) => o.status === "dispatched").length, [orders])
+
   // Format the cash amounts with commas and currency symbol
-  const formatCurrency = (amount) => {
+  const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
@@ -57,87 +162,6 @@ export function Overview() {
 
   const formattedCashInHand = formatCurrency(cashInHand)
   const formattedCashInBank = formatCurrency(cashInBank)
-
-  // Calculate the sum of available quantities from Finished Goods inventory
-  useEffect(() => {
-    // This is the same data used in the finished-goods page
-    const finishedGoodsData = [
-      {
-        id: "500ml",
-        name: "500ml",
-        quantity: 250,
-        reserved: 1000,
-        type: "finished",
-      },
-      {
-        id: "750ml",
-        name: "750ml",
-        quantity: 1200,
-        reserved: 0,
-        type: "finished",
-      },
-      {
-        id: "1000ml",
-        name: "1000ml",
-        quantity: 200,
-        reserved: 600,
-        type: "finished",
-      },
-      {
-        id: "2000ml",
-        name: "2000ml",
-        quantity: 1000,
-        reserved: 500,
-        type: "finished",
-      },
-      {
-        id: "custom-a",
-        name: "Custom-A",
-        quantity: 0,
-        reserved: 0,
-        type: "finished",
-      },
-      {
-        id: "premium-500ml",
-        name: "Premium-500ml",
-        quantity: 350,
-        reserved: 800,
-        type: "finished",
-      },
-      {
-        id: "premium-750ml",
-        name: "Premium-750ml",
-        quantity: 900,
-        reserved: 200,
-        type: "finished",
-      },
-      {
-        id: "premium-1000ml",
-        name: "Premium-1000ml",
-        quantity: 150,
-        reserved: 400,
-        type: "finished",
-      },
-      {
-        id: "limited-edition",
-        name: "Limited-Edition",
-        quantity: 50,
-        reserved: 300,
-        type: "finished",
-      },
-      {
-        id: "gift-pack",
-        name: "Gift-Pack",
-        quantity: 75,
-        reserved: 150,
-        type: "finished",
-      },
-    ]
-
-    // Calculate the sum of available quantities
-    const totalAvailable = finishedGoodsData.reduce((sum, item) => sum + item.quantity, 0)
-    setAvailableStock(totalAvailable)
-  }, [])
 
   return (
     <div className="w-full max-w-full">
@@ -203,7 +227,7 @@ export function Overview() {
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">Ready for Dispatch</p>
                 <div className="flex items-baseline gap-2">
-                  <h3 className="text-2xl font-bold text-foreground">18</h3>
+                  <h3 className="text-2xl font-bold text-foreground">{readyForDispatchCount}</h3>
                 </div>
                 <p className="text-xs text-muted-foreground">Orders awaiting shipment</p>
               </div>

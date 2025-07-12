@@ -124,3 +124,8 @@ export function formatNumberIndian(value: number): string {
     }
 }
 
+
+
+export const getNumber = (value: string = "") => {
+    return value ? parseInt(value) : 0
+}

@@ -175,8 +175,8 @@ export function AddClientDialog({ open, onOpenChange, onAddClient }) {
         <form onSubmit={handleSubmit}>
           <div className="space-y-6 py-4">
             {/* Basic Information Section */}
-            <div className="space-y-4 p-4 bg-gray-50 rounded-lg border">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Basic Information</h3>
+            <div className="space-y-4 p-4 bg-muted rounded-lg border">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Basic Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">
@@ -201,8 +201,8 @@ export function AddClientDialog({ open, onOpenChange, onAddClient }) {
             </div>
 
             {/* Contact Information Section */}
-            <div className="space-y-4 p-4 bg-gray-50 rounded-lg border">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Contact Information</h3>
+            <div className="space-y-4 p-4 bg-muted rounded-lg border">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Contact Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">
@@ -222,8 +222,8 @@ export function AddClientDialog({ open, onOpenChange, onAddClient }) {
             </div>
 
             {/* Address Information Section */}
-            <div className="space-y-4 p-4 bg-gray-50 rounded-lg border">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Address Information</h3>
+            <div className="space-y-4 p-4 bg-muted rounded-lg border">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Address Information</h3>
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="billingAddress">
@@ -279,15 +279,20 @@ export function AddClientDialog({ open, onOpenChange, onAddClient }) {
                 ))}
                 {errors.shippingAddresses && <p className="text-sm text-red-500">{errors.shippingAddresses}</p>}
 
-                <Button type="button" variant="outline" onClick={handleAddShippingAddress} className="mt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleAddShippingAddress}
+                  className="mt-2 bg-transparent"
+                >
                   <PlusIcon className="h-4 w-4 mr-2" /> Add Another Shipping Address
                 </Button>
               </div>
             </div>
 
             {/* Business Information Section */}
-            <div className="space-y-4 p-4 bg-gray-50 rounded-lg border">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Business Information</h3>
+            <div className="space-y-4 p-4 bg-muted rounded-lg border">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Business Information</h3>
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="clientType">

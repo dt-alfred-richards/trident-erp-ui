@@ -22,7 +22,7 @@ import { progressHistoryStore } from "./update-progress-dialog"
 import { useProduction } from "./production-context"
 import { useInventory } from "@/app/inventory-context"
 import { useOrders } from "@/contexts/order-context"
-import { convertDate } from "../generic"
+import { convertDate, getNumber } from "../generic"
 
 interface ProductionKanbanProps {
   onViewDetails: (orderId: string) => void
@@ -46,10 +46,6 @@ export function ProductionKanban({ onViewDetails, onUpdateProgress }: Production
 
   const getProductInfo = (sku: string) => {
     return Object.values(clientProposedProductMapper).flat().find(item => item.sku === sku)
-  }
-
-  const getNumber = (value: string = "") => {
-    return value ? parseInt(value) : 0
   }
 
   const productionOrders = useMemo(() => {
