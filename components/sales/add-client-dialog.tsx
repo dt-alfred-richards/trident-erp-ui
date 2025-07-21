@@ -306,7 +306,7 @@ export function AddClientDialog({ open, onOpenChange, onAddClient }) {
                       <SelectItem value="Corporate">Corporate</SelectItem>
                       <SelectItem value="Distributor">Distributor</SelectItem>
                       <SelectItem value="Wholeseller">Wholeseller</SelectItem>
-                      <SelectItem value="Hotels&Restaurants">Hotels & Restaurants</SelectItem>
+                      <SelectItem value="Hotels&Restaurants">F & B</SelectItem>
                     </SelectContent>
                   </Select>
                   {errors.clientType && <p className="text-sm text-red-500">{errors.clientType}</p>}

@@ -5,6 +5,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { ArrowUpRight, ArrowDownRight, Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { useOrders } from "@/contexts/order-context"
+import { convertToChart } from "./dashboard-helper"
+import { formatNumberIndian, getChildObject, getCummulativeSum } from "@/components/generic"
 
 interface SalesPerformanceProps {
   timeRange: string
@@ -21,10 +24,32 @@ interface ProductData {
 
 export function SalesPerformance({ timeRange }: SalesPerformanceProps) {
   const [searchQuery, setSearchQuery] = useState("")
+  const { orders, clientProposedProductMapper } = useOrders()
+
+  const performanceData = useMemo(() => {
+    const products = orders.map(item => item.products.map(i => ({ ...i, date: item.modifiedOn || item.createdAt }))).flat();
+    const cProducts = Object.values(clientProposedProductMapper).flat().map(item => item.name)
+    const values = convertToChart(products.map(item => ({ ...item, total: item.cases * item.price })));
+    const result = Object.entries(values).reduce((acc, [key, groupValues]) => {
+      if (!acc[key]) {
+        acc[key] = []
+      }
+      acc[key] = cProducts.map(item => {
+        const matchedProducts = groupValues.filter(i => i.item.name === item);
+        const revenue = getCummulativeSum({ refObject: matchedProducts, key: "revenue" })
+        return ({
+          revenueValue: revenue, revenue: formatNumberIndian(revenue),
+          product: item, orders: matchedProducts.length, aov: "-", growth: "-"
+        })
+      })
+      return acc;
+    }, {} as any)
+    return result;
+  }, [orders, clientProposedProductMapper])
 
   // This would come from your API in a real application
   // Added more SKUs and included revenueValue for sorting
-  const performanceData: Record<string, ProductData[]> = {
+  const a: Record<string, ProductData[]> = {
     week: [
       { product: "500ml", revenue: "₹1.2L", revenueValue: 120000, orders: 120, aov: "₹10,000", growth: "+8.2%" },
       { product: "750ml", revenue: "₹85K", revenueValue: 85000, orders: 85, aov: "₹10,000", growth: "+3.8%" },
@@ -121,11 +146,10 @@ export function SalesPerformance({ timeRange }: SalesPerformanceProps) {
                     <div className="flex items-center justify-end">
                       <Badge
                         variant="outline"
-                        className={`flex items-center gap-0.5 ${
-                          item.growth.startsWith("+")
-                            ? "bg-green-500/10 text-green-600 border-green-200"
-                            : "bg-red-500/10 text-red-600 border-red-200"
-                        }`}
+                        className={`flex items-center gap-0.5 ${item.growth.startsWith("+")
+                          ? "bg-green-500/10 text-green-600 border-green-200"
+                          : "bg-red-500/10 text-red-600 border-red-200"
+                          }`}
                       >
                         {item.growth.startsWith("+") ? (
                           <ArrowUpRight className="h-3 w-3" />

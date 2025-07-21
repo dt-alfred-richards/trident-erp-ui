@@ -649,7 +649,7 @@ export function AccountsPayable() {
       <BillForm
         open={isFormOpen}
         onOpenChange={setIsFormOpen}
-        initialValues={selectedBill || undefined}
+        initialValues={selectedBill || {}}
         billId={selectedBill?.id}
       />
 

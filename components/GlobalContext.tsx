@@ -36,10 +36,11 @@ type GloabalPropType = {
     saveUser?: (payload: Partial<Employee>) => Promise<void>,
     tokenDetails: Token,
     sessionInfo: Session[],
-    logout?: () => void,
+    logout?: () => Promise<void>,
     logoutSession: (sessionId: string) => void
-    login: (payload: any, rememberMe: boolean) => void,
-    isLoggedIn: boolean
+    login: (payload: any, rememberMe: boolean) => Promise<void>,
+    isLoggedIn: boolean,
+    userPassword: string
 }
 
 const GlobalContext = createContext<GloabalPropType>({
@@ -51,8 +52,9 @@ const GlobalContext = createContext<GloabalPropType>({
     tokenDetails: {} as Token,
     sessionInfo: [] as Session[],
     logoutSession: () => { },
-    login: () => { },
-    isLoggedIn: false
+    login: () => Promise.resolve(),
+    isLoggedIn: false,
+    userPassword: ''
 })
 
 
@@ -102,7 +104,7 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
 
 
     const login = (payload: any, rememberMe: boolean) => {
-        apiInstance.login(payload).then(res => {
+        return apiInstance.login(payload).then(res => {
             const token = getChildObject(res, "token", '')
             if (rememberMe) {
                 localStorage.setItem("token", token)
@@ -126,10 +128,12 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const logout = () => {
-        sessionInstance.deleteById({ key: "user_id", value: tokenDetails.userId }).then(() => {
-            localStorage.removeItem("token")
-            sessionStorage.removeItem("token")
-            router?.push("/login")
+        return Promise.resolve('').then(() => {
+            sessionInstance.deleteById({ key: "user_id", value: tokenDetails.userId }).then(() => {
+                localStorage.removeItem("token")
+                sessionStorage.removeItem("token")
+                router?.push("/login")
+            })
         })
     }
 
@@ -137,11 +141,11 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
         sessionInstance.deleteById({ key: "session_id", value: sessionId }).then(fetchData)
     }
 
-
     return <GlobalContext.Provider value={{
         userEmail: getChildObject(userDetails, "email", ""),
         userId: getChildObject(userDetails, "id", ""),
         userName: getChildObject(userDetails, "name", ""),
+        userPassword: getChildObject(userDetails, "password", ""),
         usersMapper,
         user,
         saveUser,

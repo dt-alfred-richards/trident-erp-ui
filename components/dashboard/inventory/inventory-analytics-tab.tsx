@@ -12,7 +12,7 @@ import {
   ArrowUpRight,
   Layers,
 } from "lucide-react"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { format, subMonths, subWeeks } from "date-fns"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -23,6 +23,10 @@ import { ChartContainer } from "@/components/ui/chart"
 import { CartesianGrid, Legend, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
 import { Cell, Pie, PieChart, LineChart, Line } from "recharts"
 import { useRawMaterialsStore } from "@/hooks/use-raw-materials-store"
+import { useOrders } from "@/contexts/order-context"
+import { convertToChart } from "../sales/dashboard-helper"
+import { useInventory } from "@/app/inventory-context"
+import { getCummulativeSum } from "@/components/generic"
 
 const COLORS = ["#6610f2", "#f8285a", "#43ced7", "#1b84ff", "#2cd07e", "#dadada"]
 
@@ -67,8 +71,16 @@ export function InventoryAnalyticsTab() {
     return num.toString()
   }
 
+  const { inventory = [] } = useInventory()
+
   // Get raw materials data from the store
-  const { rawMaterials } = useRawMaterialsStore()
+  const rawMaterials = useMemo(() => {
+    return inventory.map(item => {
+      return ({ id: item.id, category: item.category, type: item.type || item.material, quantity: item.quantity })
+    })
+  }, [inventory])
+
+  console.log({ rawMaterials })
 
   // Calculate distinct count of raw materials by category
   const distinctRawMaterialsCount = new Set(rawMaterials.map((material) => `${material.category}-${material.type}`))
@@ -130,36 +142,41 @@ export function InventoryAnalyticsTab() {
 
   const kpiValues = getKpiValues()
 
+  const { orders } = useOrders()
+
+  const finishedGoods = useMemo(() => {
+    return orders.filter(item => item.status === 'approved')
+  }, [orders])
+
+
   // Define finished goods inventory data
-  const getFinishedGoodsData = () => {
-    if (timeRange === "week") {
-      return [
-        { date: "Mon", finishedGoods: 18500, unitsSold: 2800 },
-        { date: "Tue", finishedGoods: 19200, unitsSold: 3100 },
-        { date: "Wed", finishedGoods: 20100, unitsSold: 2900 },
-        { date: "Thu", finishedGoods: 21500, unitsSold: 3500 },
-        { date: "Fri", finishedGoods: 22800, unitsSold: 4200 },
-        { date: "Sat", finishedGoods: 23500, unitsSold: 2100 },
-        { date: "Sun", finishedGoods: 24200, unitsSold: 1800 },
-      ]
-    } else if (timeRange === "month") {
-      return [
-        { date: "Week 1", finishedGoods: 75000, unitsSold: 12000 },
-        { date: "Week 2", finishedGoods: 78000, unitsSold: 13500 },
-        { date: "Week 3", finishedGoods: 81000, unitsSold: 14200 },
-        { date: "Week 4", finishedGoods: 84000, unitsSold: 15800 },
-      ]
-    } else {
-      return [
-        { date: "Jan", finishedGoods: 220000, unitsSold: 35000 },
-        { date: "Feb", finishedGoods: 225000, unitsSold: 38000 },
-        { date: "Mar", finishedGoods: 230000, unitsSold: 42000 },
-        { date: "Apr", finishedGoods: 235000, unitsSold: 45000 },
-        { date: "May", finishedGoods: 240000, unitsSold: 48000 },
-        { date: "Jun", finishedGoods: 245000, unitsSold: 52000 },
-      ]
+  const getFinishedGoodsData = useMemo(() => {
+    const chart = convertToChart(finishedGoods.map(item => ({ date: item.modifiedOn || item.createdAt, total: item.total })))
+    return () => {
+      if (timeRange === "week") {
+        return chart.week.map(item => ({ date: item.date, finishedGoods: item.revenue, unitsSold: 0 }))
+      } else if (timeRange === "month") {
+        return chart.month.map(item => ({ date: item.date, finishedGoods: item.revenue, unitsSold: 0 }))
+        // [
+        //   { date: "Week 1", finishedGoods: 75000, unitsSold: 12000 },
+        //   { date: "Week 2", finishedGoods: 78000, unitsSold: 13500 },
+        //   { date: "Week 3", finishedGoods: 81000, unitsSold: 14200 },
+        //   { date: "Week 4", finishedGoods: 84000, unitsSold: 15800 },
+        // ]
+      } else {
+        return chart.quarter.map(item => ({ date: item.date, finishedGoods: item.revenue, unitsSold: 0 }))
+        // [
+        //   { date: "Jan", finishedGoods: 220000, unitsSold: 35000 },
+        //   { date: "Feb", finishedGoods: 225000, unitsSold: 38000 },
+        //   { date: "Mar", finishedGoods: 230000, unitsSold: 42000 },
+        //   { date: "Apr", finishedGoods: 235000, unitsSold: 45000 },
+        //   { date: "May", finishedGoods: 240000, unitsSold: 48000 },
+        //   { date: "Jun", finishedGoods: 245000, unitsSold: 52000 },
+        // ]
+      }
     }
-  }
+  }, [finishedGoods])
+
 
   // Get raw materials data for the donut chart
   const getRawMaterialsChartData = () => {
@@ -642,42 +659,19 @@ export function InventoryAnalyticsTab() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Dhaara 500ml</span>
-                  <span className="text-sm font-medium">9</span>
-                </div>
-                <div className="h-2 w-full rounded-full bg-muted">
-                  <div className="h-full rounded-full" style={{ width: "85%", backgroundColor: "#1b84ff" }}></div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Dhaara 1000ml</span>
-                  <span className="text-sm font-medium">7</span>
-                </div>
-                <div className="h-2 w-full rounded-full bg-muted">
-                  <div className="h-full rounded-full" style={{ width: "72%", backgroundColor: "#43ced7" }}></div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Dhaara 250ml</span>
-                  <span className="text-sm font-medium">7</span>
-                </div>
-                <div className="h-2 w-full rounded-full bg-muted">
-                  <div className="h-full rounded-full" style={{ width: "68%", backgroundColor: "#f8285a" }}></div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Custom Products</span>
-                  <span className="text-sm font-medium">5</span>
-                </div>
-                <div className="h-2 w-full rounded-full bg-muted">
-                  <div className="h-full rounded-full" style={{ width: "54%", backgroundColor: "#2cd07e" }}></div>
-                </div>
-              </div>
+              {
+                inventory.map(item => {
+                  return (<div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{item.material}</span>
+                      <span className="text-sm font-medium">{item.quantity}</span>
+                    </div>
+                    <div className="h-2 w-full rounded-full bg-muted">
+                      <div className="h-full rounded-full" style={{ width: "72%", backgroundColor: "#43ced7" }}></div>
+                    </div>
+                  </div>)
+                })
+              }
             </div>
           </CardContent>
         </Card>
@@ -694,31 +688,31 @@ export function InventoryAnalyticsTab() {
                 <div className="rounded-lg border p-3">
                   <div className="text-sm font-medium text-muted-foreground">Total SKUs</div>
                   <div className="mt-1 flex items-baseline">
-                    <div className="text-2xl font-semibold">124</div>
-                    <span className="ml-2 text-xs text-emerald-500">+5</span>
+                    <div className="text-2xl font-semibold">{inventory.length}</div>
+                    <span className="ml-2 text-xs text-emerald-500"></span>
                   </div>
                 </div>
-                <div className="rounded-lg border p-3">
+                {/* <div className="rounded-lg border p-3">
                   <div className="text-sm font-medium text-muted-foreground">Low Stock</div>
                   <div className="mt-1 flex items-baseline">
                     <div className="text-2xl font-semibold">28</div>
                     <span className="ml-2 text-xs text-red-500">+3</span>
                   </div>
-                </div>
+                </div> */}
                 <div className="rounded-lg border p-3">
                   <div className="text-sm font-medium text-muted-foreground">Optimal Stock</div>
                   <div className="mt-1 flex items-baseline">
-                    <div className="text-2xl font-semibold">82</div>
-                    <span className="ml-2 text-xs text-emerald-500">+2</span>
+                    <div className="text-2xl font-semibold">{getCummulativeSum({ refObject: inventory, key: 'quantity' })}</div>
+                    <span className="ml-2 text-xs text-emerald-500"></span>
                   </div>
                 </div>
-                <div className="rounded-lg border p-3">
+                {/* <div className="rounded-lg border p-3">
                   <div className="text-sm font-medium text-muted-foreground">Overstock</div>
                   <div className="mt-1 flex items-baseline">
                     <div className="text-2xl font-semibold">14</div>
                     <span className="ml-2 text-xs text-amber-500">0</span>
                   </div>
-                </div>
+                </div> */}
               </div>
             </div>
           </CardContent>

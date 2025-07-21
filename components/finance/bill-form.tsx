@@ -43,12 +43,11 @@ type BillFormValues = z.infer<typeof formSchema>
 interface BillFormProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  initialValues?: Partial<Bill>
+  initialValues: Partial<Bill>
   billId?: string
 }
 
 export function BillForm({ open, onOpenChange, initialValues, billId }: BillFormProps) {
-  const { addBill, updateBill } = useFinance()
   const isEditing = !!billId
 
   // Default values for the form
@@ -71,7 +70,7 @@ export function BillForm({ open, onOpenChange, initialValues, billId }: BillForm
       ],
       ...initialValues,
     })
-  }, [initialValues, billId, isEditing])
+  }, [initialValues, billId, isEditing, open])
 
   // Initialize the form
   const form = useForm<BillFormValues>({
@@ -120,7 +119,7 @@ export function BillForm({ open, onOpenChange, initialValues, billId }: BillForm
   }
 
 
-  const { create, update } = useBillContext()
+  const { create, update, data: billContext } = useBillContext()
   // Handle form submission
   const onSubmit = (values: BillFormValues) => {
     const { subtotal, tax, total } = calculateTotalAmount()

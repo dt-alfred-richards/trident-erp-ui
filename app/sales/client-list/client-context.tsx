@@ -43,7 +43,8 @@ export type ClientProposedPrice = {
     clientId: string,
     sku: string,
     price: number,
-    unit: string
+    unit: string,
+    category: string
 }
 
 const ClientContext = createContext<Partial<ClientContext>>({});

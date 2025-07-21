@@ -21,12 +21,6 @@ export function TaxDashboard() {
               Tax Balance
             </TabsTrigger>
             <TabsTrigger
-              value="tax-filings"
-              className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff] data-[state=active]:shadow-none h-12 px-4 font-medium text-muted-foreground data-[state=active]:text-[#1b84ff] data-[state=active]:bg-white dark:data-[state=active]:bg-[#0f1729]"
-            >
-              Tax Filings & Compliance
-            </TabsTrigger>
-            <TabsTrigger
               value="gstr"
               className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff] data-[state=active]:shadow-none h-12 px-4 font-medium text-muted-foreground data-[state=active]:text-[#1b84ff] data-[state=active]:bg-white dark:data-[state=active]:bg-[#0f1729]"
             >

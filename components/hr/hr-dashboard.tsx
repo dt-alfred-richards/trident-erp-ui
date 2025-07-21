@@ -326,7 +326,7 @@ export function HRDashboard() {
       {
         title: "New Hires",
         value: currentMonthHires.length,
-        change: { value: lastMonthHires.length - currentMonthHires.length, isPositive: lastMonthHires.length - currentMonthHires.length > 0 },
+        // change: { value: lastMonthHires.length - currentMonthHires.length, isPositive: lastMonthHires.length - currentMonthHires.length > 0 },
         icon: <UserPlus className="h-5 w-5 text-green-500" />,
         iconColor: "text-green-500",
         iconBgColor: "bg-green-500/10",
@@ -335,7 +335,7 @@ export function HRDashboard() {
       {
         title: "Separation",
         value: 3,
-        change: { value: 1, isPositive: false },
+        // change: { value: 1, isPositive: false },
         icon: <UserMinus className="h-5 w-5 text-red-500" />,
         iconColor: "text-red-500",
         iconBgColor: "bg-red-500/10",

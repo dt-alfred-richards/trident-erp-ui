@@ -4,6 +4,9 @@ import { TrendingUp } from "lucide-react"
 import { ResponsiveContainer, CartesianGrid, Line, LineChart, XAxis, YAxis, Tooltip } from "recharts"
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { useOrders } from "@/contexts/order-context"
+import { useMemo } from "react"
+import { convertToChart } from "./dashboard-helper"
 
 interface RevenueChartProps {
   timeRange: string
@@ -11,41 +14,18 @@ interface RevenueChartProps {
 
 export function RevenueChart({ timeRange }: RevenueChartProps) {
   // This would come from your API in a real application
-  const revenueData = {
-    week: [
-      { date: "Mon", revenue: 42000 },
-      { date: "Tue", revenue: 38000 },
-      { date: "Wed", revenue: 55000 },
-      { date: "Thu", revenue: 47000 },
-      { date: "Fri", revenue: 63000 },
-      { date: "Sat", revenue: 42000 },
-      { date: "Sun", revenue: 33000 },
-    ],
-    month: Array.from({ length: 4 }, (_, i) => {
-      const week = i + 1
-      const randomFactor = 0.7 + Math.random() * 0.6
-      return {
-        date: `Week ${week}`,
-        revenue: Math.round(80000 * randomFactor),
-      }
-    }),
-    quarter: Array.from({ length: 3 }, (_, i) => {
-      const month = ["Jan", "Feb", "Mar"][i]
-      const randomFactor = 0.7 + Math.random() * 0.6
-      return {
-        date: month,
-        revenue: Math.round(320000 * randomFactor),
-      }
-    }),
-    custom: Array.from({ length: 5 }, (_, i) => {
-      const day = i + 1
-      const randomFactor = 0.7 + Math.random() * 0.6
-      return {
-        date: `Day ${day}`,
-        revenue: Math.round(50000 * randomFactor),
-      }
-    }),
-  }
+  const { orders } = useOrders();
+
+  const salesData = useMemo(() => {
+    return orders.map(item => ({
+      date: item.modifiedOn || item.createdAt,
+      total: item.total
+    }))
+  }, [orders])
+
+  const revenueData = useMemo(() => {
+    return convertToChart(salesData);
+  }, [salesData])
 
   const data = revenueData[timeRange as keyof typeof revenueData] || revenueData["month"]
 

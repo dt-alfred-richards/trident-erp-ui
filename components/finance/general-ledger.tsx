@@ -1824,12 +1824,12 @@ export function GeneralLedger() {
           >
             Journal Entries
           </TabsTrigger>
-          <TabsTrigger
+          {/* <TabsTrigger
             value="chart-of-accounts"
             className="data-[state=active]:bg-white dark:data-[state=active]:bg-[#0f1729] data-[state=active]:text-[#1b84ff] data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff]"
           >
             Chart of Accounts
-          </TabsTrigger>
+          </TabsTrigger> */}
           <TabsTrigger
             value="trial-balance"
             className="data-[state=active]:bg-white dark:data-[state=active]:bg-[#0f1729] data-[state=active]:text-[#1b84ff] data-[state=active]:border-b-2 data-[state=active]:border-[#1b84ff]"

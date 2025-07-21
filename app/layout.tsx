@@ -33,7 +33,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={cn("antialiased", poppins.variable)}>
-      <body className={`${inter.className} bg-background`}>
+      <body className={`${inter.className} bg-background`} style={{ overflow: 'hidden' }}>
         <GlobalProvider>
           <LayoutHelper>{children}</LayoutHelper>
         </GlobalProvider>

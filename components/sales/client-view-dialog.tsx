@@ -378,6 +378,12 @@ export function ClientViewDialog({ open, onOpenChange, client }: ClientViewDialo
                   </p>
                   <p className="font-medium">{client?.billingAddress || ''}</p>
                 </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    <MapPinIcon className="h-3 w-3" /> Client type
+                  </p>
+                  <p className="font-medium">{client?.clientType || ''}</p>
+                </div>
               </CardContent>
             </Card>
 

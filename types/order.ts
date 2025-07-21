@@ -70,6 +70,7 @@ export interface Order {
   remarks: string,
   modifiedOn: Date,
   total: number,
+  discount: number,
   statusHistory: {
     timestamp: string
     status: OrderStatus

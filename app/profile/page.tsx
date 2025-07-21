@@ -5,7 +5,7 @@ import type React from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Bell, CheckCircle, Clock, Edit, FileText, Mail, MapPin, Phone, Shield, User } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -238,6 +238,9 @@ export default function ProfilePage() {
 
   const [tempPassword, setTempPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [currentPassword, setCurrentPassword] = useState('')
+
+  const userPassword = useMemo(() => getChildObject(tokenDetails, 'password', ''), [tokenDetails])
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -691,6 +694,15 @@ export default function ProfilePage() {
                   <div className="space-y-4">
                     <h3 className="text-sm font-medium">Change Password</h3>
                     <div className="space-y-2">
+                      <Label htmlFor="new-password">Current Password</Label>
+                      <Input id="new-password" type="text" value={currentPassword} onChange={(event) => {
+                        setCurrentPassword(event.target.value)
+                      }} />
+                      {
+                        currentPassword && currentPassword !== userPassword && <div style={{ color: "red" }}>Current  Password doesnt match</div>
+                      }
+                    </div>
+                    <div className="space-y-2">
                       <Label htmlFor="new-password">New Password</Label>
                       <Input id="new-password" type="password" value={tempPassword} onChange={(event) => {
                         setTempPassword(event.target.value)
@@ -705,12 +717,14 @@ export default function ProfilePage() {
                     {
                       tempPassword !== confirmPassword && <div style={{ color: "red" }}>Password doesnt match</div>
                     }
-                    <Button className="bg-[#725af2] text-[#ffffff] hover:bg-[#725af2]/90" onClick={() => {
-                      if (!saveUser) return;
-                      saveUser({ password: tempPassword, employeeId: userDetails.employeeId })?.then(res => {
-                        alert("Password changed successfully")
-                      })
-                    }}>Update Password</Button>
+                    <Button
+                      disabled={currentPassword !== userPassword}
+                      className="bg-[#725af2] text-[#ffffff] hover:bg-[#725af2]/90" onClick={() => {
+                        if (!saveUser) return;
+                        saveUser({ password: tempPassword, employeeId: userDetails.employeeId })?.then(res => {
+                          alert("Password changed successfully")
+                        })
+                      }}>Update Password</Button>
                   </div>
 
                   <Separator className="my-4" />

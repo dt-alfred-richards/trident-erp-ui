@@ -11,11 +11,11 @@ import { format, subWeeks, subMonths } from "date-fns"
 import { SalesMetrics } from "@/components/sales/analytics/sales-metrics"
 import { RevenueChart } from "@/components/sales/analytics/revenue-chart"
 import { CustomerInsights } from "@/components/sales/analytics/customer-insights"
-import { SalesPerformance } from "@/components/sales/analytics/sales-performance"
 import { RegionalBreakdown } from "@/components/sales/analytics/regional-breakdown"
 import { CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Pie, PieChart, Cell } from "recharts"
+import { SalesPerformance } from "./sales-performance"
 
 export function SalesAnalyticsDashboard() {
   const [timeRange, setTimeRange] = useState("month")

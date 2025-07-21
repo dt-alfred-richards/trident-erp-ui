@@ -153,6 +153,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
         salesId: product.salesId || ""
       }))
       setOrderItems(items)
+      setDiscount(order.discount || 0)
     }
   }, [open, order])
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { Factory, RefreshCw, CalendarIcon, TrendingUp, Package, Layers, Percent, ArrowUpRight } from "lucide-react"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { format, subMonths, subWeeks } from "date-fns"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -11,6 +11,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ChartContainer } from "@/components/ui/chart"
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, XAxis, YAxis } from "recharts"
 import { Cell, Pie, PieChart, Tooltip } from "recharts"
+import { useProduction } from "@/components/production/production-context"
+import { convertToChart } from "../sales/dashboard-helper"
 
 const COLORS = ["#1b84ff", "#43ced7", "#f8285a", "#2cd07e", "#725AF2", "#2cd07e"]
 
@@ -97,6 +99,14 @@ export function ProductionAnalyticsTab() {
 
   // Define colors for the donut chart
   // const COLORS = ["#6610f2", "#43ced7", "#f8285a", "#1b84ff"]
+
+  const { productionOrders = [] } = useProduction()
+
+  const chartValues = useMemo(() => {
+    return convertToChart(productionOrders.map(item => ({ date: item.modifiedOn || item.createdOn || '' as Date, total: item.quantity })))
+  }, [productionOrders])
+
+  console.log({ chartValues,productionOrders })
 
   // Define data for the donut chart based on time range
   const getDonutData = () => {
@@ -360,29 +370,29 @@ export function ProductionAnalyticsTab() {
                     data={
                       timeRange === "week"
                         ? [
-                            { day: "Mon", dhaara: 1250, custom: 350 },
-                            { day: "Tue", dhaara: 1450, custom: 420 },
-                            { day: "Wed", dhaara: 1350, custom: 380 },
-                            { day: "Thu", dhaara: 1550, custom: 450 },
-                            { day: "Fri", dhaara: 1650, custom: 480 },
-                            { day: "Sat", dhaara: 1400, custom: 320 },
-                            { day: "Sun", dhaara: 1200, custom: 200 },
-                          ]
+                          { day: "Mon", dhaara: 1250, custom: 350 },
+                          { day: "Tue", dhaara: 1450, custom: 420 },
+                          { day: "Wed", dhaara: 1350, custom: 380 },
+                          { day: "Thu", dhaara: 1550, custom: 450 },
+                          { day: "Fri", dhaara: 1650, custom: 480 },
+                          { day: "Sat", dhaara: 1400, custom: 320 },
+                          { day: "Sun", dhaara: 1200, custom: 200 },
+                        ]
                         : timeRange === "month"
                           ? [
-                              { day: "Week 1", dhaara: 8500, custom: 2300 },
-                              { day: "Week 2", dhaara: 9200, custom: 2500 },
-                              { day: "Week 3", dhaara: 10500, custom: 2800 },
-                              { day: "Week 4", dhaara: 10000, custom: 2950 },
-                            ]
+                            { day: "Week 1", dhaara: 8500, custom: 2300 },
+                            { day: "Week 2", dhaara: 9200, custom: 2500 },
+                            { day: "Week 3", dhaara: 10500, custom: 2800 },
+                            { day: "Week 4", dhaara: 10000, custom: 2950 },
+                          ]
                           : [
-                              { day: "Jan", dhaara: 32000, custom: 9500 },
-                              { day: "Feb", dhaara: 35000, custom: 10200 },
-                              { day: "Mar", dhaara: 38000, custom: 11500 },
-                              { day: "Apr", dhaara: 36000, custom: 10800 },
-                              { day: "May", dhaara: 39000, custom: 11200 },
-                              { day: "Jun", dhaara: 42000, custom: 12500 },
-                            ]
+                            { day: "Jan", dhaara: 32000, custom: 9500 },
+                            { day: "Feb", dhaara: 35000, custom: 10200 },
+                            { day: "Mar", dhaara: 38000, custom: 11500 },
+                            { day: "Apr", dhaara: 36000, custom: 10800 },
+                            { day: "May", dhaara: 39000, custom: 11200 },
+                            { day: "Jun", dhaara: 42000, custom: 12500 },
+                          ]
                     }
                     margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                   >
@@ -535,6 +545,7 @@ export function ProductionAnalyticsTab() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
+                  
                   <span className="text-sm font-medium">Product A</span>
                   <span className="text-sm font-medium">92</span>
                 </div>

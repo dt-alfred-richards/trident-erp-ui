@@ -39,12 +39,18 @@ const unitOptions = [
   "per sq.m",
 ]
 
+const category = [
+  "Dhaara",
+  "Customized"
+]
+
 // Form schema
 const formSchema = z.object({
   product: z.string().min(1, "Product name is required"),
   sku: z.string().min(1, "SKU is required"),
   price: z.string().min(1, "Price is required"),
   unit: z.string().min(1, "Unit is required"),
+  category: z.string().min(1, "Category is required")
 })
 
 interface AddProductDialogProps {
@@ -69,19 +75,20 @@ export function AddProductDialog({ open, onOpenChange, onAdd, existingIds, clien
       sku: "",
       price: "",
       unit: "per ton",
+      category: ""
     },
   })
 
   // Handle form submission
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true)
-
     const newProduct: Partial<ClientProposedPrice> = {
       clientId,
       name: values.product,
       price: parseInt(values.price),
       unit: values.unit,
       sku: values.sku,
+      category: values.category
     }
 
     addClientProduct(newProduct).then((res) => {
@@ -133,6 +140,31 @@ export function AddProductDialog({ open, onOpenChange, onAdd, existingIds, clien
                   <FormControl>
                     <Input placeholder="STL-PS-001" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="category"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {category.map((unit) => (
+                        <SelectItem key={unit} value={unit}>
+                          {unit}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

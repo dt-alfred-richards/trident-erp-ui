@@ -70,8 +70,9 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
   const { addOrder, clientMapper, shippingAddressMapper, clientProposedProductMapper, referenceMapper } = useOrders()
 
   const PRODUCTS = useMemo(() => {
-    return Object.values(clientProposedProductMapper).flat().map(item => ({ id: item.productId, name: item.name, price: item.price, taxRate: 18 }))
+    return Object.values(clientProposedProductMapper).flat().map(item => ({ id: item.productId, name: item.name, price: item.price, taxRate: 18, category: item.category }))
   }, [clientProposedProductMapper])
+
   // Order header state
   const CLIENTS = useMemo(() => {
     return Object.values(clientMapper).map(item => ({
@@ -250,7 +251,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
 
   // Handle adding a new item to the order
   const handleAddItem = () => {
-    if (!selectedProductId || !selectedSizeSku || !cases || Number(cases) <= 0) {
+    if (!selectedProductId  || !cases || Number(cases) <= 0) {
       return
     }
 
@@ -271,7 +272,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
       taxRate: product.taxRate,
       basePay,
       taxAmount,
-      category: selectedSizeSku
+      category: product.category
     }
 
     setOrderItems([...orderItems, newItem])
@@ -679,7 +680,10 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                         <Label htmlFor="size-sku">Category</Label>
                         <Input
                           id="size-sku"
-                          value={selectedSizeSku}
+                          value={selectedProductId
+                            ? `${PRODUCTS.find((p) => p.id === selectedProductId)?.category}`
+                            : ""}
+                          disabled
                           onChange={(e) => setSelectedSizeSku(e.target.value)}
                           placeholder="Enter category"
                         />
@@ -730,7 +734,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                       <Button
                         type="button"
                         onClick={handleAddItem}
-                        disabled={!selectedProductId || !selectedSizeSku || !cases || Number(cases) <= 0}
+                        disabled={!selectedProductId || !cases || Number(cases) <= 0}
                       >
                         Add
                       </Button>

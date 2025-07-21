@@ -2,6 +2,11 @@
 
 import { Card, CardContent } from "@/components/ui/card"
 import { ArrowUpRight, TrendingUp, ShoppingCart, Users, CreditCard } from "lucide-react"
+import { useTimeRange } from "../common/use-time-range"
+import { useMemo } from "react"
+import { useOrders } from "@/contexts/order-context"
+import { convertToChart } from "./dashboard-helper"
+import { formatNumberIndian, getCummulativeSum } from "@/components/generic"
 
 interface SalesMetricsProps {
   timeRange: string
@@ -9,32 +14,57 @@ interface SalesMetricsProps {
 
 export function SalesMetrics({ timeRange }: SalesMetricsProps) {
   // This would come from your API in a real application
-  const metricsData = {
-    week: {
-      revenue: { value: "₹3.2L", change: "+8.2%", trend: "up" },
-      orders: { value: "42", change: "+12.5%", trend: "up" },
-      customers: { value: "18", change: "-3.1%", trend: "down" },
-      avgOrderValue: { value: "₹7,619", change: "+4.3%", trend: "up" },
-    },
-    month: {
-      revenue: { value: "₹14.5L", change: "+12.3%", trend: "up" },
-      orders: { value: "186", change: "+8.7%", trend: "up" },
-      customers: { value: "64", change: "+5.2%", trend: "up" },
-      avgOrderValue: { value: "₹7,796", change: "+3.4%", trend: "up" },
-    },
-    quarter: {
-      revenue: { value: "₹42.8L", change: "+15.7%", trend: "up" },
-      orders: { value: "542", change: "+10.2%", trend: "up" },
-      customers: { value: "128", change: "+7.8%", trend: "up" },
-      avgOrderValue: { value: "₹7,898", change: "+5.0%", trend: "up" },
-    },
-    custom: {
-      revenue: { value: "₹24.6L", change: "+14.2%", trend: "up" },
-      orders: { value: "312", change: "+9.8%", trend: "up" },
-      customers: { value: "87", change: "+6.3%", trend: "up" },
-      avgOrderValue: { value: "₹7,885", change: "+4.1%", trend: "up" },
-    },
-  }
+  const { timeRange: tRange, startDate, endDate, handleTimeRangeChange, setStartDate, setEndDate } = useTimeRange(timeRange)
+
+  const { orders, clientMapper } = useOrders()
+  const chartData = useMemo(() => {
+    return convertToChart(orders.map(item => ({ date: item.modifiedOn || item.createdAt, total: item.total })))
+  }, [orders]);
+
+  const clientCharts = useMemo(() => {
+    return convertToChart(Object.values(clientMapper).map(item => ({ date: item.modifiedOn || item.createdOn, total: 0 })))
+  }, [clientMapper])
+
+  const metricsData = useMemo(() => {
+    const weekRevenue = getCummulativeSum({ key: "revenue", refObject: chartData["week"] }),
+      monthRevenue = getCummulativeSum({ key: "revenue", refObject: chartData["month"] }),
+      quaterRevenue = getCummulativeSum({ key: "revenue", refObject: chartData["quarter"] }),
+      customRevenue = getCummulativeSum({ key: "revenue", refObject: chartData["custom"] })
+    return ({
+      week: {
+        revenue: {
+          value: formatNumberIndian(weekRevenue), change: ""
+        },
+        orders: { value: chartData.week.length, change: "" },
+        customers: { value: clientCharts["week"].length, change: "" },
+        avgOrderValue: { value: formatNumberIndian(weekRevenue / chartData.week.length), change: "" },
+      },
+      month: {
+        revenue: {
+          value: formatNumberIndian(monthRevenue), change: ""
+        },
+        orders: { value: chartData.month.length, change: "" },
+        customers: { value: clientCharts["month"].length, change: "" },
+        avgOrderValue: { value: formatNumberIndian(monthRevenue / chartData.month.length), change: "" },
+      },
+      quarter: {
+        revenue: {
+          value: formatNumberIndian(quaterRevenue), change: ""
+        },
+        orders: { value: chartData.quarter.length, change: "" },
+        customers: { value: clientCharts["quarter"].length, change: "" },
+        avgOrderValue: { value: formatNumberIndian(quaterRevenue / chartData.quarter.length), change: "" },
+      },
+      custom: {
+        revenue: {
+          value: formatNumberIndian(customRevenue), change: ""
+        },
+        orders: { value: chartData.custom.length, change: "" },
+        customers: { value: clientCharts["custom"].length, change: "" },
+        avgOrderValue: { value: formatNumberIndian(customRevenue / chartData.custom.length), change: "" },
+      },
+    })
+  }, [chartData, clientCharts])
 
   const data = metricsData[timeRange as keyof typeof metricsData] || metricsData["month"]
 

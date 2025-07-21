@@ -7,8 +7,11 @@ import { useFinance } from "@/contexts/finance-context"
 import { Badge } from "@/components/ui/badge"
 import { Download, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useOrders } from "@/contexts/order-context"
 
 export function TaxBalance() {
+  const { orders } = useOrders()
+
   const { trialBalance = [] } = useFinance()
 
   // Helper function to get balance for a specific account from trialBalance

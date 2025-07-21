@@ -152,15 +152,6 @@ export function LogisticsTable({ status }: LogisticsTableProps) {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => handleViewDetails(order)}
-                        title="View shipment details"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
                       {order.status === "ready" && (
                         <Button
                           variant="default"
@@ -181,6 +172,15 @@ export function LogisticsTable({ status }: LogisticsTableProps) {
                           Mark Delivered
                         </Button>
                       )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => handleViewDetails(order)}
+                        title="View shipment details"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>

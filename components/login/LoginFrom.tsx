@@ -125,7 +125,6 @@ export function LoginForm() {
         setIsLoading(true)
         setIsSubmitting(true)
         e.preventDefault()
-
         try {
             const payload = {
                 "email": formData.email,
@@ -133,11 +132,13 @@ export function LoginForm() {
                 "location": `${[routerInfo.city, routerInfo.country].filter(item => item).join(",")}`,
                 "deviceInfo": `${result.browser?.name || ""} on ${result.os?.name || ""}`
             }
-            return login(payload, formData.rememberMe)
+            return login(payload, formData.rememberMe).then(() => {
+                setIsLoading(false)
+                setIsSubmitting(false)
+            })
         } catch (error) {
             console.error("Login error:", error)
             setFormError("Authentication failed. Please check your credentials.")
-        } finally {
             setIsLoading(false)
             setIsSubmitting(false)
         }

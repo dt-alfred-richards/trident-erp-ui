@@ -5,6 +5,10 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { type ChartConfig, ChartContainer } from "@/components/ui/chart"
+import { useOrders } from "@/contexts/order-context"
+import { useMemo } from "react"
+import { getCummulativeSum, getNumber } from "@/components/generic"
+import { convertToChart } from "./dashboard-helper"
 
 interface ProductDistributionProps {
   timeRange: string
@@ -12,43 +16,41 @@ interface ProductDistributionProps {
 }
 
 export function ProductDistribution({ timeRange }: ProductDistributionProps) {
-  // This would come from your API in a real application
+  const { clientProposedProductMapper, orders } = useOrders()
+
+  const saleProducts = useMemo(() => {
+    return orders.map(item => item.products.map(i => ({
+      ...i,
+      date: item.modifiedOn || item.createdAt
+    }))).flat().map(item => ({ total: getNumber(item.cases + '') * getNumber(item.price + ''), date: item.date, product: item.name }))
+  }, [orders])
+
+  const products = useMemo(() => {
+    return Object.values(clientProposedProductMapper).flat().map(item => ({
+      id: item.id, name: item.name, date: item.modifiedOn || item.createdOn
+    }))
+  }, [clientProposedProductMapper])
+
+  const chartData = useMemo(() => {
+    return convertToChart(saleProducts)
+  }, [saleProducts])
+
+  // This would come from your A
+  // const saleProducts = useMemo(()=>{
+  // })PI in a real application
   const productData = {
-    "7d": [
-      { name: "500ml", value: 120000, percentage: 38 },
-      { name: "750ml", value: 85000, percentage: 27 },
-      { name: "1000ml", value: 65000, percentage: 20 },
-      { name: "2000ml", value: 35000, percentage: 11 },
-      { name: "Custom-A", value: 15000, percentage: 4 },
-    ],
-    "30d": [
-      { name: "500ml", value: 520000, percentage: 36 },
-      { name: "750ml", value: 420000, percentage: 29 },
-      { name: "1000ml", value: 280000, percentage: 19 },
-      { name: "2000ml", value: 160000, percentage: 11 },
-      { name: "Custom-A", value: 70000, percentage: 5 },
-    ],
-    "90d": [
-      { name: "500ml", value: 1520000, percentage: 35 },
-      { name: "750ml", value: 1280000, percentage: 30 },
-      { name: "1000ml", value: 850000, percentage: 20 },
-      { name: "2000ml", value: 450000, percentage: 11 },
-      { name: "Custom-A", value: 180000, percentage: 4 },
-    ],
-    "12m": [
-      { name: "500ml", value: 5800000, percentage: 34 },
-      { name: "750ml", value: 5200000, percentage: 31 },
-      { name: "1000ml", value: 3400000, percentage: 20 },
-      { name: "2000ml", value: 1800000, percentage: 11 },
-      { name: "Custom-A", value: 650000, percentage: 4 },
-    ],
-    custom: [
-      { name: "500ml", value: 850000, percentage: 35 },
-      { name: "750ml", value: 720000, percentage: 29 },
-      { name: "1000ml", value: 480000, percentage: 20 },
-      { name: "2000ml", value: 280000, percentage: 11 },
-      { name: "Custom-A", value: 130000, percentage: 5 },
-    ],
+    "7d": products.map(item => ({
+      name: item.name, value: getCummulativeSum({ key: "revenue", refObject: chartData.week.filter(i => i?.name === item.name) })
+    })),
+    "30d": products.map(item => ({
+      name: item.name, value: getCummulativeSum({ key: "revenue", refObject: chartData.month.filter(i => i?.name === item.name) })
+    })),
+    "90d": products.map(item => ({
+      name: item.name, value: getCummulativeSum({ key: "revenue", refObject: chartData.quarter.filter(i => i?.name === item.name) })
+    })),
+    custom: products.map(item => ({
+      name: item.name, value: getCummulativeSum({ key: "revenue", refObject: chartData.custom.filter(i => i?.name === item.name) })
+    })),
   }
 
   // Map the time range selector values to the data keys
