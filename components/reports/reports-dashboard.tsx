@@ -1187,12 +1187,11 @@ export function ReportsDashboard() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Products</SelectItem>
-                        <SelectItem value="Dhaara 2000 ML">Dhaara 2000 ML</SelectItem>
-                        <SelectItem value="Dhaara 1000 ML">Dhaara 1000 ML</SelectItem>
-                        <SelectItem value="Dhaara 500 ML">Dhaara 500 ML</SelectItem>
-                        <SelectItem value="Dhaara 250 ML">Dhaara 250 ML</SelectItem>
-                        <SelectItem value="Antera 500 ML">Antera 500 ML</SelectItem>
-                        <SelectItem value="Paradise 1000 ML">Paradise 1000 ML</SelectItem>
+                        {
+                          Object.values(productMapper).map(item => {
+                            return (<SelectItem key={item.productId} value={item.name}>{item.name}</SelectItem>)
+                          })
+                        }
                       </SelectContent>
                     </Select>
                   </div>
@@ -1363,16 +1362,15 @@ export function ReportsDashboard() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Products</SelectItem>
-                        <SelectItem value="Dhaara 2000 ML">Dhaara 2000 ML</SelectItem>
-                        <SelectItem value="Dhaara 1000 ML">Dhaara 1000 ML</SelectItem>
-                        <SelectItem value="Dhaara 500 ML">Dhaara 500 ML</SelectItem>
-                        <SelectItem value="Dhaara 250 ML">Dhaara 250 ML</SelectItem>
-                        <SelectItem value="Antera 500 ML">Antera 500 ML</SelectItem>
-                        <SelectItem value="Paradise 1000 ML">Paradise 1000 ML</SelectItem>
+                        {
+                          Object.values(productMapper).map(item => {
+                            return (<SelectItem key={item.productId} value={item.name}>{item.name}</SelectItem>)
+                          })
+                        }
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  {/* <div className="flex items-center space-x-2">
                     <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                       <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="Select category" />
@@ -1383,7 +1381,7 @@ export function ReportsDashboard() {
                         <SelectItem value="Customised">Customised</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
+                  </div> */}
                   <div className="flex items-center space-x-2">
                     <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                       <SelectTrigger className="w-[180px]">
@@ -1532,7 +1530,7 @@ export function ReportsDashboard() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  {/* <div className="flex items-center space-x-2">
                     <Select value={selectedWarehouse} onValueChange={setSelectedWarehouse}>
                       <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="Select warehouse" />
@@ -1545,7 +1543,7 @@ export function ReportsDashboard() {
                         <SelectItem value="chennai">Chennai</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
+                  </div> */}
                   <div className="flex items-center space-x-2">
                     <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                       <SelectTrigger className="w-[180px]">
@@ -1857,7 +1855,7 @@ export function ReportsDashboard() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  {/* <div className="flex items-center space-x-2">
                     <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                       <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="Select category" />
@@ -1870,7 +1868,7 @@ export function ReportsDashboard() {
                         <SelectItem value="equipment">Equipment</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
+                  </div> */}
                 </div>
                 <div className="flex items-center space-x-2">
                   <Input
@@ -2012,7 +2010,7 @@ export function ReportsDashboard() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  {/* <div className="flex items-center space-x-2">
                     <Select value={selectedLocation} onValueChange={setSelectedLocation}>
                       <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="Select location" />
@@ -2025,7 +2023,7 @@ export function ReportsDashboard() {
                         <SelectItem value="chennai">Chennai</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
+                  </div> */}
                 </div>
                 <div className="flex items-center space-x-2">
                   <Input
