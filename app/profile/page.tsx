@@ -4,8 +4,8 @@ import type React from "react"
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Bell, CheckCircle, Clock, Edit, FileText, Mail, MapPin, Phone, Shield, User } from "lucide-react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { Bell, CheckCircle, Clock, Delete, Edit, FileText, Mail, MapPin, Phone, Shield, TrashIcon, User } from "lucide-react"
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -23,6 +23,30 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns"
 import { useGlobalContext } from "../../components/GlobalContext"
 import { Employee } from "../hr/hr-context"
+import { DataByTableName } from "@/components/api"
+import { EventLogger, useEvents } from "./events-context"
+import { DateInput } from "@/components/ui/reusable-components"
+
+const labelMapper = {
+  "v1_login": "Login",
+  "v1_inventory": "Inventory",
+  "v1_clients": "Clients",
+  "v1_driver": "Drivers",
+}
+
+const iconMapper: Record<string, ReactNode> = {
+  create: <CheckCircle className="h-6 w-6 text-green-500" />,
+  password: <Shield className="h-6 w-6 text-orange-500" />,
+  update: <Edit className="h-6 w-6 text-blue-500" />,
+  delete: <Delete className="h-6 w-6 text-blue-500" />,
+  cancelled: <TrashIcon className="h-6 w-6 text-red-500" />,
+}
+
+const statusMapper: Record<string, string> = {
+  "create": "Created",
+  "update": "Updated",
+  "delete": "Deleted"
+}
 
 export default function ProfilePage() {
   const { user = {}, saveUser, sessionInfo, tokenDetails, logout = () => { }, logoutSession } = useGlobalContext()
@@ -32,7 +56,24 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [showActivityLog, setShowActivityLog] = useState(false)
 
+  const processTableName = (str: string) => {
+    const replaced = str.replace('v1', "")
+      .split("_")
+      .filter(item => item);
+    return replaced.join(" ")
+  }
+
   const [userDetails, setUserDetails] = useState<Partial<Employee>>({})
+
+  const eventsInstance = new DataByTableName("events_logger");
+  const [eventsLogger, setEventsLogger] = useState<EventLogger[]>([])
+
+  useEffect(() => {
+    eventsInstance.get().then((res) => {
+      const responseData = getChildObject(res, "data", []);
+      setEventsLogger(responseData)
+    })
+  }, [])
 
   const updateUser = (event: any) => {
     setUserDetails(p => ({
@@ -41,99 +82,47 @@ export default function ProfilePage() {
     }))
   }
 
+  const latestLogin = useMemo(() => {
+    return (eventsLogger || []).filter(item => item.tableName === "v1_login").sort((a, b) => new Date(b?.createdOn)?.getTime() - new Date(a?.createdOn)?.getTime())[0];
+  }, [eventsLogger])
+  const passwordLoggers = useMemo(() => {
+    return (eventsLogger || []).filter(item => item.tableName === "v1_employee" && (item?.payload || '').includes("password")).sort((a, b) => new Date(b?.createdOn)?.getTime() - new Date(a?.createdOn)?.getTime());
+  }, [eventsLogger])
+
+
+  const passwordLogIds = useMemo(() => {
+    return passwordLoggers.map(item => item.id)
+  }, [passwordLoggers])
+
+
   // Full activity log data - this would come from your API in a real application
-  const fullActivityLog = [
-    {
-      action: "Logged in",
-      details: "Chrome on Windows",
-      time: "Today, 10:30 AM",
-      icon: <CheckCircle className="h-6 w-6 text-green-500" />,
-    },
-    {
-      action: "Updated inventory levels",
-      details: "Modified 5 items",
-      time: "Yesterday, 3:45 PM",
-      icon: <Edit className="h-6 w-6 text-blue-500" />,
-    },
-    {
-      action: "Approved purchase order",
-      details: "PO-2023-0456",
-      time: "Yesterday, 11:20 AM",
-      icon: <CheckCircle className="h-6 w-6 text-green-500" />,
-    },
-    {
-      action: "Generated monthly report",
-      details: "Finance summary for March 2023",
-      time: "Mar 31, 2023, 5:00 PM",
-      icon: <FileText className="h-6 w-6 text-blue-500" />,
-    },
-    {
-      action: "Password changed",
-      details: "Security update",
-      time: "Mar 15, 2023, 9:30 AM",
-      icon: <Shield className="h-6 w-6 text-orange-500" />,
-    },
-    {
-      action: "Updated profile information",
-      details: "Changed contact details",
-      time: "Mar 10, 2023, 2:15 PM",
-      icon: <Edit className="h-6 w-6 text-blue-500" />,
-    },
-    {
-      action: "Created production order",
-      details: "Order #PRD-2023-0089",
-      time: "Mar 8, 2023, 11:05 AM",
-      icon: <FileText className="h-6 w-6 text-blue-500" />,
-    },
-    {
-      action: "Approved requisition",
-      details: "REQ-2023-0034",
-      time: "Mar 5, 2023, 9:45 AM",
-      icon: <CheckCircle className="h-6 w-6 text-green-500" />,
-    },
-    {
-      action: "Logged in",
-      details: "Firefox on Windows",
-      time: "Mar 5, 2023, 9:30 AM",
-      icon: <CheckCircle className="h-6 w-6 text-green-500" />,
-    },
-    {
-      action: "Created sales order",
-      details: "Order #SO-2023-0156",
-      time: "Mar 3, 2023, 3:20 PM",
-      icon: <FileText className="h-6 w-6 text-blue-500" />,
-    },
-    {
-      action: "Updated customer information",
-      details: "Customer #CUST-0089",
-      time: "Mar 1, 2023, 10:15 AM",
-      icon: <Edit className="h-6 w-6 text-blue-500" />,
-    },
-    {
-      action: "Generated inventory report",
-      details: "Monthly inventory summary",
-      time: "Feb 28, 2023, 4:30 PM",
-      icon: <FileText className="h-6 w-6 text-blue-500" />,
-    },
-    {
-      action: "Approved leave request",
-      details: "Employee #EMP-0023",
-      time: "Feb 25, 2023, 11:45 AM",
-      icon: <CheckCircle className="h-6 w-6 text-green-500" />,
-    },
-    {
-      action: "Created purchase order",
-      details: "PO-2023-0045",
-      time: "Feb 22, 2023, 2:10 PM",
-      icon: <FileText className="h-6 w-6 text-blue-500" />,
-    },
-    {
-      action: "System maintenance",
-      details: "Scheduled backup",
-      time: "Feb 20, 2023, 1:00 AM",
-      icon: <Shield className="h-6 w-6 text-orange-500" />,
-    },
-  ]
+  const fullActivityLog = useMemo(() => {
+    return ([
+      {
+        action: "Logged in",
+        details: latestLogin?.fieldValue || '',
+        time: formatRelativeTime(getChildObject(latestLogin, 'createdOn', '')),
+        icon: <CheckCircle className="h-6 w-6 text-green-500" />,
+      },
+      ...eventsLogger.filter(item => item.tableName !== "v1_login" && !passwordLogIds.includes(item.id)).map(item => {
+        return ({
+          action: processTableName(item.tableName),
+          details: item.fieldValue === "cancelled" ? "Cancelled" : item.category,
+          time: formatRelativeTime(item.createdOn),
+          icon: iconMapper[item.fieldValue] || iconMapper[item.category],
+        })
+      }), {
+        action: "Password changed",
+        details: "Security update",
+        time: formatRelativeTime(getChildObject(passwordLoggers, '0.createdOn', '')),
+        icon: <Shield className="h-6 w-6 text-orange-500" />,
+      }
+    ])
+  }, [eventsLogger])
+
+  useEffect(() => {
+    setFilteredActivityLog(fullActivityLog)
+  }, [fullActivityLog])
 
   useEffect(() => {
     if (Object.values(user).length === 0 || !fetchRef.current) return
@@ -299,7 +288,7 @@ export default function ProfilePage() {
               </div>
               <div className="flex items-center">
                 <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
-                <span className="text-sm">{`${userDetails?.city || ""},${userDetails?.country || ""}`}</span>
+                <span className="text-sm">{[userDetails?.city, userDetails?.country].filter(item => item).join(",")}</span>
               </div>
             </div>
             <Separator />
@@ -515,7 +504,7 @@ export default function ProfilePage() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="country">Country</Label>
-                      <select id="country" className="w-full p-2 border rounded-md" {...getAttributes("country")}>
+                      <select id="country" className="w-full p-2 border rounded-md" defaultValue={undefined}  {...getAttributes("country")}>
                         <option value="india">India</option>
                         <option value="usa">United States</option>
                         <option value="uk">United Kingdom</option>
@@ -888,46 +877,20 @@ export default function ProfilePage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-8">
-                    {[
-                      {
-                        action: "Logged in",
-                        details: "Chrome on Windows",
-                        time: "Today, 10:30 AM",
-                        icon: <CheckCircle className="h-6 w-6 text-green-500" />,
-                      },
-                      {
-                        action: "Updated inventory levels",
-                        details: "Modified 5 items",
-                        time: "Yesterday, 3:45 PM",
-                        icon: <Edit className="h-6 w-6 text-blue-500" />,
-                      },
-                      {
-                        action: "Approved purchase order",
-                        details: "PO-2023-0456",
-                        time: "Yesterday, 11:20 AM",
-                        icon: <CheckCircle className="h-6 w-6 text-green-500" />,
-                      },
-                      {
-                        action: "Generated monthly report",
-                        details: "Finance summary for March 2023",
-                        time: "Mar 31, 2023, 5:00 PM",
-                        icon: <FileText className="h-6 w-6 text-blue-500" />,
-                      },
-                      {
-                        action: "Password changed",
-                        details: "Security update",
-                        time: "Mar 15, 2023, 9:30 AM",
-                        icon: <Shield className="h-6 w-6 text-orange-500" />,
-                      },
-                    ].map((item, index) => (
+                    {[...filteredActivityLog.filter(item => item.action !== "Password Changed").slice(0, 4), {
+                      action: "Password changed",
+                      details: "Security update",
+                      time: formatRelativeTime(getChildObject(passwordLoggers, '0.createdOn', '')),
+                      icon: <Shield className="h-6 w-6 text-orange-500" />,
+                    }].map((item, index) => (
                       <div key={index} className="flex">
                         <div className="mr-4 flex-shrink-0">{item.icon}</div>
                         <div className="flex-grow">
                           <div className="flex justify-between">
-                            <p className="font-medium">{item.action}</p>
+                            <p className="font-medium" style={{ textTransform: "capitalize" }}>{item.action}</p>
                             <span className="text-sm text-muted-foreground">{item.time}</span>
                           </div>
-                          <p className="text-sm text-muted-foreground">{item.details}</p>
+                          <p className="text-sm text-muted-foreground" style={{ textTransform: "capitalize" }}>{statusMapper[item.details] || item.details}</p>
                         </div>
                       </div>
                     ))}
@@ -959,48 +922,22 @@ export default function ProfilePage() {
           <div className="flex flex-col sm:flex-row gap-4 mb-4">
             <div className="flex-1 space-y-1">
               <Label htmlFor="date-from">From Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button id="date-from" variant="outline" className="w-full justify-start text-left font-normal">
-                    {dateRange.from ? (
-                      format(dateRange.from, "PPP")
-                    ) : (
-                      <span className="text-muted-foreground">Pick a date</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dateRange.from}
-                    onSelect={(date) => setDateRange({ ...dateRange, from: date })}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <DateInput
+                selectedDate={dateRange.from}
+                setState={value => {
+                  setDateRange(prev => ({ ...prev, from: value } as any));
+                }}
+              />
             </div>
 
             <div className="flex-1 space-y-1">
               <Label htmlFor="date-to">To Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button id="date-to" variant="outline" className="w-full justify-start text-left font-normal">
-                    {dateRange.to ? (
-                      format(dateRange.to, "PPP")
-                    ) : (
-                      <span className="text-muted-foreground">Pick a date</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dateRange.to}
-                    onSelect={(date) => setDateRange({ ...dateRange, to: date })}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <DateInput
+                selectedDate={dateRange.to}
+                setState={value => {
+                  setDateRange(prev => ({ ...prev, to: value } as any));
+                }}
+              />
             </div>
 
             <div className="flex items-end">
@@ -1028,10 +965,10 @@ export default function ProfilePage() {
                       <div className="mr-4 flex-shrink-0">{item.icon}</div>
                       <div className="flex-grow min-w-0">
                         <div className="flex justify-between items-start">
-                          <p className="font-medium truncate">{item.action}</p>
+                          <p className="font-medium truncate" style={{ textTransform: 'capitalize' }}>{item.action}</p>
                           <span className="text-sm text-muted-foreground whitespace-nowrap ml-2">{item.time}</span>
                         </div>
-                        <p className="text-sm text-muted-foreground">{item.details}</p>
+                        <p className="text-sm text-muted-foreground" style={{ textTransform: "capitalize" }}>{statusMapper[item.details] || item.details}</p>
                       </div>
                     </div>
                   ))}

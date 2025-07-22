@@ -181,7 +181,6 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const shippingAddressInstance = new DataByTableName("shipping_addresses");
   const clientProposedProducts = new DataByTableName("v1_client_products");
   const saleOrderDetailInstance = new DataByTableName("v1_sales_order_details");
-  const eventLoggerInstance = new DataByTableName("events_logger");
 
   const productSkuMapper = useMemo(() => {
     return Object.values(clientProposedProductMapper).flat().reduce((acc: Record<string, string>, curr) => {
@@ -199,8 +198,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       clientReferenceInstance.get(),
       shippingAddressInstance.get(),
       clientProposedProducts.get(),
-      saleOrderDetailInstance.get(),
-      eventLoggerInstance.get()
+      saleOrderDetailInstance.get()
     ]).then(response => {
       const saleResponse = getChildObject(response, "0.value.data", []);
       const _clientMapper = getChildObject(response, "1.value.data", []).reduce((acc: Record<string, Client>, curr: Client) => {
@@ -270,7 +268,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
           employeeReferenceId: item.employeeReferenceId,
           shippingAddressId: item.shippingAddressId,
           total: item.total,
-          discount: item.discount, 
+          discount: item.discount,
           poDate: item.poDate,
           statusHistory: _eventsLogger.filter((i: EventLogger) => i.tableName === "v1_sales" && i.tableId === item.id).map((item: EventLogger) => ({
             timestamp: item.createdOn,

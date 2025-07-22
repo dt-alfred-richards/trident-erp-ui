@@ -10,7 +10,8 @@ type ContextBoilder<T> = {
     data: T[],
     create: (payload: Partial<T>, refetch?: boolean) => Promise<void>,
     update: (payload: Partial<T>, refetch?: boolean) => Promise<void>,
-    deleteItem: (itemId: number, refetch?: boolean) => Promise<void>
+    deleteItem: (itemId: number, refetch?: boolean) => Promise<void>,
+    refetchData: VoidFunction
 }
 
 
@@ -80,7 +81,8 @@ const useContextBoilerCode = <T,>(tableName: string): ContextBoilder<T> => {
         data,
         create,
         update,
-        deleteItem
+        deleteItem,
+        refetchData: fetchData
     }
 }
 export function createBoilerContext<T>(tableName: string) {

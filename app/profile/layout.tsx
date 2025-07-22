@@ -1,5 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
+import { EventsProvider } from "./events-context"
 
 export const metadata: Metadata = {
   title: "Profile | Dhaara ERP",
@@ -11,5 +12,5 @@ export default function ProfileLayout({
 }: {
   children: React.ReactNode
 }) {
-  return children
+  return <EventsProvider>{children}</EventsProvider>
 }
