@@ -251,7 +251,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
 
   // Handle adding a new item to the order
   const handleAddItem = () => {
-    if (!selectedProductId  || !cases || Number(cases) <= 0) {
+    if (!selectedProductId || !cases || Number(cases) <= 0) {
       return
     }
 
@@ -347,7 +347,8 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
       productId: item.productId,
       saleId: "",
       status: "pending_approval",
-      category: item.category
+      category: item.category,
+      price: item.pricePerCase
     }))
 
     // Add the order to the context (this would be an API call in a real app)

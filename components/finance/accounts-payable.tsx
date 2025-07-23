@@ -25,6 +25,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
 import { useBillContext } from "./context/bill-context"
+import { formatNumberIndian } from "../generic"
 
 export function AccountsPayable() {
   const [activeTab, setActiveTab] = useState("bills")
@@ -255,7 +256,7 @@ export function AccountsPayable() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <MetricCard
           title="Total Payables"
-          value={`₹${(totalPayables / 100000).toFixed(2)}L`}
+          value={`₹${formatNumberIndian(totalPayables)}`}
           description="Outstanding bills"
           icon={<span className="text-lg">₹</span>}
           iconColor="text-indigo-500"
@@ -263,7 +264,7 @@ export function AccountsPayable() {
         />
         <MetricCard
           title="Current"
-          value={`₹${(currentPayables / 100000).toFixed(2)}L`}
+          value={`₹${formatNumberIndian(currentPayables)}`}
           description="Not yet due"
           trend="up"
           icon={<span className="text-lg">₹</span>}
@@ -272,7 +273,7 @@ export function AccountsPayable() {
         />
         <MetricCard
           title="Overdue"
-          value={`₹${(overduePayables / 100000).toFixed(2)}L`}
+          value={`₹${formatNumberIndian(overduePayables)}`}
           description="Past due date"
           trend="down"
           icon={<span className="text-lg">₹</span>}
@@ -365,7 +366,7 @@ export function AccountsPayable() {
                   {paginatedBills.length > 0 ? (
                     paginatedBills.map((bill) => (
                       <TableRow key={bill.id}>
-                        <TableCell className="font-medium">{bill.id}</TableCell>
+                        <TableCell className="font-medium">{`PO-${bill.id}`}</TableCell>
                         <TableCell>{bill.supplier}</TableCell>
                         <TableCell>{bill.date}</TableCell>
                         <TableCell>{bill.dueDate}</TableCell>

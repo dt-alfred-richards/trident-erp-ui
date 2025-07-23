@@ -25,7 +25,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
 import { useInvoiceContext } from "./context/invoice-context"
-import { getCummulativeSum } from "../generic"
+import { formatNumberIndian, getCummulativeSum } from "../generic"
 
 export function AccountsReceivable() {
   const [activeTab, setActiveTab] = useState("invoices")
@@ -141,7 +141,7 @@ export function AccountsReceivable() {
   // Confirm delete
   const confirmDelete = () => {
     if (invoiceToDelete) {
-      deleteInvoice(parseInt(invoiceToDelete)).then(()=>{
+      deleteInvoice(parseInt(invoiceToDelete)).then(() => {
         setInvoiceToDelete(null)
         setIsDeleteDialogOpen(false)
       })
@@ -283,7 +283,7 @@ export function AccountsReceivable() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <MetricCard
           title="Total Receivables"
-          value={`₹${(totalReceivables / 100000).toFixed(2)}L`}
+          value={`₹${formatNumberIndian(totalReceivables)}`}
           description="Outstanding invoices"
           icon={<span className="text-lg">₹</span>}
           iconColor="text-blue-500"
@@ -291,7 +291,7 @@ export function AccountsReceivable() {
         />
         <MetricCard
           title="Current"
-          value={`₹${(currentReceivables / 100000).toFixed(2)}L`}
+          value={`₹${formatNumberIndian(currentReceivables)}`}
           description="Not yet due"
           trend="up"
           icon={<span className="text-lg">₹</span>}
@@ -300,7 +300,7 @@ export function AccountsReceivable() {
         />
         <MetricCard
           title="Overdue"
-          value={`₹${(overdueReceivables / 100000).toFixed(2)}L`}
+          value={`₹${formatNumberIndian(overdueReceivables)}`}
           description="Past due date"
           trend="down"
           icon={<span className="text-lg">₹</span>}

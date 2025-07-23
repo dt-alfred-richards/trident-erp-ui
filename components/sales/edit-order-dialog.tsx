@@ -136,6 +136,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
   useEffect(() => {
     setShippingAddress(order.shippingAddressId)
   }, [order, contextShippingAddress])
+  console.log({ order })
 
   // Initialize order items from order products
   useEffect(() => {

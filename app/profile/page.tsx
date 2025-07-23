@@ -65,6 +65,8 @@ export default function ProfilePage() {
 
   const [userDetails, setUserDetails] = useState<Partial<Employee>>({})
 
+  console.log({ userDetails })
+
   const eventsInstance = new DataByTableName("events_logger");
   const [eventsLogger, setEventsLogger] = useState<EventLogger[]>([])
 

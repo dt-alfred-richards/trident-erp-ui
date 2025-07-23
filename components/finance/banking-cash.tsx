@@ -29,6 +29,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { format } from "date-fns"
 import { useBankAccountContext } from "./context/bank-account-context"
 import { useTranscation } from "./context/trasncations"
+import { formatNumberIndian } from "../generic"
 
 export function BankingCash() {
   const { journalEntries } = useFinance()
@@ -544,7 +545,7 @@ export function BankingCash() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <MetricCard
           title="Total Cash Balance"
-          value={`₹${(totalBalance / 1000000).toFixed(2)}M`}
+          value={`₹${formatNumberIndian(totalBalance)}`}
           description="Across all accounts"
           icon={<span className="text-lg">₹</span>}
           iconColor="text-teal-500"
@@ -552,7 +553,7 @@ export function BankingCash() {
         />
         <MetricCard
           title="Operating Account"
-          value={`₹${(bankAccounts[0]?.balance / 1000000 || 0).toFixed(2)}M`}
+          value={`₹${formatNumberIndian(bankAccounts[0]?.balance)}`}
           description="Main business account"
           icon={<span className="text-lg">₹</span>}
           iconColor="text-blue-500"
@@ -560,10 +561,10 @@ export function BankingCash() {
         />
         <MetricCard
           title="Net Cash Flow (MTD)"
-          value={`₹${(netCashFlow / 1000000).toFixed(2)}M`}
+          value={`₹${formatNumberIndian(netCashFlow)}`}
           trend={netCashFlow > 0 ? "up" : "down"}
-          change={`${Math.abs(Math.round((netCashFlow / totalBalance) * 100))}%`}
-          description="vs last month"
+          // change={`${Math.abs(Math.round((netCashFlow / totalBalance) * 100))}%`}
+          // description="vs last month"
           icon={<span className="text-lg">₹</span>}
           iconColor={netCashFlow > 0 ? "text-emerald-500" : "text-red-500"}
           iconBgColor={netCashFlow > 0 ? "bg-emerald-500/10" : "bg-red-500/10"}

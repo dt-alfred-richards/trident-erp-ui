@@ -108,8 +108,8 @@ export function getStartedAgo(timestamp: string | number | Date): string {
 export const getCummulativeSum = ({ key, refObject, defaultValue = 0 }: { key: string, refObject: any[], defaultValue?: number }) => {
     return refObject.reduce((acc, curr) => {
         acc += getChildObject(curr, key, defaultValue)
-        return acc;
     }, 0)
+    return acc;
 }
 
 export function formatNumberIndian(value: number): string {
@@ -117,13 +117,12 @@ export function formatNumberIndian(value: number): string {
         return `${(value / 10000000).toFixed(1).replace(/\.0$/, '')}Cr`; // Crores
     } else if (value >= 100000) {
         return `${(value / 100000).toFixed(1).replace(/\.0$/, '')}L`; // Lakhs
-    } else if (value >= 1000) {
+    } else if (value >= 10000) {
         return `${(value / 1000).toFixed(1).replace(/\.0$/, '')}k`; // Thousands
     } else {
         return value?.toString() || '';
     }
 }
-
 
 
 export const getNumber = (value: string = "") => {
