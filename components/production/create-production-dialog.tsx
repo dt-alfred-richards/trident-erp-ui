@@ -142,6 +142,7 @@ export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProduc
     return "Standard"
   }
 
+  console.log({ bomComponents })
   // Helper function to get the category for a material
   const getMaterialCategory = (materialName: string): string => {
     const material = Object.keys(materialCategoryMap).find((key) =>
@@ -188,7 +189,7 @@ export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProduc
     const bomId = getChildObject(bomComponents, `0.bomId`, "")
 
     if (!createProductionOrder || !date || !bomId || !refetch || !updateProductionOrder) return
-    
+
     createProductionOrder({
       bomId: bomId,
       deadline: date,
@@ -325,7 +326,7 @@ export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProduc
                                 {component.available.toLocaleString()} {component.unit}
                               </TableCell>
                               <TableCell className="text-right">
-                                {component.isSufficient ? (
+                                {parseInt(quantity) > 0 && component.available > parseInt(quantity) ? (
                                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                     Sufficient
                                   </span>

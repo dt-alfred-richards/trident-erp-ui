@@ -326,7 +326,7 @@ export function FinanceOverview() {
           <CardContent>
             <div className="space-y-4">
               {bills.slice(0, 5).map(item => {
-                return (<div className="border-b pb-2">
+                return (<div key={item.id} className="border-b pb-2">
                   <div className="flex justify-between items-center">
                     <div className="font-medium">{`PO-${item.id}`}</div>
                     <div className="text-sm text-muted-foreground">{`₹${item.amount}`}</div>

@@ -710,7 +710,7 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
                           id="price"
                           value={
                             selectedProductId
-                              ? `₹${PRODUCTS.find((p) => p.id === selectedProductId)?.price.toFixed(2) || "0.00"}`
+                              ? `₹${PRODUCTS.find((p) => p.id === selectedProductId)?.price?.toFixed(2) || "0.00"}`
                               : ""
                           }
                           readOnly
