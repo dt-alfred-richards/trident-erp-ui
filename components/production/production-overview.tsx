@@ -170,8 +170,8 @@ export function ProductionOverview({ onProduceClick, onViewOrders, onViewDemand 
                 </TableCell>
               </TableRow>
             ) : (
-              currentItems.map((item) => (
-                <TableRow key={item.sku}>
+              currentItems.map((item, index) => (
+                <TableRow key={`${item.sku}-${index}`}>
                   <TableCell className="font-medium">{item.sku}</TableCell>
                   <TableCell className="text-right">{item.pendingOrders.toLocaleString()}</TableCell>
                   <TableCell className="text-right">{item.inProduction.toLocaleString()}</TableCell>

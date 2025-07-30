@@ -38,7 +38,8 @@ export type MaterialOptions = {
     materialId: string,
     category: string,
     type: string,
-    status: string
+    status: string,
+    available: number
 }
 type Context = {
     bom: BomAndComponent[],
@@ -65,7 +66,6 @@ export const BomProvider = ({ children }: { children: ReactNode }) => {
     const bomInstance = new DataByTableName("v1_bom")
     const bomComponentsInstance = new DataByTableName("v1_bom_components")
 
-
     const getProductName = useCallback((productId: string) => {
         return Object.values(clientProposedProductMapper).flat().find(item => item.productId === productId)?.name || ""
     }, [clientProposedProductMapper])
@@ -90,7 +90,7 @@ export const BomProvider = ({ children }: { children: ReactNode }) => {
 
     const addBomComponent = (bomId: string, payload: Partial<BomComponent>) => {
         return bomComponentsInstance.post({
-            materialId:payload.materialId,
+            materialId: payload.materialId,
             ...removebasicTypes(payload, ["id", "bomCompId"]),
             bomId
         })
@@ -150,7 +150,7 @@ export const BomProvider = ({ children }: { children: ReactNode }) => {
     }, [clientProposedProductMapper])
 
     const materialOptions = useMemo(() => {
-        return inventory?.map(item => ({ name: item.material, unit: item.unit, cost: item.price, materialId: item.inventoryId, category: item.category, type: item.type, status: item.status }))
+        return inventory?.map(item => ({ name: item.material, unit: item.unit, cost: item.price, materialId: item.inventoryId, category: item.category, type: item.type, status: item.status, available: item.quantity }))
     }, [inventory])
 
     // Define unit options

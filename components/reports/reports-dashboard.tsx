@@ -1114,7 +1114,7 @@ export function ReportsDashboard() {
             }`}
           onClick={() => handleTabChange("procurement")}
         >
-          <CardContent className="p-4 flex items-center space-x-3">
+          <CardContent className="p-4 flex items-center space-x-3" style={{ width: '200px' }}>
             <div className={`p-2 rounded-full ${activeTab === "procurement" ? "bg-[#1b84ff] text-white" : "bg-muted"}`}>
               <ShoppingCart className="h-5 w-5" />
             </div>

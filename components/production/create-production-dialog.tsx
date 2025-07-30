@@ -33,6 +33,8 @@ import { BomAndComponent, MaterialOptions, useBomContext } from "../bom/bom-cont
 import { useProduction } from "./production-context"
 import { getChildObject } from "../generic"
 import { DateInput } from "../ui/reusable-components"
+import { useInventory } from "@/app/inventory-context"
+import { DataByTableName } from "../api"
 
 interface CreateProductionDialogProps {
   open: boolean
@@ -61,17 +63,17 @@ const materialCategoryMap: Record<string, string> = {
 export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProductionDialogProps) {
   const { clientProposedProductMapper, productSkuMapper, clientMapper } = useOrders()
   const { createProductionOrder, refetch, updateProductionOrder } = useProduction()
-  const { bom = [], materialOptions = [] } = useBomContext()
+  const { bom = [], materialOptions = [], refetch: refetchBom } = useBomContext()
+  const { refetch: refetchInventory } = useInventory()
   const [quantity, setQuantity] = useState("")
   const [selectedSku, setSelectedSku] = useState("")
   const [assignedTo, setAssignedTo] = useState("")
   const [date, setDate] = useState<Date | undefined>(undefined)
-  const [openDatePicker, setOpenDatePicker] = useState(false)
+
   const [bomComponents, setBomComponents] = useState<BomComponentWithAvailability[]>([])
   const [bomId, setBomId] = useState<string>("")
   const [allComponentsSelected, setAllComponentsSelected] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-
   const materialMapper = useMemo(() => {
     return materialOptions.reduce((acc: Record<string, MaterialOptions>, curr) => {
       if (!acc[curr.materialId]) {
@@ -80,6 +82,7 @@ export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProduc
       return acc;
     }, {})
   }, [materialOptions])
+  console.log({ bomComponents, materialOptions, materialMapper })
 
   const productNameMapper = useMemo(() => {
     return Object.values(clientProposedProductMapper).flat().reduce((acc: Record<string, string>, curr) => {
@@ -90,7 +93,7 @@ export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProduc
 
   const createBom = useCallback((bomItem: BomAndComponent, bomId: string) => {
     return bomItem.components.flatMap(item => ({
-      available: item.quantity,
+      available: materialMapper[item.materialId]?.available,
       cost: item.cost,
       isSelected: false,
       isSufficient: false,
@@ -101,7 +104,7 @@ export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProduc
       unit: materialMapper[item.materialId]?.unit,
       bomId
     } as BomComponentWithAvailability))
-  }, [quantity])
+  }, [quantity, materialOptions])
 
   useEffect(() => {
     const _bomComponents = bom.filter(item => item.productId === selectedSku).flatMap(item => [...createBom(item, item.bomId)])
@@ -142,7 +145,6 @@ export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProduc
     return "Standard"
   }
 
-  console.log({ bomComponents })
   // Helper function to get the category for a material
   const getMaterialCategory = (materialName: string): string => {
     const material = Object.keys(materialCategoryMap).find((key) =>
@@ -182,27 +184,51 @@ export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProduc
     })
   }
 
+  const isSufficient = useMemo(() => {
+    return bomComponents.every(item => {
+      const requiredQty = item.quantity * Number(quantity || 0)
+      return requiredQty <= item.available
+    });
+  }, [bomComponents, quantity])
+
+  const inventoryInstance = new DataByTableName("v1_inventory")
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
     const bomId = getChildObject(bomComponents, `0.bomId`, "")
 
-    if (!createProductionOrder || !date || !bomId || !refetch || !updateProductionOrder) return
 
-    createProductionOrder({
-      bomId: bomId,
-      deadline: date,
-      assignedTo,
-      productId: selectedSku,
-      sku: productSkuMapper[selectedSku],
-      inProduction: parseInt(quantity),
-      quantity: parseInt(quantity)
+    if (!createProductionOrder || !date || !bomId || !refetch || !updateProductionOrder || !refetchInventory || !refetchBom) return
+
+    const duplicateSet = new Set();
+
+    Promise.all(bomComponents.map(curr => {
+      const requiredQty = curr.quantity * Number(quantity || 0)
+      if (!duplicateSet.has(curr.materialId)) {
+        inventoryInstance.patch({ key: "inventory_id", value: curr.materialId }, { quantity: curr.available - requiredQty })
+        duplicateSet.add(curr.materialId)
+      }
+    })).then(_ => {
+      return createProductionOrder({
+        bomId: bomId,
+        deadline: date,
+        assignedTo,
+        productId: selectedSku,
+        sku: productSkuMapper[selectedSku],
+        inProduction: parseInt(quantity),
+        quantity: parseInt(quantity)
+      })
     }).then(_ => {
       refetch()
+      refetchInventory()
       onOpenChange(false)
       setSelectedSku("")
       setIsSubmitting(false)
+      setQuantity("")
+      setAssignedTo('')
+      setDate(undefined)
     })
   }
 
@@ -320,13 +346,13 @@ export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProduc
                               <TableCell className="font-medium">{component.materialName}</TableCell>
                               <TableCell>{component.type || "Standard"}</TableCell>
                               <TableCell className="text-right">
-                                {requiredQty.toLocaleString()} {component.unit}
+                                {requiredQty.toLocaleString()}
                               </TableCell>
                               <TableCell className="text-right">
-                                {component.available.toLocaleString()} {component.unit}
+                                {component.available.toLocaleString()}
                               </TableCell>
                               <TableCell className="text-right">
-                                {parseInt(quantity) > 0 && component.available > parseInt(quantity) ? (
+                                {!quantity || requiredQty <= component.available ? (
                                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                     Sufficient
                                   </span>
@@ -368,10 +394,20 @@ export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProduc
             </Alert>
           )}
 
+          {
+            !isSufficient && <Alert variant="warning" className="mt-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Insufficient Quantity</AlertTitle>
+              <AlertDescription>
+                The raw materials are not sufficient to produce the product
+              </AlertDescription>
+            </Alert>
+          }
+
           <DialogFooter className="mt-6">
             <Button
               type="submit"
-              disabled={!selectedSku || !date || !quantity || bomComponents.length <= 0 || bomComponents.length !== bomComponents.filter(item => item.isSelected).length}
+              disabled={!selectedSku || !date || !quantity || bomComponents.length <= 0 || bomComponents.length !== bomComponents.filter(item => item.isSelected).length || !isSufficient}
               className="bg-[#1b84ff] text-white hover:bg-[#0a6edf]"
             >
               {isSubmitting ? `${sku ? "Editing" : "Creating"} Order...` : `Create Production Order`}

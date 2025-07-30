@@ -29,7 +29,8 @@ type InventoryContext = {
     updateSaleAllocation?: (payload: any, id: string, selectedOrder: any) => Promise<void>,
     refetchContext?: VoidFunction,
     allocations: any[],
-    addInventory: (payload: Partial<Inventory>) => Promise<void>
+    addInventory: (payload: Partial<Inventory>) => Promise<void>,
+    refetch: VoidFunction
 }
 
 const InventoryContext = createContext<Partial<InventoryContext>>({})
@@ -107,7 +108,8 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         updateSaleAllocation,
         refetchContext: fetchData,
         allocations,
-        addInventory
+        addInventory,
+        refetch: fetchData
     }}>
         {children}
     </InventoryContext.Provider>
