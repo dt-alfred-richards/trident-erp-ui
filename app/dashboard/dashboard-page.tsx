@@ -37,7 +37,7 @@ export default function DashboardPage() {
   return (
     <div className="w-full max-w-full flex-1 space-y-6 px-0">
       {/* Custom Breadcrumb */}
-      {renderCustomBreadcrumb()}
+      {/* {renderCustomBreadcrumb()} */}
 
       {/* Dashboard Controls */}
       {/* <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"> */}
