@@ -82,11 +82,10 @@ export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProduc
       return acc;
     }, {})
   }, [materialOptions])
-  console.log({ bomComponents, materialOptions, materialMapper })
 
   const productNameMapper = useMemo(() => {
     return Object.values(clientProposedProductMapper).flat().reduce((acc: Record<string, string>, curr) => {
-      if (!acc[curr.productId || ""]) acc[curr.productId || ""] = curr.sku;
+      if (!acc[curr.productId || ""]) acc[curr.productId || ""] = curr.name;
       return acc;
     }, {})
   }, [clientProposedProductMapper])
@@ -258,7 +257,7 @@ export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProduc
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* SKU Selection */}
                   <div className="space-y-2">
-                    <Label htmlFor="sku">SKU</Label>
+                    <Label htmlFor="sku">Product</Label>
                     {sku ? (
                       <Input id="sku" value={productNameMapper[sku]} readOnly className="bg-muted" />
                     ) : (

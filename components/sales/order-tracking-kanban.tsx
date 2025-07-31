@@ -59,9 +59,10 @@ export function OrderTrackingKanban() {
   // Calculate total amount for an order
   const calculateTotalAmount = (order: Order) => {
     return order.products.reduce((total, product) => {
-      return total + product.price * product.quantity
+      return total + product.price * product.cases
     }, 0)
   }
+
 
   return (
     <div className="space-y-4">
@@ -83,13 +84,12 @@ export function OrderTrackingKanban() {
                 groupedOrders[status].map((order) => (
                   <Card
                     key={order.id}
-                    className={`border-l-4 ${
-                      order.priority === "high"
-                        ? "border-l-red-500"
-                        : order.priority === "medium"
-                          ? "border-l-amber-500"
-                          : "border-l-green-500"
-                    } hover:shadow-md transition-shadow cursor-pointer`}
+                    className={`border-l-4 ${order.priority === "high"
+                      ? "border-l-red-500"
+                      : order.priority === "medium"
+                        ? "border-l-amber-500"
+                        : "border-l-green-500"
+                      } hover:shadow-md transition-shadow cursor-pointer`}
                     onClick={() => handleViewOrder(order.id)}
                   >
                     <CardHeader className="p-3 pb-0">

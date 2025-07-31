@@ -247,6 +247,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
         }
         return acc;
       }, {});
+
       const _eventsLogger = getChildObject(response, "6.value.data", [])
       setEventsLogger(_eventsLogger)
       const _orders = saleResponse.map((item: V1Sale) => {

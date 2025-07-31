@@ -53,7 +53,7 @@ interface EditOrderDialogProps {
 }
 
 export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogProps) {
-  const { updateOrder, clientMapper, shippingAddressMapper = {}, referenceMapper = {}, clientProposedProductMapper, deleteSaleOrder, refetchContext } = useOrders()
+  const { updateOrder, clientMapper, shippingAddressMapper = {}, referenceMapper = {}, clientProposedProductMapper, deleteSaleOrder, refetchContext, orders } = useOrders()
 
   const productCatalog = useMemo<Product[]>(() => {
     return Object.values(clientProposedProductMapper).flat().map(item => ({
@@ -136,7 +136,6 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
   useEffect(() => {
     setShippingAddress(order.shippingAddressId)
   }, [order, contextShippingAddress])
-  console.log({ order })
 
   // Initialize order items from order products
   useEffect(() => {
@@ -310,6 +309,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
       productId: item.productId,
       saleId: order.id,
       status: "pending_approval",
+      price: item.pricePerCase
     } as Partial<SaleOrderDetail>))
 
     const updatedProducts = orderItems.filter(item => oldIds.includes(item.id)).map((item) => ({
@@ -347,6 +347,13 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
     }).catch((error) => {
       console.log({ error })
     })
+  }
+
+  const handleDiscountChange = (value: string) => {
+    const newDiscount = value === "" ? 0 : Number(value)
+    if (newDiscount >= 0) {
+      setDiscount(newDiscount)
+    }
   }
 
   // CSS to hide number input arrows
@@ -600,7 +607,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
                         id="price"
                         value={
                           selectedProductId
-                            ? `₹${productCatalog.find((p) => (p.productId) === selectedProductId)?.price.toFixed(2) || "0.00"}`
+                            ? `₹${productCatalog.find((p) => (p.productId) === selectedProductId)?.price?.toFixed(2) || "0.00"}`
                             : ""
                         }
                         readOnly
@@ -688,7 +695,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
                             item.cases
                           )}
                         </TableCell>
-                        <TableCell className="text-right">₹{item.pricePerCase.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">₹{item.pricePerCase?.toFixed(2)}</TableCell>
                         <TableCell className="text-right">₹{item.basePay.toFixed(2)}</TableCell>
                         <TableCell className="text-right">{item.taxRate}%</TableCell>
                         <TableCell className="text-right">₹{item.taxAmount.toFixed(2)}</TableCell>
@@ -736,13 +743,29 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
                 </div>
 
                 {/* Discount Section (Non-editable) */}
-                <div className="flex justify-between py-1">
+                <div className="flex justify-between py-1 items-center">
                   <span>Discount:</span>
-                  <span>
-                    {discountType === "percentage"
-                      ? `${discount}% (₹${((subtotal * discount) / 100).toFixed(2)})`
-                      : `₹${discount.toFixed(2)}`}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      value={discount}
+                      onChange={(e) => handleDiscountChange(e.target.value)}
+                      className="w-24 h-8 text-right"
+                      min="0"
+                    />
+                    <Select
+                      value={discountType}
+                      onValueChange={(value: "percentage" | "amount") => setDiscountType(value)}
+                    >
+                      <SelectTrigger className="w-24 h-8">
+                        <SelectValue placeholder="Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="percentage">%</SelectItem>
+                        <SelectItem value="amount">₹</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 {/* Taxes - Conditional with breakdown (Non-editable) */}

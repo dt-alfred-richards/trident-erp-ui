@@ -174,7 +174,7 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
                         </TableCell>
                         <TableCell className="text-right">{product.cases.toLocaleString()}</TableCell>
                         <TableCell className="text-right">{product?.category || ''}</TableCell>
-                        <TableCell className="text-right">₹{product.price.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">₹{product.price?.toFixed(2)}</TableCell>
                         <TableCell className="text-right">₹{(product.cases * product.price).toFixed(2)}</TableCell>
                       </TableRow>
                     ))}

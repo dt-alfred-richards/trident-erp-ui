@@ -402,7 +402,7 @@ export function HRDashboard() {
   return (
     <div className="space-y-6">
       {/* Dynamic Metric Cards based on active tab */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 transition-all duration-300 ease-in-out">
+      {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-4 transition-all duration-300 ease-in-out">
         {kpiData[activeTab as keyof typeof kpiData].map((kpi, index) => (
           <MetricCard
             key={`${activeTab}-kpi-${index}`}
@@ -415,7 +415,7 @@ export function HRDashboard() {
             description={kpi.description}
           />
         ))}
-      </div>
+      </div> */}
 
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-4 justify-end">

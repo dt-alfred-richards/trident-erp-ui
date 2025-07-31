@@ -74,7 +74,7 @@ export function RevenueChart({ timeRange }: RevenueChartProps) {
         <CardDescription>{periodDescription}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="h-[300px] w-full">
+        <div className="h-[300px] w-full" >
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={data}
@@ -144,10 +144,10 @@ export function RevenueChart({ timeRange }: RevenueChartProps) {
         </div>
       </CardContent>
       <CardFooter className="flex-col items-start gap-2 text-sm">
-        <div className="flex items-center gap-2 font-medium leading-none">
+        {/* <div className="flex items-center gap-2 font-medium leading-none">
           Trending {growthPercentage > 0 ? "up" : "down"} by {Math.abs(growthPercentage).toFixed(1)}% this period{" "}
           <TrendingUp className={`h-4 w-4 ${growthPercentage > 0 ? "text-green-500" : "text-red-500"}`} />
-        </div>
+        </div> */}
         <div className="leading-none text-muted-foreground">
           Showing total revenue for the {periodDescription.toLowerCase()}
         </div>

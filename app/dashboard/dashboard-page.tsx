@@ -40,8 +40,8 @@ export default function DashboardPage() {
       {renderCustomBreadcrumb()}
 
       {/* Dashboard Controls */}
-      <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="w-full">
+      {/* <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"> */}
+        {/* <div className="w-full">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="w-full justify-start bg-background dark:bg-background">
               <TabsTrigger
@@ -88,9 +88,9 @@ export default function DashboardPage() {
               </TabsTrigger>
             </TabsList>
           </Tabs>
-        </div>
+        </div> */}
 
-        <div className="flex items-center gap-2">
+        {/* <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -99,8 +99,8 @@ export default function DashboardPage() {
             <RefreshCw className="h-3.5 w-3.5" />
             <span className="text-xs">Refresh</span>
           </Button>
-        </div>
-      </div>
+        </div> */}
+      {/* </div> */}
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

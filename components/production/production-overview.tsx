@@ -44,7 +44,7 @@ export function ProductionOverview({ onProduceClick, onViewOrders, onViewDemand 
     return Object.values(clientProposedProductMapper).flat().map(item => {
       const skuProductionOrders = productionOrders.filter(i => i.sku === item.sku);
       return ({
-        sku: item.sku,
+        sku: item.name,
         productId: item.productId,
         pendingOrders: skuProductionOrders.filter(i => i.status === "pending").length || 0,
         inProduction: getCummulativeSum({ key: "inProduction", refObject: skuProductionOrders }),
@@ -149,7 +149,7 @@ export function ProductionOverview({ onProduceClick, onViewOrders, onViewDemand 
             <TableRow>
               <TableHead className="cursor-pointer" onClick={toggleSort}>
                 <div className="flex items-center">
-                  SKU
+                  Product
                   <ArrowUpDown className="ml-2 h-4 w-4" />
                 </div>
               </TableHead>

@@ -567,8 +567,6 @@ export function ReportsDashboard() {
         shipmentId: `SH-${item.id}`,
         orderId: item.orderId,
         customer: item.clientId,
-        origin: "Mumbai",
-        destination: "Delhi",
         dispatchDate: convertDate(item.createdOn),
         deliveryDate: item.modifiedOn ? convertDate(item.modifiedOn) : "",
         carrier: "",
@@ -1290,8 +1288,8 @@ export function ReportsDashboard() {
                           </TableCell>
                           <TableCell>{item.date}</TableCell>
                           <TableCell className="text-right">{item.quantity.toLocaleString()}</TableCell>
-                          <TableCell className="text-right">{item.unitPrice.toLocaleString()}</TableCell>
-                          <TableCell className="text-right">{item.total.toLocaleString()}</TableCell>
+                          <TableCell className="text-right">{item.unitPrice?.toLocaleString()}</TableCell>
+                          <TableCell className="text-right">{item.total?.toLocaleString()}</TableCell>
                         </TableRow>
                       ))
                     ) : (

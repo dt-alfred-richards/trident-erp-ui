@@ -17,6 +17,7 @@ import { useProcurement } from "@/app/procurement/procurement-context"
 import { useInventory } from "@/app/inventory-context"
 import { useBankAccountContext } from "./finance/context/bank-account-context"
 import { useTranscation } from "./finance/context/trasncations"
+import { RevenueChart } from "./dashboard/sales/revenue-chart"
 
 export function Overview() {
   const { orders = [], clientProposedProductMapper } = useOrders() ?? {}
@@ -314,9 +315,10 @@ export function Overview() {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <SalesByDayChart />
-        <PendingOrdersChart />
+      <div className="">
+        <RevenueChart timeRange=""/>
+        {/* <SalesByDayChart />
+        <PendingOrdersChart /> */}
       </div>
     </div>
   )

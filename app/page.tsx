@@ -18,7 +18,7 @@ export default function Home() {
         <BankAccountProvider>
           <TranscationProvider>
             <InventoryProvider>
-              <DashboardPage />]
+              <DashboardPage />
             </InventoryProvider>
           </TranscationProvider>
         </BankAccountProvider>
