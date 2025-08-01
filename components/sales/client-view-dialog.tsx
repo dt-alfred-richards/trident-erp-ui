@@ -74,7 +74,6 @@ const initialProducts = [
     clientId: "CL-003",
   },
 ]
-
 export function ClientViewDialog({ open, onOpenChange, client }: ClientViewDialogProps) {
   const { toast } = useToast()
   const { clientProposedPriceMapper, updateClientProduct, refetchContext, deleteClientProduct } = useClient()
@@ -370,19 +369,43 @@ export function ClientViewDialog({ open, onOpenChange, client }: ClientViewDialo
                   <p className="text-sm text-muted-foreground flex items-center gap-1">
                     <PhoneIcon className="h-3 w-3" /> Phone
                   </p>
-                  <p className="font-medium">{client?.phoneNumber}</p>
+                  <p className="font-medium">{client?.phone}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <MapPinIcon className="h-3 w-3" /> Address
+                    <MapPinIcon className="h-3 w-3" /> Billing Address
                   </p>
-                  <p className="font-medium">{client?.billingAddress || ''}</p>
+                  <p className="font-medium">{client?.billingAddress || "Not specified"}</p>
+                </div>
+                <div className="space-y-1 col-span-full">
+                  {" "}
+                  {/* Make this span full width for better layout */}
+                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    <MapPinIcon className="h-3 w-3" /> Shipping Address(es)
+                  </p>
+                  {client?.shippingAddresses && client.shippingAddresses.length > 0 ? (
+                    <ul className="list-disc list-inside pl-4">
+                      {client.shippingAddresses.map((address, index) => (
+                        <li key={index} className="font-medium">
+                          {address}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="font-medium">Not specified</p>
+                  )}
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <MapPinIcon className="h-3 w-3" /> Client type
-                  </p>
-                  <p className="font-medium">{client?.clientType || ''}</p>
+                  <p className="text-sm text-muted-foreground">GST</p>
+                  <p className="font-medium">{client?.gst || "Not specified"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">PAN</p>
+                  <p className="font-medium">{client?.pan || "Not specified"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Client Type</p>
+                  <p className="font-medium">{client?.clientType || "Not specified"}</p>
                 </div>
               </CardContent>
             </Card>

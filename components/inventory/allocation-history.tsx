@@ -13,7 +13,7 @@ import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
 import { useInventory } from "@/app/inventory-context"
-import { getChildObject } from "../generic"
+import { getChildObject, handleExport } from "../generic"
 import { useOrders } from "@/contexts/order-context"
 import { DateInput } from "../ui/reusable-components"
 
@@ -132,8 +132,8 @@ export function AllocationHistory({ allocationHistory: propAllocationHistory }: 
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All SKUs</SelectItem>
-              {uniqueSkus.map((sku) => (
-                <SelectItem key={sku} value={sku}>
+              {uniqueSkus.map((sku, index) => (
+                <SelectItem key={`${sku}-${index}`} value={sku}>
                   {sku}
                 </SelectItem>
               ))}
@@ -175,7 +175,7 @@ export function AllocationHistory({ allocationHistory: propAllocationHistory }: 
             </span>
           )}
         </h3>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" onClick={() => handleExport({ data: filteredHistory, format: 'csv', filename: 'Allocation History' })}>
           <Download className="mr-2 h-4 w-4" />
           Export CSV
         </Button>

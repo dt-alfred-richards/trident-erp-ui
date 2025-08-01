@@ -31,6 +31,8 @@ export function ShipmentDetailsDialog({ open, onOpenChange, order }: ShipmentDet
 
   if (!order) return null
 
+  console.log({order})
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
@@ -94,9 +96,9 @@ export function ShipmentDetailsDialog({ open, onOpenChange, order }: ShipmentDet
                         </div>
                       </TableCell>
                       <TableCell className="text-right">{order.totatOrderQuantity.toLocaleString()}</TableCell>
-                      <TableCell className="text-right">${pricePerUnit?.toFixed(2) || "0.00"}</TableCell>
+                      <TableCell className="text-right">{pricePerUnit?.toFixed(2) || "0.00"}</TableCell>
                       <TableCell className="text-right">
-                        ${(order.totatOrderQuantity * (pricePerUnit || 0)).toFixed(2)}
+                        {(order.totatOrderQuantity * (pricePerUnit || 0)).toFixed(2)}
                       </TableCell>
                     </TableRow>
                   })

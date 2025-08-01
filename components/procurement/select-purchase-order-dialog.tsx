@@ -62,7 +62,7 @@ export function SelectPurchaseOrderDialog({ open, onOpenChange, onPOSelected }: 
       po.status === "pending" ||
       (po.status === "partial" &&
         (po.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          po.supplier.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          po.supplier?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           po.material.toLowerCase().includes(searchQuery.toLowerCase()))),
   )
 

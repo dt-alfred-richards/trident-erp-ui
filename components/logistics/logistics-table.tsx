@@ -41,6 +41,7 @@ export function LogisticsTable({ status }: LogisticsTableProps) {
   const { orders } = useOrders()
   const { data: logisticsData, update } = useLogistics()
 
+0
   const filteredOrders = useMemo(() => {
     const mapper: any = {};
     const list = logisticsData.map(item => {

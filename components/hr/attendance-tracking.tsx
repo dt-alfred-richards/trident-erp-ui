@@ -55,9 +55,12 @@ export function AttendanceTracking({
 
         const matchesStatus = selectedStatus === "all" || record.status === selectedStatus
 
-        return matchesSearch && matchesStatus
+        const matchesDate = date &&
+          new Date(record.modifiedOn || record.createdOn).toDateString() === new Date(date).toDateString()
+
+        return matchesSearch && matchesStatus && matchesDate
       }),
-    [attendanceData, searchQuery, selectedStatus, date],
+    [attendanceData, searchQuery, selectedStatus, date]
   )
 
   const leaveBalanceData = useMemo(() => {
@@ -87,7 +90,7 @@ export function AttendanceTracking({
   const paginatedAttendance = useMemo(() => {
     const startIndex = (attendanceCurrentPage - 1) * itemsPerPage
     return filteredAttendance.slice(startIndex, startIndex + itemsPerPage)
-  }, [filteredAttendance, attendanceCurrentPage, itemsPerPage])
+  }, [filteredAttendance, attendanceCurrentPage, itemsPerPage, date])
 
   const paginatedLeaveBalance = useMemo(() => {
     const startIndex = (leaveCurrentPage - 1) * itemsPerPage

@@ -179,7 +179,7 @@ export function BankingCash() {
   const filteredBankAccounts = bankAccounts.filter((account) => {
     const matchesSearch =
       account.name.toLowerCase().includes(accountSearchTerm.toLowerCase()) ||
-      account.id.toLowerCase().includes(accountSearchTerm.toLowerCase()) ||
+      `${account?.id || ''}`.toLowerCase().includes(accountSearchTerm.toLowerCase()) ||
       account.bank.toLowerCase().includes(accountSearchTerm.toLowerCase()) ||
       account.accountNumber.toLowerCase().includes(accountSearchTerm.toLowerCase())
 
@@ -192,7 +192,7 @@ export function BankingCash() {
   const filteredCashAccounts = bankAccounts.filter((account) => {
     const matchesSearch =
       account.name.toLowerCase().includes(accountSearchTerm.toLowerCase()) ||
-      account.id.toLowerCase().includes(accountSearchTerm.toLowerCase()) ||
+      `${account?.id || ''}`.toLowerCase().includes(accountSearchTerm.toLowerCase()) ||
       account.bank.toLowerCase().includes(accountSearchTerm.toLowerCase()) ||
       account.accountNumber.toLowerCase().includes(accountSearchTerm.toLowerCase())
 
@@ -211,7 +211,7 @@ export function BankingCash() {
       const matchesSearch =
         searchTerm === "" ||
         transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        transaction.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        `${transaction?.id || ''}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
         transaction.reference?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         transaction.account.toLowerCase().includes(searchTerm.toLowerCase())
 
@@ -222,7 +222,7 @@ export function BankingCash() {
 
       return matchesSearch && matchesAccount && matchesType
     })
-  }, [bankAccounts, transactions])
+  }, [bankAccounts, transactions, searchTerm, accountFilter, transactionTypeFilter])
 
   // Filter transactions for Cash Tab (only cash-related transactions)
   const filteredCashTransactions = transactions.filter((transaction) => {
@@ -232,7 +232,7 @@ export function BankingCash() {
     const matchesSearch =
       searchTerm === "" ||
       transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      `${transaction?.id || ''}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
       transaction.reference?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       transaction.account.toLowerCase().includes(searchTerm.toLowerCase())
 

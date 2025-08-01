@@ -1,6 +1,11 @@
 
 import _ from "lodash"
 import moment from "moment";
+import { toast } from "./ui/use-toast";
+import * as XLSX from "xlsx"
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
+
 export const createType = (object: Record<string, any>) => {
     if (!object) return
     const res = Object.entries(object).map(([key, value]) => {
@@ -127,4 +132,112 @@ export function formatNumberIndian(value: number): string {
 
 export const getNumber = (value: string = "") => {
     return value ? parseInt(value) : 0
+}
+
+export const handleExport = ({ format, data, filename }: { format: "pdf" | "excel" | "csv", data: any[], filename: string }) => {
+    // Format the date for the filename
+    const date = new Date(), activeTab = filename
+    const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+    filename = `${filename}-${formattedDate}`
+
+    if (data.length === 0) {
+        toast({
+            title: "Export Error",
+            description: "No data to export",
+            variant: "destructive",
+            duration: 3000,
+        })
+        return // Exit if no data
+    }
+
+    // Handle different export formats
+    switch (format) {
+        case "pdf":
+            const doc = new jsPDF()
+            const headers = Object.keys(data[0])
+            const body = data.map((row) => headers.map((header) => row[header]))
+
+            doc.text(`${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Report`, 14, 15)
+            autoTable(doc, {
+                head: [headers],
+                body,
+                startY: 20,
+            })
+            doc.save(`${filename}.pdf`)
+            toast({
+                title: "PDF Export",
+                description: `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} report has been exported as PDF.`,
+                duration: 3000,
+            })
+            break
+
+        case "excel": {
+            // Build the worksheet and workbook.
+            const ws = XLSX.utils.json_to_sheet(data)
+            const wb = XLSX.utils.book_new()
+            XLSX.utils.book_append_sheet(wb, ws, activeTab.charAt(0).toUpperCase() + activeTab.slice(1))
+
+            // Generate an ArrayBuffer and turn it into a Blob.
+            const arrayBuffer = XLSX.write(wb, {
+                bookType: "xlsx",
+                type: "array",
+            }) as ArrayBuffer
+
+            const blob = new Blob([arrayBuffer], {
+                type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            })
+
+            // Trigger a client-side download.
+            const url = URL.createObjectURL(blob)
+            const link = document.createElement("a")
+            link.href = url
+            link.download = `${filename}.xlsx`
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            URL.revokeObjectURL(url)
+
+            toast({
+                title: "Excel Export",
+                description: `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} report has been exported as Excel.`,
+                duration: 3000,
+            })
+            break
+        }
+
+        case "csv":
+            const headersCsv = Object.keys(data[0])
+            const csvContent = [
+                headersCsv.join(","),
+                ...data.map((row) =>
+                    headersCsv
+                        .map((header) => {
+                            const cell = row[header]
+                            // Handle commas and quotes in the data
+                            return typeof cell === "string" && (cell.includes(",") || cell.includes('"'))
+                                ? `"${cell.replace(/"/g, '""')}"`
+                                : cell
+                        })
+                        .join(","),
+                ),
+            ].join("\n")
+
+            // Create and download the file
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+            const url = URL.createObjectURL(blob)
+            const link = document.createElement("a")
+            link.setAttribute("href", url)
+            link.setAttribute("download", `${filename}.csv`)
+            link.style.visibility = "hidden"
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+
+            toast({
+                title: "CSV Export",
+                description: `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} report has been exported as CSV.`,
+                duration: 3000,
+            })
+            break
+    }
 }

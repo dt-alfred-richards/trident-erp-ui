@@ -457,7 +457,6 @@ export function GeneralLedger() {
   const [entryToView, setEntryToView] = useState<string | null>(null)
   const [isViewAccountDialogOpen, setIsViewAccountDialogOpen] = useState(false)
   const [accountToView, setAccountToView] = useState<Account | null>(null)
-
   // Overheads date filter state
   const [overheadStartDate, setOverheadStartDate] = useState<string>("")
   const [overheadEndDate, setOverheadEndDate] = useState<string>("")
@@ -498,17 +497,19 @@ export function GeneralLedger() {
         entry.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         entry.debitAccount.toLowerCase().includes(searchTerm.toLowerCase()) ||
         entry.creditAccount.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        entry.reference.toLowerCase().includes(searchTerm.toLowerCase())
+        entry.reference?.toLowerCase().includes(searchTerm.toLowerCase())
       const matchesStatus = statusFilter === "all" || entry.status.toLowerCase() === statusFilter.toLowerCase()
 
       return matchesSearch && matchesStatus
     })
-  }, [journalEntries])
+  }, [journalEntries, statusFilter, searchTerm])
 
   // Calculate pagination for journal entries
   const indexOfLastJournalEntry = journalCurrentPage * journalItemsPerPage
   const indexOfFirstJournalEntry = (journalCurrentPage - 1) * journalItemsPerPage
-  const paginatedEntries = filteredEntries.slice(indexOfFirstJournalEntry, indexOfLastJournalEntry)
+  const paginatedEntries = useMemo(() => {
+    return filteredEntries.slice(indexOfFirstJournalEntry, indexOfLastJournalEntry)
+  }, [statusFilter, filteredEntries,searchTerm])
 
   // Reset journal page when filters change
   useEffect(() => {

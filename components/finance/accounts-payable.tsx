@@ -59,8 +59,8 @@ export function AccountsPayable() {
   // Filter bills based on search term and status
   const filteredBills = bills.filter((bill) => {
     const matchesSearch =
-      bill.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      bill.id.toLowerCase().includes(searchTerm.toLowerCase())
+      bill.supplier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (`${bill?.id}`).toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesStatus = statusFilter === "all" || bill.status.toLowerCase() === statusFilter.toLowerCase()
 

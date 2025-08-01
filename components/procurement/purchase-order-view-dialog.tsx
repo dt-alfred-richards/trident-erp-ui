@@ -256,10 +256,10 @@ export function PurchaseOrderViewDialog({ open, onOpenChange, poId }: PurchaseOr
               <Printer className="h-4 w-4" />
               Print
             </Button>
-            <Button variant="outline" size="sm" className="gap-1" onClick={handleExport}>
+            {/* <Button variant="outline" size="sm" className="gap-1" onClick={handleExport}>
               <Download className="h-4 w-4" />
               Export
-            </Button>
+            </Button> */}
           </div>
 
           <Button variant="outline" onClick={() => onOpenChange(false)}>

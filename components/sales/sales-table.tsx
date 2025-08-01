@@ -34,6 +34,7 @@ import {
 import { useEffect, useMemo, useState } from "react"
 import { DataByTableName } from "../api"
 import { convertDate } from "../generic"
+import { DateInput } from "../ui/reusable-components"
 
 export function SalesTable() {
   // Use order context
@@ -199,7 +200,8 @@ export function SalesTable() {
           allocatedQuantity: i?.allocated || 0,
           dispatchQuantity: i?.dispatched || 0,
           sku: i.sku,
-          totatOrderQuantity: i.cases
+          totatOrderQuantity: i.cases,
+          price: i.price
         } as LogisticsProduct)))
       }
 
@@ -248,7 +250,7 @@ export function SalesTable() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search orders by ID, customer, reference or SKU..."
+            placeholder="Search orders by ID, customer, reference..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 pr-4 h-10"
@@ -288,7 +290,8 @@ export function SalesTable() {
           {/* Order Date filter */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Order Date</label>
-            <Popover>
+            <DateInput selectedDate={dateFilter} setState={setDateFilter} />
+            {/* <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="w-full justify-start text-left font-normal bg-background">
                   <CalendarIcon className="mr-2 h-4 w-4" />
@@ -298,7 +301,7 @@ export function SalesTable() {
               <PopoverContent className="w-auto p-0">
                 <Calendar mode="single" selected={dateFilter} onSelect={setDateFilter} initialFocus />
               </PopoverContent>
-            </Popover>
+            </Popover> */}
           </div>
 
           {/* Client Name filter */}

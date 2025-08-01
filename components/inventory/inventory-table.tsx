@@ -195,11 +195,11 @@ export function InventoryTable({ onAllocate, inventoryData: propInventoryData }:
           </TableHeader>
           <TableBody>
             {paginatedData.length > 0 ? (
-              paginatedData.map((item) => {
+              paginatedData.map((item,index) => {
                 const total = parseInt(item.available) + parseInt(item.reserved) + parseInt(item.inProduction)
 
                 return (
-                  <TableRow key={item.sku}>
+                  <TableRow key={`${item.sku}-${index}`}>
                     <TableCell className="font-medium">{item.sku}</TableCell>
                     <TableCell className="text-right text-blue-600 font-medium">
                       {item.available.toLocaleString()}

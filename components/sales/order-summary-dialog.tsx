@@ -78,10 +78,10 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
         </DialogHeader>
 
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          {/* <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="details">Order Details</TabsTrigger>
             <TabsTrigger value="history">Status History</TabsTrigger>
-          </TabsList>
+          </TabsList> */}
 
           <TabsContent value="details" className="space-y-6 py-4">
             {/* Order Status */}
@@ -295,7 +295,7 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
             </div>
           </TabsContent>
 
-          <TabsContent value="history" className="space-y-6 py-4">
+          {/* <TabsContent value="history" className="space-y-6 py-4">
             <h3 className="text-lg font-semibold mb-3">Status History</h3>
             <div className="space-y-4">
               {order.statusHistory.map((entry, index) => (
@@ -317,7 +317,7 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
                 </div>
               ))}
             </div>
-          </TabsContent>
+          </TabsContent> */}
         </Tabs>
 
         <DialogFooter className="gap-2">

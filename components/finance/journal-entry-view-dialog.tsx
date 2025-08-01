@@ -1,9 +1,14 @@
 "use client"
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { useFinance } from "@/contexts/finance-context"
+import { useFinance, getDisplayAccountName } from "@/contexts/finance-context"
 import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { useJournalContext } from "./context/journal-context"
+import { useMemo } from "react"
+import { useBillContext } from "./context/bill-context"
+import { useInvoiceContext } from "./context/invoice-context"
+import { convertDate } from "../generic"
 
 interface JournalEntryViewDialogProps {
   open: boolean
@@ -11,8 +16,47 @@ interface JournalEntryViewDialogProps {
   entryId: string | null
 }
 
+// Sample customer data (same as in form)
+const customers = [
+  { id: "CUST001", name: "Acme Corp" },
+  { id: "CUST002", name: "TechGiant Inc" },
+  { id: "CUST003", name: "Global Traders" },
+  { id: "CUST004", name: "Innovate Solutions" },
+  { id: "CUST005", name: "Prime Industries" },
+]
+
+// Sample supplier data (same as in form)
+const suppliers = [
+  { id: "SUP001", name: "Raw Materials Co." },
+  { id: "SUP002", name: "Industrial Supplies Ltd." },
+  { id: "SUP003", name: "Quality Components Inc." },
+  { id: "SUP004", name: "Packaging Solutions" },
+  { id: "SUP005", name: "Logistics Partners" },
+]
+
 export function JournalEntryViewDialog({ open, onOpenChange, entryId }: JournalEntryViewDialogProps) {
-  const { journalEntries, accounts } = useFinance()
+  const { data: bills } = useBillContext()
+  const { data: invoices } = useInvoiceContext()
+
+  const { data } = useJournalContext()
+  const journalEntries = useMemo(() => {
+    return data.map(item => {
+      return ({
+        id: `${item.id}`,
+        date: convertDate(item.date as Date),
+        description: item.description,
+        debitAccount: item.debitAccount,
+        creditAccount: item.creditAccount,
+        amount: item.amount,
+        reference: item.reference,
+        status: item.status,
+        transactionType: item.transcationType,
+        gstPercentage: item.gst,
+        partyType: item.partyType,
+        debtorCustomer: item.debtorCustomer,
+      })
+    })
+  }, [data])
 
   // Find the journal entry by ID
   const entry = journalEntries.find((entry) => entry.id === entryId)
@@ -23,20 +67,36 @@ export function JournalEntryViewDialog({ open, onOpenChange, entryId }: JournalE
 
   // Find the customer name if it's a debtor transaction
   const getCustomerName = () => {
-    if (entry.debitAccount === "Debtors" || entry.creditAccount === "Debtors") {
-      // In a real implementation, this would come from the entry data
-      // For now, we'll return a placeholder
-      return "Customer information not available"
+    if (entry.debtorCustomer) {
+      const customer = customers.find((c) => c.id === entry.debtorCustomer)
+      return customer ? customer.name : entry.debtorCustomer
     }
     return null
   }
 
   // Find the supplier name if it's a creditor transaction
   const getSupplierName = () => {
-    if (entry.debitAccount === "Creditors" || entry.creditAccount === "Creditors") {
-      // In a real implementation, this would come from the entry data
-      // For now, we'll return a placeholder
-      return "Supplier information not available"
+    if (entry.creditorSupplier) {
+      const supplier = suppliers.find((s) => s.id === entry.creditorSupplier)
+      return supplier ? supplier.name : entry.creditorSupplier
+    }
+    return null
+  }
+
+  // Find invoice details
+  const getInvoiceDetails = () => {
+    if (entry.activeInvoice) {
+      const invoice = invoices.find((inv) => inv.id === entry.activeInvoice)
+      return invoice ? `${invoice.id} - ₹${invoice.balance.toLocaleString("en-IN")}` : entry.activeInvoice
+    }
+    return null
+  }
+
+  // Find bill details
+  const getBillDetails = () => {
+    if (entry.activeBill) {
+      const bill = bills.find((b) => b.id === entry.activeBill)
+      return bill ? `${bill.id} - ₹${bill.balance.toLocaleString("en-IN")}` : entry.activeBill
     }
     return null
   }
@@ -57,89 +117,237 @@ export function JournalEntryViewDialog({ open, onOpenChange, entryId }: JournalE
     }
   }
 
+  // Calculate GST breakdown if applicable
+  const getGstBreakdown = () => {
+    if (entry.gstPercentage && entry.gstPercentage > 0) {
+      const baseAmount = entry.baseAmount || entry.amount
+      const gstAmount = entry.gstAmount || baseAmount * (entry.gstPercentage / 100)
+      const totalAmount = entry.totalAmount || baseAmount + gstAmount
+
+      if (entry.transactionType === "IGST") {
+        return {
+          baseAmount,
+          cgstAmount: 0,
+          sgstAmount: 0,
+          igstAmount: gstAmount,
+          totalAmount,
+        }
+      } else {
+        return {
+          baseAmount,
+          cgstAmount: gstAmount / 2,
+          sgstAmount: gstAmount / 2,
+          igstAmount: 0,
+          totalAmount,
+        }
+      }
+    }
+    return null
+  }
+
+  const gstBreakdown = getGstBreakdown()
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh]">
+      <DialogContent className="sm:max-w-[700px] max-h-[85vh]">
         <DialogHeader>
           <DialogTitle>Journal Entry Details</DialogTitle>
           <DialogDescription>Viewing details for journal entry {entry.id}</DialogDescription>
         </DialogHeader>
         <div className="overflow-y-auto pr-1 max-h-[calc(80vh-10rem)]">
           <Card className="border-0 shadow-none">
-            <CardContent className="p-0 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">Entry ID</h3>
-                  <p className="text-base font-semibold">{entry.id}</p>
+            <CardContent className="p-0 space-y-6">
+              {/* Basic Information Section */}
+              <div className="space-y-4 p-4 bg-gray-50 rounded-lg border">
+                <h3 className="text-sm font-medium text-gray-900">Basic Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Entry ID</h4>
+                    <p className="text-base font-semibold">{entry.id}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Date</h4>
+                    <p className="text-base">{entry.date}</p>
+                  </div>
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500">Date</h3>
-                  <p className="text-base">{entry.date}</p>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Description</h3>
-                <p className="text-base whitespace-pre-wrap">{entry.description}</p>
-              </div>
-
-              <Separator />
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">Debit Account</h3>
-                  <p className="text-base font-medium">{entry.debitAccount}</p>
+                  <h4 className="text-sm font-medium text-gray-500">Description</h4>
+                  <p className="text-base whitespace-pre-wrap">{entry.description}</p>
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500">Credit Account</h3>
-                  <p className="text-base font-medium">{entry.creditAccount}</p>
+                  <h4 className="text-sm font-medium text-gray-500">Status</h4>
+                  <span
+                    className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold mt-1 ${getStatusClass()}`}
+                  >
+                    {entry.status}
+                  </span>
                 </div>
               </div>
 
-              {getCustomerName() && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">Customer</h3>
-                  <p className="text-base">{getCustomerName()}</p>
+              {/* Account Information Section */}
+              <div className="space-y-4 p-4 bg-gray-50 rounded-lg border">
+                <h3 className="text-sm font-medium text-gray-900">Account Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Debit Account</h4>
+                    <p className="text-base font-medium">{getDisplayAccountName(entry.debitAccount)}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Credit Account</h4>
+                    <p className="text-base font-medium">{getDisplayAccountName(entry.creditAccount)}</p>
+                  </div>
                 </div>
-              )}
-
-              {getSupplierName() && (
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500">Supplier</h3>
-                  <p className="text-base">{getSupplierName()}</p>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">Amount</h3>
+                  <h4 className="text-sm font-medium text-gray-500">Amount</h4>
                   <p className="text-base font-bold">₹{entry.amount.toLocaleString("en-IN")}</p>
                 </div>
+              </div>
+
+              {/* Party Information Section */}
+              <div className="space-y-4 p-4 bg-gray-50 rounded-lg border">
+                <h3 className="text-sm font-medium text-gray-900">Party Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Party Type</h4>
+                    <p className="text-base">{entry.partyType || "—"}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">
+                      {entry.partyType === "Customer"
+                        ? "Customer"
+                        : entry.partyType === "Supplier"
+                          ? "Supplier"
+                          : "Party"}
+                    </h4>
+                    <p className="text-base">{getCustomerName() || getSupplierName() || "—"}</p>
+                  </div>
+                </div>
+                {getInvoiceDetails() && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Active Invoice</h4>
+                    <p className="text-base">{getInvoiceDetails()}</p>
+                  </div>
+                )}
+                {getBillDetails() && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Active Bill</h4>
+                    <p className="text-base">{getBillDetails()}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Reference Information Section */}
+              <div className="space-y-4 p-4 bg-gray-50 rounded-lg border">
+                <h3 className="text-sm font-medium text-gray-900">Reference Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Due Date</h4>
+                    <p className="text-base">{entry.dueDate || "—"}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Reference Number</h4>
+                    <p className="text-base">{entry.referenceNumber || "—"}</p>
+                  </div>
+                </div>
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500">Reference</h3>
+                  <h4 className="text-sm font-medium text-gray-500">Additional Reference</h4>
                   <p className="text-base">{entry.reference || "—"}</p>
                 </div>
               </div>
 
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Status</h3>
-                <span
-                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold mt-1 ${getStatusClass()}`}
-                >
-                  {entry.status}
-                </span>
+              {/* Tax Information Section */}
+              <div className="space-y-4 p-4 bg-gray-50 rounded-lg border">
+                <h3 className="text-sm font-medium text-gray-900">Tax Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Transaction Type</h4>
+                    <p className="text-base">{entry.transactionType || "—"}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">GST Percentage</h4>
+                    <p className="text-base">{entry.gstPercentage ? `${entry.gstPercentage}%` : "—"}</p>
+                  </div>
+                </div>
+                {entry.baseAmount && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500">Base Amount</h4>
+                      <p className="text-base">₹{entry.baseAmount.toLocaleString("en-IN")}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500">GST Amount</h4>
+                      <p className="text-base">₹{(entry.gstAmount || 0).toLocaleString("en-IN")}</p>
+                    </div>
+                  </div>
+                )}
+                {entry.totalAmount && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Total Amount</h4>
+                    <p className="text-base font-bold">₹{entry.totalAmount.toLocaleString("en-IN")}</p>
+                  </div>
+                )}
               </div>
+
+              {/* GST Breakdown Section */}
+              {gstBreakdown && (
+                <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <h3 className="text-sm font-medium text-blue-900">GST Breakdown</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Base Amount:</span>
+                      <span className="font-medium ml-2">
+                        ₹{gstBreakdown.baseAmount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    {gstBreakdown.cgstAmount > 0 && (
+                      <>
+                        <div>
+                          <span className="text-gray-600">CGST ({(entry.gstPercentage || 0) / 2}%):</span>
+                          <span className="font-medium ml-2">
+                            ₹{gstBreakdown.cgstAmount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">SGST ({(entry.gstPercentage || 0) / 2}%):</span>
+                          <span className="font-medium ml-2">
+                            ₹{gstBreakdown.sgstAmount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                    {gstBreakdown.igstAmount > 0 && (
+                      <div>
+                        <span className="text-gray-600">IGST ({entry.gstPercentage || 0}%):</span>
+                        <span className="font-medium ml-2">
+                          ₹{gstBreakdown.igstAmount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    )}
+                    <div className="col-span-2 border-t pt-2">
+                      <span className="text-gray-600">Total Amount:</span>
+                      <span className="font-bold ml-2 text-blue-900">
+                        ₹{gstBreakdown.totalAmount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <Separator />
 
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Created By</h3>
-                <p className="text-base">System User</p>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Last Modified</h3>
-                <p className="text-base">{entry.date} (same as entry date for demo)</p>
+              {/* System Information Section */}
+              <div className="space-y-4 p-4 bg-gray-50 rounded-lg border">
+                <h3 className="text-sm font-medium text-gray-900">System Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Created By</h4>
+                    <p className="text-base">System User</p>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Last Modified</h4>
+                    <p className="text-base">{entry.date}</p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>

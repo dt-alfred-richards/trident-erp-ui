@@ -39,6 +39,8 @@ import { OrderProduct } from "@/types/order"
 import * as XLSX from "xlsx"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
+import { DateInput } from "../ui/reusable-components"
+import { Label } from "../ui/label"
 
 
 // Sample data for each tab
@@ -1046,13 +1048,13 @@ export function ReportsDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4">
+      <div className="" style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 12 ,flexWrap:'wrap'}}>
         <Card
           className={`cursor-pointer transition-all hover:shadow-md ${activeTab === "sales" ? "border-primary bg-primary/5" : "hover:border-primary/50"
             }`}
           onClick={() => handleTabChange("sales")}
         >
-          <CardContent className="p-4 flex items-center space-x-3">
+          <CardContent className="p-4 flex items-center space-x-3" style={{ width: '180px' }}>
             <div className={`p-2 rounded-full ${activeTab === "sales" ? "bg-[#1b84ff] text-white" : "bg-muted"}`}>
               <BarChart3 className="h-5 w-5" />
             </div>
@@ -1063,6 +1065,7 @@ export function ReportsDashboard() {
         </Card>
 
         <Card
+          style={{ width: '180px' }}
           className={`cursor-pointer transition-all hover:shadow-md ${activeTab === "production" ? "border-primary bg-primary/5" : "hover:border-primary/50"
             }`}
           onClick={() => handleTabChange("production")}
@@ -1078,6 +1081,7 @@ export function ReportsDashboard() {
         </Card>
 
         <Card
+          style={{ width: '180px' }}
           className={`cursor-pointer transition-all hover:shadow-md ${activeTab === "inventory" ? "border-primary bg-primary/5" : "hover:border-primary/50"
             }`}
           onClick={() => handleTabChange("inventory")}
@@ -1093,6 +1097,7 @@ export function ReportsDashboard() {
         </Card>
 
         <Card
+          style={{ width: '180px' }}
           className={`cursor-pointer transition-all hover:shadow-md ${activeTab === "logistics" ? "border-primary bg-primary/5" : "hover:border-primary/50"
             }`}
           onClick={() => handleTabChange("logistics")}
@@ -1108,11 +1113,12 @@ export function ReportsDashboard() {
         </Card>
 
         <Card
+          style={{ width: '180px' }}
           className={`cursor-pointer transition-all hover:shadow-md ${activeTab === "procurement" ? "border-primary bg-primary/5" : "hover:border-primary/50"
             }`}
           onClick={() => handleTabChange("procurement")}
         >
-          <CardContent className="p-4 flex items-center space-x-3" style={{ width: '200px' }}>
+          <CardContent className="p-4 flex items-center space-x-3">
             <div className={`p-2 rounded-full ${activeTab === "procurement" ? "bg-[#1b84ff] text-white" : "bg-muted"}`}>
               <ShoppingCart className="h-5 w-5" />
             </div>
@@ -1123,6 +1129,7 @@ export function ReportsDashboard() {
         </Card>
 
         <Card
+          style={{ width: '180px' }}
           className={`cursor-pointer transition-all hover:shadow-md ${activeTab === "hr" ? "border-primary bg-primary/5" : "hover:border-primary/50"
             }`}
           onClick={() => handleTabChange("hr")}
@@ -1187,7 +1194,7 @@ export function ReportsDashboard() {
                         <SelectItem value="all">All Products</SelectItem>
                         {
                           Object.values(productMapper).map(item => {
-                            return (<SelectItem key={item.productId} value={item.name}>{item.name}</SelectItem>)
+                            return (<SelectItem key={item.productId} value={item?.productId || '' + ''}>{item.name}</SelectItem>)
                           })
                         }
                       </SelectContent>
@@ -1202,21 +1209,6 @@ export function ReportsDashboard() {
                         <SelectItem value="all">All Categories</SelectItem>
                         <SelectItem value="Dhaara">Dhaara</SelectItem>
                         <SelectItem value="Customised">Customised</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Select customer" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Customers</SelectItem>
-                        <SelectItem value="Reliance Industries">Reliance Industries</SelectItem>
-                        <SelectItem value="Tata Projects">Tata Projects</SelectItem>
-                        <SelectItem value="L&T Construction">L&T Construction</SelectItem>
-                        <SelectItem value="Adani Infrastructure">Adani Infrastructure</SelectItem>
-                        <SelectItem value="BHEL">BHEL</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1516,18 +1508,6 @@ export function ReportsDashboard() {
                       </PopoverContent>
                     </Popover>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Categories</SelectItem>
-                        <SelectItem value="dhaara">Dhaara</SelectItem>
-                        <SelectItem value="customised">Customised</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
                   {/* <div className="flex items-center space-x-2">
                     <Select value={selectedWarehouse} onValueChange={setSelectedWarehouse}>
                       <SelectTrigger className="w-[180px]">
@@ -1690,21 +1670,6 @@ export function ReportsDashboard() {
                     </Popover>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Select customer" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Customers</SelectItem>
-                        <SelectItem value="Reliance Industries">Reliance Industries</SelectItem>
-                        <SelectItem value="Tata Projects">Tata Projects</SelectItem>
-                        <SelectItem value="L&T Construction">L&T Construction</SelectItem>
-                        <SelectItem value="Adani Infrastructure">Adani Infrastructure</SelectItem>
-                        <SelectItem value="BHEL">BHEL</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-center space-x-2">
                     <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                       <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="Select status" />
@@ -1837,21 +1802,6 @@ export function ReportsDashboard() {
                         />
                       </PopoverContent>
                     </Popover>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Select value={selectedSupplier} onValueChange={setSelectedSupplier}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Select supplier" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Suppliers</SelectItem>
-                        <SelectItem value="JSW Steel">JSW Steel</SelectItem>
-                        <SelectItem value="Hindalco">Hindalco</SelectItem>
-                        <SelectItem value="Supreme Pipes">Supreme Pipes</SelectItem>
-                        <SelectItem value="Finolex Cables">Finolex Cables</SelectItem>
-                        <SelectItem value="Asian Paints">Asian Paints</SelectItem>
-                      </SelectContent>
-                    </Select>
                   </div>
                   {/* <div className="flex items-center space-x-2">
                     <Select value={selectedCategory} onValueChange={setSelectedCategory}>
