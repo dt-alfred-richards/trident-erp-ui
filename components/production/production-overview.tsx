@@ -131,7 +131,7 @@ export function ProductionOverview({ onProduceClick, onViewOrders, onViewDemand 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold">SKU Production Overview</h2>
+        <h2 className="text-lg font-semibold">Production Overview</h2>
         <div className="relative w-64">
           <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input

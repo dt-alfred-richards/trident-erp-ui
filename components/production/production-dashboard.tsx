@@ -13,7 +13,7 @@ import { UpdateProgressDialog } from "@/components/production/update-progress-di
 import { useProductionStore } from "@/hooks/use-production-store"
 
 export function ProductionDashboard() {
-  const { productionOrders, updateOrderProgress, updateOrderStatus } = useProductionStore()
+  const { updateOrderProgress, updateOrderStatus } = useProductionStore()
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
@@ -136,14 +136,13 @@ export function ProductionDashboard() {
         deficit={selectedDeficit}
       />
 
-      {selectedOrderId && (
+      {/* {selectedOrderId && (
         <ProductionOrderDetails
           open={detailsDialogOpen}
           onOpenChange={setDetailsDialogOpen}
           orderId={selectedOrderId}
-          order={productionOrders.find(item => item.id === selectedOrderId)}
         />
-      )}
+      )} */}
 
       <UpdateProgressDialog
         open={updateProgressDialogOpen}

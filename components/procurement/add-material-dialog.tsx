@@ -79,11 +79,11 @@ export function AddMaterialDialog({ open, onOpenChange, onAdd, existingIds, supp
       newErrors.materialType = "Material type is required"
     }
 
-    if (!price) {
-      newErrors.price = "Price is required"
-    } else if (isNaN(Number.parseFloat(price)) || Number.parseFloat(price) < 0) {
-      newErrors.price = "Price must be a positive number"
-    }
+    // if (!price) {
+    //   newErrors.price = "Price is required"
+    // } else if (isNaN(Number.parseFloat(price)) || Number.parseFloat(price) < 0) {
+    //   newErrors.price = "Price must be a positive number"
+    // } 
 
     if (!unit) {
       newErrors.unit = "Unit is required"
@@ -167,7 +167,7 @@ export function AddMaterialDialog({ open, onOpenChange, onAdd, existingIds, supp
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-2">
+            {/* <div className="grid gap-2">
               <Label htmlFor="price">
                 Price (₹) <span className="text-red-500">*</span>
               </Label>
@@ -182,7 +182,7 @@ export function AddMaterialDialog({ open, onOpenChange, onAdd, existingIds, supp
                 className={errors.price ? "border-red-500" : ""}
               />
               {errors.price && <p className="text-red-500 text-sm">{errors.price}</p>}
-            </div>
+            </div> */}
 
             <div className="grid gap-2">
               <Label htmlFor="unit">

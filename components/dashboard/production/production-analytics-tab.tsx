@@ -106,8 +106,6 @@ export function ProductionAnalyticsTab() {
     return convertToChart(productionOrders.map(item => ({ date: item.modifiedOn || item.createdOn || '' as Date, total: item.quantity })))
   }, [productionOrders])
 
-  console.log({ chartValues,productionOrders })
-
   // Define data for the donut chart based on time range
   const getDonutData = () => {
     if (timeRange === "week") {

@@ -20,16 +20,22 @@ import { Clock } from "lucide-react"
 import { useClient } from "@/app/sales/client-list/client-context"
 import { convertDate } from "../generic"
 import { useProduction } from "./production-context"
+import { useMemo } from "react"
 
 interface ProductionOrderDetailsProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  orderId: string,
-  order: any
+  orderId: string
 }
 
-export function ProductionOrderDetails({ open, onOpenChange, orderId, order }: ProductionOrderDetailsProps) {
+export function ProductionOrderDetails({ open, onOpenChange, orderId }: ProductionOrderDetailsProps) {
   const { clientMapper } = useClient()
+
+  const { productionOrders = [] } = useProduction()
+
+  const order = useMemo(() => {
+    return productionOrders.find(order => order.productionOrderId === orderId)
+  }, [orderId, productionOrders])
 
   const getClientType = (name: string) => {
     return Object.values(clientMapper).find(item => item.name === name)?.clientType || ''
@@ -72,7 +78,7 @@ export function ProductionOrderDetails({ open, onOpenChange, orderId, order }: P
             )}
           </DialogTitle>
           <DialogDescription>
-            Order #{order.id.slice(0, 8)} • Created on {new Date(order.startDate).toLocaleDateString()}
+            Order #{order.productionOrderId?.slice(0, 8)} • Created on ${convertDate(order.createdOn)}
           </DialogDescription>
         </DialogHeader>
 
@@ -101,7 +107,7 @@ export function ProductionOrderDetails({ open, onOpenChange, orderId, order }: P
                 </div>
               </div>
 
-              <Separator className="my-4" />
+              {/* <Separator className="my-4" />
 
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground mb-2">Assigned To</h4>
@@ -115,7 +121,7 @@ export function ProductionOrderDetails({ open, onOpenChange, orderId, order }: P
                     <p className="text-sm text-muted-foreground">{getClientType(order.assignedTo)}</p>
                   </div>
                 </div>
-              </div>
+              </div> */}
 
               <Separator className="my-4" />
 

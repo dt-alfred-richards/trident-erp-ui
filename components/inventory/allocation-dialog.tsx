@@ -571,7 +571,7 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
                 </Button>
                 <Button
                   onClick={handleSubmitAllocation}
-                  disabled={Object.values(allocations).every((qty) => qty === 0)}
+                  disabled={!getFilteredProducts(selectedOrder.products).every(product => getAllocationProgress(product) <= 100) || Object.values(allocations).every((qty) => qty === 0)}
                   className="bg-[#43ced7] text-white hover:bg-[#36b0b8]"
                 >
                   Allocate Stock

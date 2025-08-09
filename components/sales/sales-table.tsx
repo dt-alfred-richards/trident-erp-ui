@@ -35,6 +35,7 @@ import { useEffect, useMemo, useState } from "react"
 import { DataByTableName } from "../api"
 import { convertDate } from "../generic"
 import { DateInput } from "../ui/reusable-components"
+import { Employee, useHrContext } from "@/app/hr/hr-context"
 
 export function SalesTable() {
   // Use order context
@@ -58,6 +59,15 @@ export function SalesTable() {
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false)
   const [orderToAction, setOrderToAction] = useState<string | null>(null)
 
+  const { employees } = useHrContext()
+
+  const employeeMapper = useMemo(() => {
+    return employees.reduce((acc: Record<string, Employee>, curr) => {
+      if (!acc[curr?.employeeId || '']) acc[curr?.employeeId || ''] = curr
+      return acc
+    }, {})
+  }, [employees, orders])
+
   // Add pagination state variables
   const [currentPage, setCurrentPage] = useState(1)
   const [ordersPerPage] = useState(10) // Reduced to 10 to make pagination more visible
@@ -72,11 +82,12 @@ export function SalesTable() {
 
     // Search query (across multiple fields)
     if (searchQuery && order) {
+      const selectedEmployee = employeeMapper[order.employeeReferenceId]
       const query = searchQuery.toLowerCase()
       const matchesId = order.id.toLowerCase().includes(query)
       const matchesCustomer = order.customer.toLowerCase().includes(query)
       const matchesReference = order.reference.toLowerCase().includes(query)
-      const matchesEmployee = order.isEmployeeChecked ? `Emp-${order.employeeReferenceId}`.toLowerCase().includes(query) : ""
+      const matchesEmployee = order.isEmployeeChecked ? `${selectedEmployee.firstName} ${selectedEmployee.lastName}`.toLowerCase().includes(query) : ""
       // const matchesSku = order.products.some((p) => p.sku.toLowerCase().includes(query))
 
       if (!(matchesId || matchesCustomer || matchesReference || matchesEmployee)) {
@@ -420,12 +431,14 @@ export function SalesTable() {
           </TableHeader>
           <TableBody>
             {filtered.length > 0 ? (
-              paginatedOrders.map((order) => (
-                <TableRow key={order.id} className="hover:bg-muted/30 transition-colors">
+              paginatedOrders.map((order) => {
+                const selectedEmployee = order.isEmployeeChecked ? employeeMapper[`EMP-${order.employeeReferenceId}`] : null
+
+                return (<TableRow key={order.id} className="hover:bg-muted/30 transition-colors">
                   <TableCell className="py-3">{convertDate(order?.orderDate)}</TableCell>
                   <TableCell className="font-medium text-primary">{order?.id || ""}</TableCell>
                   <TableCell>{order.customer}</TableCell>
-                  <TableCell>{order.isEmployeeChecked ? `Emp-${order.employeeReferenceId}` : order.reference}</TableCell>
+                  <TableCell>{order.isEmployeeChecked ? `${selectedEmployee?.firstName || ''} ${selectedEmployee?.lastName || ''}` : order.reference}</TableCell>
                   <TableCell>{convertDate(order.deliveryDate)}</TableCell>
                   <TableCell>
                     <PriorityIndicator priority={order.priority} />
@@ -579,8 +592,8 @@ export function SalesTable() {
                         )}
                     </div>
                   </TableCell>
-                </TableRow>
-              ))
+                </TableRow>)
+              })
             ) : (
               <TableRow>
                 <TableCell colSpan={10} className="text-center py-10 text-muted-foreground">

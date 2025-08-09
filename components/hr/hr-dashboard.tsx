@@ -418,7 +418,13 @@ export function HRDashboard() {
       </div> */}
 
       {/* Action Buttons */}
-      <div className="flex flex-wrap gap-4 justify-end">
+
+      <div className="flex justify-between items-center bg-white dark:bg-[#0f1729] p-4 rounded-lg shadow-sm mb-4">
+        <div className="space-y-1">
+          <h2 className="text-2xl font-bold tracking-tight">Hr Management</h2>
+          <p className="text-muted-foreground">View and manage all employees in one place</p>
+        </div>
+        <div className="flex flex-wrap gap-4 justify-end">
         <Button
           onClick={() => setAddEmployeeOpen(true)}
           className="flex items-center gap-2 bg-[#1bc6ff] hover:bg-[#18b2e6] text-white border-0"
@@ -433,6 +439,7 @@ export function HRDashboard() {
           <CalendarPlus className="h-4 w-4" />
           Add Attendance
         </Button>
+      </div>
       </div>
 
       <Tabs defaultValue="employees" className="space-y-4" onValueChange={(value) => setActiveTab(value)}>

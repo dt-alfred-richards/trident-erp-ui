@@ -38,10 +38,9 @@ export function LogisticsTable({ status }: LogisticsTableProps) {
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
-  const { orders } = useOrders()
+  const { orders, clientMapper } = useOrders()
   const { data: logisticsData, update } = useLogistics()
 
-0
   const filteredOrders = useMemo(() => {
     const mapper: any = {};
     const list = logisticsData.map(item => {
@@ -49,7 +48,7 @@ export function LogisticsTable({ status }: LogisticsTableProps) {
       return {
         logisticsId: item.id,
         id: item.orderId || getChildObject(item, "saleId", ""),
-        customer: mapper[item.orderId || item.id] || item.clientId || '',
+        customer: mapper[item.orderId || item.id] || clientMapper[item.clientId]?.name || '',
         trackingId: `TRK-${item.id}`,
         products: products,
         status: item.status,

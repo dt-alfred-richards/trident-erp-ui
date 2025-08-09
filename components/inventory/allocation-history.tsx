@@ -13,7 +13,7 @@ import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
 import { DataTablePagination } from "@/components/ui/data-table-pagination"
 import { useInventory } from "@/app/inventory-context"
-import { getChildObject, handleExport } from "../generic"
+import { convertDate, formatRelativeTime, getChildObject, handleExport } from "../generic"
 import { useOrders } from "@/contexts/order-context"
 import { DateInput } from "../ui/reusable-components"
 
@@ -31,7 +31,7 @@ interface AllocationHistoryProps {
 export function AllocationHistory({ allocationHistory: propAllocationHistory }: AllocationHistoryProps) {
   const [startDate, setStartDate] = useState<Date>()
   const { allocations = [] } = useInventory()
-  const { clientMapper } = useOrders();
+  const { clientMapper, productSkuMapper } = useOrders();
   const [endDate, setEndDate] = useState<Date>()
   const [filterSku, setFilterSku] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState<string>("")
@@ -54,30 +54,24 @@ export function AllocationHistory({ allocationHistory: propAllocationHistory }: 
   const hasActiveFilters = startDate || endDate || filterSku !== "all" || searchQuery
 
   const defaultAllocationHistory = useMemo(() => {
-    return allocations.map(item => ({
-      id: getChildObject(item, "allocationId", ""),
-      timestamp: getChildObject(item, "createdOn", getChildObject(item, "modifiedOn", "")),
-      orderId: getChildObject(item, "orderId", ""),
-      customer: clientMapper[getChildObject(item, "createdBy", getChildObject(item, "modifiedBy", ""))]?.name || '',
-      sku: getChildObject(item, "sku", ""),
-      allocated: getChildObject(item, "allocated", 0)
-    }))
+    return allocations.map(item => {
+      const clientId = getChildObject(item, "createdBy", getChildObject(item, "modifiedBy", ""))
+      return ({
+        id: getChildObject(item, "allocationId", ""),
+        timestamp: getChildObject(item, "createdOn", getChildObject(item, "modifiedOn", "")),
+        orderId: getChildObject(item, "orderId", ""),
+        customer: clientMapper[`CLIENT-${clientId}`]?.name || '',
+        sku: getChildObject(item, "sku", ""),
+        allocated: getChildObject(item, "allocated", 0)
+      })
+    })
   }, [allocations])
+
 
   // Update display history when prop history changes
   useEffect(() => {
-    if (propAllocationHistory) {
-      setDisplayHistory(propAllocationHistory)
-
-      // Check for new allocations (those not in the default history)
-      const defaultIds = new Set(defaultAllocationHistory.map((item) => item.id))
-      const newIds = propAllocationHistory.filter((item) => !defaultIds.has(item.id)).map((item) => item.id)
-
-      setNewAllocations(newIds)
-    } else {
-      setDisplayHistory(defaultAllocationHistory)
-    }
-  }, [propAllocationHistory])
+    setDisplayHistory(defaultAllocationHistory)
+  }, [defaultAllocationHistory])
 
   // Filter history based on date range, SKU, and search query
   const filteredHistory = displayHistory.filter((item) => {
@@ -203,7 +197,7 @@ export function AllocationHistory({ allocationHistory: propAllocationHistory }: 
               currentItems.map((item) => (
                 <TableRow key={item.id} className={isNewAllocation(item.id) ? "bg-green-50 dark:bg-green-900/10" : ""}>
                   <TableCell className="whitespace-nowrap">
-                    {new Date(item.timestamp).toLocaleString()}
+                    {formatRelativeTime(item.timestamp)}
                     {isNewAllocation(item.id) && (
                       <Badge variant="outline" className="ml-2 bg-green-100 text-green-700 border-green-200">
                         New

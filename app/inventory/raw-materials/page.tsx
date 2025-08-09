@@ -346,7 +346,7 @@ export default function RawMaterialsPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-background border-0 shadow-sm">
+          {/* <Card className="bg-background border-0 shadow-sm">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="bg-primary/10 p-2 rounded-full">
                 <Box className="h-5 w-5 text-primary" />
@@ -356,7 +356,7 @@ export default function RawMaterialsPage() {
                 <p className="text-2xl font-semibold">{`₹${formatNumberIndian(totalValues)}`}</p>
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
 
         {/* Category tabs and table */}

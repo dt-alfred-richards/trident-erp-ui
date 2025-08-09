@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CalendarIcon, Plus, Minus, DollarSign } from "lucide-react"
+import { CalendarIcon, Plus, Minus, DollarSign, IndianRupee } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -47,7 +47,7 @@ export function PurchaseOrderDialog({ open, onOpenChange, onCreateOrder }: Purch
   }, [contextMaterials, selectedSupplierId])
 
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined)
-  const [currency, setCurrency] = useState("USD")
+  const [currency, setCurrency] = useState("INR")
   const [paymentTerms, setPaymentTerms] = useState("net30")
   const [notes, setNotes] = useState("")
   const [priority, setPriority] = useState("normal")
@@ -154,7 +154,7 @@ export function PurchaseOrderDialog({ open, onOpenChange, onCreateOrder }: Purch
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="currency">Currency</Label>
-                          <Select value={currency} onValueChange={setCurrency}>
+                          <Select value={currency} onValueChange={setCurrency} disabled>
                             <SelectTrigger id="currency">
                               <SelectValue />
                             </SelectTrigger>
@@ -318,7 +318,7 @@ export function PurchaseOrderDialog({ open, onOpenChange, onCreateOrder }: Purch
                                 Unit Price
                               </Label>
                               <div className="relative">
-                                <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <IndianRupee className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                 <Input
                                   id={`price-${item.id}`}
                                   type="number"

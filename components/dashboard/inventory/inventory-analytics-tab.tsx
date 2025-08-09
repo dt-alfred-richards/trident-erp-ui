@@ -80,8 +80,6 @@ export function InventoryAnalyticsTab() {
     })
   }, [inventory])
 
-  console.log({ rawMaterials })
-
   // Calculate distinct count of raw materials by category
   const distinctRawMaterialsCount = new Set(rawMaterials.map((material) => `${material.category}-${material.type}`))
     .size

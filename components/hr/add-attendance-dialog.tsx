@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils"
 import { useToast } from "@/components/ui/use-toast"
 import type { AttendanceData } from "./hr-dashboard"
 import { DailyAttendance, useHrContext } from "@/app/hr/hr-context"
+import { DateInput } from "../ui/reusable-components"
 
 // Sample employees data for the combobox
 const employees = [
@@ -254,7 +255,8 @@ export function AddAttendanceDialog({ open, onOpenChange, onAddAttendance }: Add
 
           <div className="space-y-2">
             <Label htmlFor="date">Date *</Label>
-            <Popover open={openDatePicker} onOpenChange={setOpenDatePicker}>
+            <DateInput selectedDate={selectedDate} setState={setSelectedDate} allowPastSelection={false} />
+            {/* <Popover open={openDatePicker} onOpenChange={setOpenDatePicker}>
               <PopoverTrigger asChild>
                 <Button
                   id="date"
@@ -278,7 +280,7 @@ export function AddAttendanceDialog({ open, onOpenChange, onAddAttendance }: Add
                   initialFocus
                 />
               </PopoverContent>
-            </Popover>
+            </Popover> */}
             {errors.date && <p className="text-sm text-red-500">{errors.date}</p>}
           </div>
 

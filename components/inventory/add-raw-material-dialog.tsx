@@ -116,7 +116,7 @@ export function AddRawMaterialDialog({ open, onOpenChange }: AddRawMaterialDialo
             </div>
           </div>
           {error && <p className="text-sm text-red-500 text-center">{error}</p>}
-          <div className="grid grid-cols-4 items-center gap-4">
+          {/* <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="price" className="text-right">
               Price per unit <span className="text-red-500">*</span>
             </Label>
@@ -130,7 +130,7 @@ export function AddRawMaterialDialog({ open, onOpenChange }: AddRawMaterialDialo
                 placeholder="Enter price per unit"
               />
             </div>
-          </div>
+          </div> */}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

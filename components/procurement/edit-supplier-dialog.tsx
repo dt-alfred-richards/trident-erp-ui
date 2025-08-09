@@ -62,8 +62,6 @@ export function EditSupplierDialog({ supplier, open, onOpenChange, onSave }: Edi
   }, [open, supplier])
 
 
-  console.log({ supplier })
-
   const handleChange = (field: string, value: string) => {
     setFormData({ ...formData, [field]: value })
     // Clear error when user types

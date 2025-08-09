@@ -31,12 +31,19 @@ interface OrderSummaryDialogProps {
 export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDialogProps) {
   // Calculate order totals
   const subtotal = order.products.reduce((sum, product) => sum + product.price * product.cases, 0)
-  const discount = subtotal * 0.05 // Assuming 5% discount, adjust as needed
+  const discount = useMemo(() => {
+    return order?.discount || 0
+  }, [order]) // Assuming 5% discount, adjust as needed
   const taxableAmount = subtotal - discount
-  const cgst = taxableAmount * 0.09
-  const sgst = taxableAmount * 0.09
+  const cgst = useMemo(() => {
+    return order?.taxesEnabled ? taxableAmount * 0.09 : 0
+  }, [order])
+  const sgst = useMemo(() => {
+    return order?.taxesEnabled ? taxableAmount * 0.09 : 0
+  }, [order])
   const taxes = cgst + sgst // Keep total taxes for the final calculation
   const total = taxableAmount + taxes
+
 
   const [employees, setEmployees] = useState<Employee[]>([])
   const employeeRef = useRef(true)
@@ -172,8 +179,8 @@ export function OrderSummaryDialog({ open, onOpenChange, order }: OrderSummaryDi
                             <div className="text-sm text-muted-foreground">{product.sku}</div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right">{product.cases.toLocaleString()}</TableCell>
                         <TableCell className="text-right">{product?.category || ''}</TableCell>
+                        <TableCell className="text-right">{product.cases.toLocaleString()}</TableCell>
                         <TableCell className="text-right">₹{product.price?.toFixed(2)}</TableCell>
                         <TableCell className="text-right">₹{(product.cases * product.price).toFixed(2)}</TableCell>
                       </TableRow>

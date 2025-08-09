@@ -6,6 +6,7 @@ import type { ProductStatus } from "@/types/product"
 import { DataByTableName } from "@/components/api"
 import { createType, getChildObject, getPriority, removebasicTypes } from "@/components/generic"
 import { any } from "zod"
+import { useHrContext } from "@/app/hr/hr-context"
 
 export type EventLogger = {
   id: number,
@@ -272,6 +273,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
           total: item.total,
           discount: item.discount,
           poDate: item.poDate,
+          taxesEnabled: item.taxesEnabled,
           statusHistory: _eventsLogger.filter((i: EventLogger) => i.tableName === "v1_sales" && i.tableId === item.id).map((item: EventLogger) => ({
             timestamp: item.createdOn,
             status: item.fieldValue,

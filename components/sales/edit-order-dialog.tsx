@@ -29,7 +29,7 @@ import type { Order, Product, ProductStatus } from "@/types/order"
 import { ClientReference, SaleOrderDetail, ShippingAddress, useOrders } from "@/contexts/order-context"
 import { convertDate, getChildObject } from "../generic"
 import { Switch } from "../ui/switch"
-import { Employee } from "@/app/hr/hr-context"
+import { Employee, useHrContext } from "@/app/hr/hr-context"
 import { DataByTableName } from "../api"
 import { DateInput } from "../ui/reusable-components"
 
@@ -76,29 +76,22 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
   // Editable fields
   const [reference, setReference] = useState(order.reference)
   const [isEmployeeChecked, setIsEmployeeChecked] = useState(false)
-  const [employeeReference, setEmployeeReference] = useState("")
+  const [employeeReference, setEmployeeReference] = useState(order.employeeReferenceId)
+
+  const { employees } = useHrContext()
+
+  useEffect(() => {
+    const selectedE = employees.find(emp => emp.id === `EMP-${order.employeeReferenceId}`)
+    setEmployeeReference(selectedE?.id || '')
+  }, [employees, order])
 
   useEffect(() => {
     setIsEmployeeChecked(order.isEmployeeChecked)
-    setEmployeeReference(order.employeeReferenceId)
     if (order.poDate) {
       setPoDate(new Date(order.poDate))
     }
   }, [order])
 
-
-  const [employees, setEmployees] = useState<Employee[]>([])
-  const employeeRef = useRef(true)
-  const employeeInstance = new DataByTableName("v1_employee")
-
-  useEffect(() => {
-    if (!employeeRef.current) return
-    employeeRef.current = false
-    employeeInstance.get().then(response => {
-      const data = getChildObject(response, "data", [])
-      setEmployees(data)
-    })
-  }, [])
 
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<Date | undefined>(
     order.deliveryDate ? new Date(order.deliveryDate) : undefined,
@@ -434,7 +427,7 @@ export function EditOrderDialog({ open, onOpenChange, order }: EditOrderDialogPr
                   <Label htmlFor="client">
                     Employee reference <span className="text-red-500">*</span>
                   </Label>
-                  <Select value={parseInt(employeeReference)} onValueChange={setEmployeeReference}>
+                  <Select value={employeeReference} onValueChange={setEmployeeReference}>
                     <SelectTrigger id="employeeReference">
                       <SelectValue placeholder="Select employee" />
                     </SelectTrigger>

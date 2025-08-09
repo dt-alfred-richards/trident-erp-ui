@@ -278,7 +278,7 @@ export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProduc
 
                   {/* Quantity */}
                   <div className="space-y-2">
-                    <Label htmlFor="quantity">Quantity</Label>
+                    <Label htmlFor="quantity">Quantity (In cases)</Label>
                     <Input
                       id="quantity"
                       type="number"
@@ -291,10 +291,10 @@ export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProduc
                   {/* Deadline Date Picker */}
                   <div className="space-y-2">
                     <Label htmlFor="deadline">Deadline</Label>
-                    <DateInput placeholder="" selectedDate={date} setState={setDate} />
+                    <DateInput placeholder="" selectedDate={date} setState={setDate} allowPastSelection={false} />
                   </div>
 
-                  <div className="space-y-2">
+                  {/* <div className="space-y-2">
                     <Label htmlFor="assignedTo">Assign To</Label>
                     <Select value={assignedTo} onValueChange={setAssignedTo}>
                       <SelectTrigger id="assignedTo">
@@ -308,7 +308,7 @@ export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProduc
                         ))}
                       </SelectContent>
                     </Select>
-                  </div>
+                  </div> */}
                 </div>
               </CardContent>
             </Card>

@@ -71,6 +71,7 @@ export interface Order {
   modifiedOn: Date,
   total: number,
   discount: number,
+  taxesEnabled: boolean,
   statusHistory: {
     timestamp: string
     status: OrderStatus

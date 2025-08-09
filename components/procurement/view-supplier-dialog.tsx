@@ -466,7 +466,7 @@ export function ViewSupplierDialog({ supplier, open, onOpenChange }: ViewSupplie
                       <TableHead>Material ID</TableHead>
                       <TableHead>Material Name</TableHead>
                       <TableHead>Material Type</TableHead>
-                      <TableHead>Price</TableHead>
+                      {/* <TableHead>Price</TableHead> */}
                       <TableHead>Unit</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -493,7 +493,7 @@ export function ViewSupplierDialog({ supplier, open, onOpenChange }: ViewSupplie
                           <TableCell className="font-medium">{material.id}</TableCell>
                           <TableCell>{material.name}</TableCell>
                           <TableCell>{material.type}</TableCell>
-                          <TableCell>
+                          {/* <TableCell>
                             {selectedMaterials.includes(material.id) ? (
                               <div className="flex items-center">
                                 <span className="mr-1">₹</span>
@@ -509,7 +509,7 @@ export function ViewSupplierDialog({ supplier, open, onOpenChange }: ViewSupplie
                             ) : (
                               <>₹{material.price.toLocaleString()}</>
                             )}
-                          </TableCell>
+                          </TableCell> */}
                           <TableCell>
                             {selectedMaterials.includes(material.id) ? (
                               <Select

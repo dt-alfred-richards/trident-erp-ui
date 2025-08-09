@@ -39,6 +39,8 @@ export function AttendanceTracking({
   const [showEditAttendanceDialog, setShowEditAttendanceDialog] = useState(false)
   const [showCalendarDialog, setShowCalendarDialog] = useState(false)
   const [calendarEmployee, setCalendarEmployee] = useState<{ id: string; name: string } | null>(null)
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
 
   // Pagination state
   const [attendanceCurrentPage, setAttendanceCurrentPage] = useState(1)
@@ -55,12 +57,13 @@ export function AttendanceTracking({
 
         const matchesStatus = selectedStatus === "all" || record.status === selectedStatus
 
-        const matchesDate = date &&
-          new Date(record.modifiedOn || record.createdOn).toDateString() === new Date(date).toDateString()
+        const matchesDateFilter =
+          (!startDate || record.date >= new Date(startDate)) &&
+          (!endDate || record.date <= new Date(endDate));
 
-        return matchesSearch && matchesStatus && matchesDate
+        return matchesSearch && matchesStatus
       }),
-    [attendanceData, searchQuery, selectedStatus, date]
+    [attendanceData, searchQuery, selectedStatus, startDate, endDate]
   )
 
   const leaveBalanceData = useMemo(() => {
@@ -149,6 +152,7 @@ export function AttendanceTracking({
     return `${hours}:${minutes.toString().padStart(2, "0")}`
   }
 
+
   return (
     <div className="space-y-6">
       <div className="mb-8">
@@ -167,7 +171,32 @@ export function AttendanceTracking({
 
         <div className="bg-card rounded-lg border shadow-sm p-4">
           <div className="flex flex-wrap items-center gap-3">
-            <div><DateInput selectedDate={date} setState={setDate} /></div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <label htmlFor="start-date-bank" className="text-sm font-medium">
+                  From:
+                </label>
+                <Input
+                  id="start-date-bank"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-[150px]"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label htmlFor="end-date-bank" className="text-sm font-medium">
+                  To:
+                </label>
+                <Input
+                  id="end-date-bank"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-[150px]"
+                />
+              </div>
+            </div>
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -218,12 +247,12 @@ export function AttendanceTracking({
                     <TableRow key={record.id}>
                       <TableCell>{record.employeeId}</TableCell>
                       <TableCell className="font-medium">{record.employeeName}</TableCell>
-                      <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
+                      <TableCell>{convertDate(record.date)}</TableCell>
                       <TableCell>{record.checkIn || "-"}</TableCell>
                       <TableCell>{record.checkOut || "-"}</TableCell>
                       <TableCell>{record.totalHours || "-"}</TableCell>
                       <TableCell>
-                        {record.status === "present" ? (
+                        {parseInt(record.totalHours) > 0 ? (
                           <Badge
                             variant="outline"
                             className="border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-400"

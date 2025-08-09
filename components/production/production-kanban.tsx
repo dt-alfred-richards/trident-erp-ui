@@ -33,7 +33,7 @@ export function ProductionKanban({ onViewDetails, onUpdateProgress }: Production
   // const { productionOrders } = useProductionStore()
   const { clientProposedProductMapper } = useOrders()
   const { productionOrders: contextProductionOrder } = useProduction()
-  const { inventory } = useInventory()
+
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false)
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
   const [unitsCompleted, setUnitsCompleted] = useState<number>(0)
@@ -65,7 +65,7 @@ export function ProductionKanban({ onViewDetails, onUpdateProgress }: Production
       }, 0)
 
       return ({
-        id: item.id + '',
+        id: item.productionOrderId + '',
         sku: item.sku,
         pendingOrders,
         inProduction: product?.inProduction || 0,
@@ -80,6 +80,7 @@ export function ProductionKanban({ onViewDetails, onUpdateProgress }: Production
       })
     })
   }, [contextProductionOrder])
+
 
   // Group orders by status
   const columns = useMemo(() => {
@@ -303,22 +304,22 @@ ${column.id === "inProgress"
                       </div>
                     </CardContent>
                     <CardFooter className="flex justify-between pt-0">
-                      <div className="flex items-center gap-2 text-sm">
+                      {/* <div className="flex items-center gap-2 text-sm">
                         <Avatar className="h-6 w-6">
                           <AvatarImage src="/placeholder-user.jpg" alt={item.assignedTo} />
                           <AvatarFallback>{item.assignedTo.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <span>{item.assignedTo}</span>
-                      </div>
+                      </div> */}
                       <div className="flex gap-1">
-                        <Button
+                        {/* <Button
                           variant="ghost"
                           size="sm"
                           className="h-7 w-7 p-0 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
                           onClick={() => onViewDetails(item.id)}
                         >
                           <Eye className="h-4 w-4" />
-                        </Button>
+                        </Button> */}
                         {column.id === "inProgress" && (
                           <>
                             <Button
