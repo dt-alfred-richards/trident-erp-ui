@@ -122,7 +122,6 @@ export function CreateSalesOrderDialog({ open, onOpenChange }: CreateSalesOrderD
   const [selectedProductId, setSelectedProductId] = useState("")
   const [selectedSizeSku, setSelectedSizeSku] = useState("")
   const [cases, setCases] = useState("")
-
   // Combobox state
   const [openCombobox, setOpenCombobox] = useState(false)
 
