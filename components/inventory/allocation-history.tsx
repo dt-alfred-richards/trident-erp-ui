@@ -31,7 +31,7 @@ interface AllocationHistoryProps {
 export function AllocationHistory({ allocationHistory: propAllocationHistory }: AllocationHistoryProps) {
   const [startDate, setStartDate] = useState<Date>()
   const { allocations = [] } = useInventory()
-  const { clientMapper, productSkuMapper } = useOrders();
+  const { clientMapper, productSkuMapper, clientProposedProductMapper } = useOrders();
   const [endDate, setEndDate] = useState<Date>()
   const [filterSku, setFilterSku] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState<string>("")
@@ -54,18 +54,22 @@ export function AllocationHistory({ allocationHistory: propAllocationHistory }: 
   const hasActiveFilters = startDate || endDate || filterSku !== "all" || searchQuery
 
   const defaultAllocationHistory = useMemo(() => {
+    const skuMapper = Object.values(clientProposedProductMapper).flat().reduce((acc: any, curr) => {
+      if (!acc[curr?.sku || '']) acc[curr?.sku || ''] = curr;
+      return acc;
+    }, {})
     return allocations.map(item => {
-      const clientId = getChildObject(item, "createdBy", getChildObject(item, "modifiedBy", ""))
+      const clientId = getChildObject(item, "createdBy", '') || getChildObject(item, "modifiedBy", '')
       return ({
         id: getChildObject(item, "allocationId", ""),
         timestamp: getChildObject(item, "createdOn", getChildObject(item, "modifiedOn", "")),
         orderId: getChildObject(item, "orderId", ""),
         customer: clientMapper[`CLIENT-${clientId}`]?.name || '',
-        sku: getChildObject(item, "sku", ""),
+        sku: skuMapper[getChildObject(item, "sku", "")]?.name || '',
         allocated: getChildObject(item, "allocated", 0)
       })
     })
-  }, [allocations])
+  }, [allocations, clientProposedProductMapper])
 
 
   // Update display history when prop history changes
@@ -91,7 +95,7 @@ export function AllocationHistory({ allocationHistory: propAllocationHistory }: 
   const indexOfLastItem = currentPage * itemsPerPage
   const indexOfFirstItem = indexOfLastItem - itemsPerPage
   const currentItems = filteredHistory.slice(indexOfFirstItem, indexOfLastItem)
-
+  console.log({ currentItems })
   // Handle page change
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
@@ -127,7 +131,7 @@ export function AllocationHistory({ allocationHistory: propAllocationHistory }: 
             <SelectContent>
               <SelectItem value="all">All SKUs</SelectItem>
               {uniqueSkus.map((sku, index) => (
-                <SelectItem key={`${sku}-${index}`} value={sku}>
+                <SelectItem key={`${sku}-${index}`} value={sku || undefined}>
                   {sku}
                 </SelectItem>
               ))}
@@ -180,9 +184,9 @@ export function AllocationHistory({ allocationHistory: propAllocationHistory }: 
           <TableHeader>
             <TableRow>
               <TableHead>Date & Time</TableHead>
+              <TableHead>Product</TableHead>
               <TableHead>Order ID</TableHead>
               <TableHead>Customer</TableHead>
-              <TableHead>SKU</TableHead>
               <TableHead className="text-right">Allocated</TableHead>
             </TableRow>
           </TableHeader>
@@ -204,9 +208,9 @@ export function AllocationHistory({ allocationHistory: propAllocationHistory }: 
                       </Badge>
                     )}
                   </TableCell>
+                  <TableCell>{item.sku}</TableCell>
                   <TableCell className="font-medium">{item.orderId}</TableCell>
                   <TableCell>{item.customer}</TableCell>
-                  <TableCell>{item.sku}</TableCell>
                   <TableCell className="text-right">{item.allocated.toLocaleString()}</TableCell>
                 </TableRow>
               ))
