@@ -30,7 +30,7 @@ interface InventoryTableProps {
 export function InventoryTable({ onAllocate, inventoryData: propInventoryData }: InventoryTableProps) {
   const { inventory = [] } = useInventory()
   const { productionOrders } = useProduction()
-  const { orders } = useOrders();
+  const { orders, clientMapper } = useOrders();
   const [searchTerm, setSearchTerm] = useState("")
   const [sortColumn, setSortColumn] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
@@ -205,7 +205,7 @@ export function InventoryTable({ onAllocate, inventoryData: propInventoryData }:
                       <div className="flex flex-col">
                         <span className="font-medium">{item.sku}</span>
                         <span className="text-xs text-muted-foreground">
-                          {item.clientId}
+                          {clientMapper[item.clientId]?.name}
                         </span>
                       </div>
                       {/* {item.sku} */}

@@ -170,7 +170,7 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
 
   // Calculate remaining quantity for a product
   const getRemainingQuantity = (product: OrderProduct) => {
-    return product.quantity - (product.allocated || 0)
+    return product.quantity - Number(product?.allocated) || ''
   }
 
   // Handle allocation input change
@@ -182,22 +182,25 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
     }))
   }
 
+
   const [isSubmitting, setIsSubmitting] = useState(false)
   // Handle allocation submission
   const handleSubmitAllocation = () => {
     if (!selectedOrder || !updateSaleAllocation || !inventoryRefetch) return
 
     setIsSubmitting(true)
-    Promise.allSettled(Object.entries(allocations).map(([key, value]) => {
-      if (value === 0) return null;
-      return updateSaleAllocation({ allocated: parseInt(value + '') + parseInt(getCurrentAllocation(key) + '') }, key, selectedOrder)
-    }).filter(item => item)).then(() => {
-      onOpenChange(false)
-      refetchContext();
-      inventoryRefetch()
-    }).finally(() => {
-      setIsSubmitting(false)
-    })
+
+    Promise.allSettled(
+      Object.entries(allocations).map(([key, value]) => {
+        if (value === 0) return null;
+        return updateSaleAllocation({ allocated: parseInt(value + '') + parseInt(getCurrentAllocation(key) + ''), newValue: parseInt(value + '') }, key, selectedOrder)
+      }).filter(item => item)).then(() => {
+        onOpenChange(false)
+        refetchContext();
+        inventoryRefetch()
+      }).finally(() => {
+        setIsSubmitting(false)
+      })
   }
   // Get priority badge
   const getPriorityBadge = (priority: string) => {
@@ -450,7 +453,7 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
 
                     <div className="grid gap-4">
                       {/* Filter products based on search type and term */}
-                      {getFilteredProducts(selectedOrder.products).map((product) => {
+                      {selectedOrder.products.map((product) => {
                         const remaining = getRemainingQuantity(product)
                         const isFullyAllocated = remaining === 0
                         const progress = getAllocationProgress(product)

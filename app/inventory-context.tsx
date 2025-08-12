@@ -1,7 +1,7 @@
 "use client"
 
 import { DataByTableName } from "@/components/api";
-import { getChildObject } from "@/components/generic";
+import { getChildObject, removebasicTypes } from "@/components/generic";
 import { useOrders } from "@/contexts/order-context";
 import { createContext, ReactNode, useContext, useEffect, useRef, useState } from "react";
 
@@ -84,7 +84,8 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         const products = getChildObject(selectedOrder, "products", [])
         const product = products.find((item: any) => item.id === saleOrderId)
         if (!saleId || !product || !updateClientProduct) return Promise.reject("Not enough data");
-        return saleOrderDetailInstance.patch({ key: "product_id", value: saleOrderId }, payload).then(() => {
+        const updatedPayload = removebasicTypes(payload, ['newValue'])
+        return saleOrderDetailInstance.patch({ key: "product_id", value: saleOrderId }, updatedPayload).then(() => {
             return allocationInstance.post({
                 orderId: saleId,
                 sku: getChildObject(product, "sku", ""),
@@ -93,8 +94,11 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
         }).then((res) => {
             const data = getChildObject(res, "data.0", {})
             const productId = Object.values(clientProposedProductMapper).flat().find(item => item.sku === (data?.sku || ""))?.productId || ""
-            const productReservedQuantity = parseInt(Object.values(clientProposedProductMapper).flat().find(item => item.productId === productId)?.reservedQuantity || "0")
-            return updateClientProduct({ productId: productId, reservedQuantity: `${productReservedQuantity + parseInt(payload?.allocated || 0)}` })
+            const product = Object.values(clientProposedProductMapper).flat().find(item => item.productId === productId)
+            const productReservedQuantity = parseInt(product?.reservedQuantity || "0")
+            const allocatedQuantity = getChildObject(payload, 'newValue', 0)
+            const updatedAvailableQuantity = Math.abs(parseInt(product?.availableQuantity || '0') - parseInt(allocatedQuantity))
+            return updateClientProduct({ productId: productId, reservedQuantity: `${productReservedQuantity + parseInt(payload?.allocated || 0)}`, availableQuantity: updatedAvailableQuantity + '' })
         }).then(() => {
             return updateSaleProductOrder(saleOrderId, { allocated: payload.allocated })
         }).catch(error => {

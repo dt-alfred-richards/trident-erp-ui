@@ -43,7 +43,8 @@ export function LogisticsTable({ status }: LogisticsTableProps) {
 
   const filteredOrders = useMemo(() => {
     const mapper: any = {};
-    const list = logisticsData.map(item => {
+    const cancelledOrders = new Set(orders.filter(item => item.status === "cancelled").map(item => item.id))
+    const list = logisticsData.filter(item => !cancelledOrders.has(item.orderId)).map(item => {
       const products = JSON.parse(item.products) as LogisticsProduct[]
       return {
         logisticsId: item.id,
