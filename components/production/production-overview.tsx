@@ -42,11 +42,16 @@ export function ProductionOverview({ onProduceClick, onViewOrders, onViewDemand 
 
   const productionData = useMemo(() => {
     return Object.values(clientProposedProductMapper).flat().map(item => {
-      const skuProductionOrders = productionOrders.filter(i => i.sku === item.sku);
+      const skuProductionOrders = productionOrders.filter(i => i.sku === item.sku && i.status !== "completed");
+      const pendingSkuQuantity = skuProductionOrders.reduce((acc, curr) => {
+        acc += curr.quantity
+        return acc;
+      }, 0)
+
       return ({
         sku: item.name,
         productId: item.productId,
-        pendingOrders: skuProductionOrders.filter(i => i.status === "pending").length || 0,
+        pendingOrders: pendingSkuQuantity,
         inProduction: getCummulativeSum({ key: "inProduction", refObject: skuProductionOrders }),
         produced: getCummulativeSum({ key: "produced", refObject: skuProductionOrders }),
         availableStock: item.availableQuantity || 0,
@@ -153,7 +158,7 @@ export function ProductionOverview({ onProduceClick, onViewOrders, onViewDemand 
                   <ArrowUpDown className="ml-2 h-4 w-4" />
                 </div>
               </TableHead>
-              <TableHead className="text-right">Pending Orders</TableHead>
+              <TableHead className="text-right">Pending Quantity</TableHead>
               <TableHead className="text-right">In Production</TableHead>
               <TableHead className="text-right">Produced</TableHead>
               <TableHead className="text-right">Available Stock</TableHead>

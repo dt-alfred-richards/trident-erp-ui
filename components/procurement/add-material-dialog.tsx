@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
 import { useProcurement } from "@/app/procurement/procurement-context"
+import { Inventory, useInventory } from "@/app/inventory-context"
 
 // List of available units
 const unitOptions = [
@@ -61,12 +62,30 @@ interface AddMaterialDialogProps {
 export function AddMaterialDialog({ open, onOpenChange, onAdd, existingIds, supplierId }: AddMaterialDialogProps) {
   const { toast } = useToast()
   const { addMaterial } = useProcurement()
+  const { inventory } = useInventory();
   const [materialId, setMaterialId] = useState("")
-  const [materialName, setMaterialName] = useState("")
-  const [materialType, setMaterialType] = useState("")
+  const [materialName, setMaterialName] = useState(undefined)
+  const [materialType, setMaterialType] = useState(undefined)
   const [price, setPrice] = useState("")
   const [unit, setUnit] = useState("per unit")
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const categories = useMemo(() => {
+    const distinctCats: Set<string> = new Set();
+
+    inventory?.forEach(item => {
+      distinctCats.add(item.category)
+    })
+    return Array.from(distinctCats)
+  }, [inventory])
+
+  const materials = useMemo(() => {
+    return inventory?.filter(item => item.category === materialType)
+  }, [inventory, materialType])
+
+  const selected = useMemo(() => {
+    return inventory?.find(item => item.category === materialType && item.material === item.material)
+  }, [materialName, materialType])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -78,12 +97,6 @@ export function AddMaterialDialog({ open, onOpenChange, onAdd, existingIds, supp
     if (!materialType) {
       newErrors.materialType = "Material type is required"
     }
-
-    // if (!price) {
-    //   newErrors.price = "Price is required"
-    // } else if (isNaN(Number.parseFloat(price)) || Number.parseFloat(price) < 0) {
-    //   newErrors.price = "Price must be a positive number"
-    // } 
 
     if (!unit) {
       newErrors.unit = "Unit is required"
@@ -101,7 +114,9 @@ export function AddMaterialDialog({ open, onOpenChange, onAdd, existingIds, supp
         price: Number.parseFloat(price),
         unit: unit,
         supplierId: supplierId,
+        inventoryId: selected?.inventoryId
       }
+
 
       addMaterial(newMaterial)
         .then(() => {
@@ -134,20 +149,6 @@ export function AddMaterialDialog({ open, onOpenChange, onAdd, existingIds, supp
         <div className="grid gap-4 py-4">
 
           <div className="grid gap-2">
-            <Label htmlFor="material-name">
-              Material Name <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="material-name"
-              placeholder="e.g., Copper Wire"
-              value={materialName}
-              onChange={(e) => setMaterialName(e.target.value)}
-              className={errors.materialName ? "border-red-500" : ""}
-            />
-            {errors.materialName && <p className="text-red-500 text-sm">{errors.materialName}</p>}
-          </div>
-
-          <div className="grid gap-2">
             <Label htmlFor="material-type">
               Material Type <span className="text-red-500">*</span>
             </Label>
@@ -156,7 +157,7 @@ export function AddMaterialDialog({ open, onOpenChange, onAdd, existingIds, supp
                 <SelectValue placeholder="Select material type" />
               </SelectTrigger>
               <SelectContent>
-                {materialTypes.map((type) => (
+                {categories.map((type) => (
                   <SelectItem key={type} value={type}>
                     {type}
                   </SelectItem>
@@ -165,6 +166,24 @@ export function AddMaterialDialog({ open, onOpenChange, onAdd, existingIds, supp
             </Select>
             {errors.materialType && <p className="text-red-500 text-sm">{errors.materialType}</p>}
           </div>
+          <div className="grid gap-2">
+            <Label htmlFor="material-type">
+              Material  <span className="text-red-500">*</span>
+            </Label>
+            <Select value={materialName} onValueChange={setMaterialName}>
+              <SelectTrigger id="materialName" className={errors.materialName ? "border-red-500" : ""}>
+                <SelectValue placeholder="Select material" />
+              </SelectTrigger>
+              <SelectContent>
+                {materials?.map((type: Inventory) => (
+                  <SelectItem key={type.inventoryId} value={type.material}>
+                    {type.material}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
 
           <div className="grid grid-cols-2 gap-4">
             {/* <div className="grid gap-2">
@@ -188,18 +207,7 @@ export function AddMaterialDialog({ open, onOpenChange, onAdd, existingIds, supp
               <Label htmlFor="unit">
                 Unit <span className="text-red-500">*</span>
               </Label>
-              <Select value={unit} onValueChange={setUnit}>
-                <SelectTrigger id="unit" className={errors.unit ? "border-red-500" : ""}>
-                  <SelectValue placeholder="Select unit" />
-                </SelectTrigger>
-                <SelectContent>
-                  {unitOptions.map((unitOption) => (
-                    <SelectItem key={unitOption} value={unitOption}>
-                      {unitOption}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Input value={selected?.unit} placeholder="Unit" disabled />
               {errors.unit && <p className="text-red-500 text-sm">{errors.unit}</p>}
             </div>
           </div>

@@ -24,6 +24,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { Material, PurchaseOrderMaterial, useProcurement } from "@/app/procurement/procurement-context"
 import { getChildObject } from "../generic"
+import { Inventory, useInventory } from "@/app/inventory-context"
 
 interface POItem {
   id: string
@@ -60,11 +61,14 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber, onGoodsRecei
       purchaseOrderMaterials.filter(item => item.purchaseOrderId === poNumber).map(item => ({
         id: item.purchaseItemId,
         material: materialMapper[item.materialId]?.name || "",
-        quantity: item.quantity,
+        quantity: item.quantity - Number(item?.receivedQuantity || '0'),
+        initialQuantity: item.quantity,
         unit: item.unit,
         supplier: materialMapper[item.materialId]?.supplierId || "",
-        receivedQuantity: item?.receivedQuantity || 0,
+        receivedQuantity: 0,
+        initialReceived: Number(item?.receivedQuantity || '0'),
         selected: false,
+        materialId: item.materialId
       }))
     )
   }, [purchaseOrderMaterials])
@@ -82,6 +86,9 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber, onGoodsRecei
       },
     ],
   })
+
+  const { updateInventory, inventory = [] } = useInventory()
+  const { suppliers } = useProcurement();
 
   useEffect(() => {
     const order = purchaseOrders.find(item => item.purchaseId === poNumber);
@@ -113,7 +120,7 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber, onGoodsRecei
 
   const handleReceivedQuantityChange = (itemId: string, value: string) => {
     setPoItems((prevItems) =>
-      prevItems.map((item) => (item.id === itemId && item.selected ? { ...item, receivedQuantity: value } : item)),
+      prevItems.map((item) => (item.id === itemId && item.selected ? { ...item, receivedQuantity: value >= item.quantity ? item.quantity : value } : item)),
     )
   }
 
@@ -262,17 +269,46 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber, onGoodsRecei
       return ""
     }
   }, [receivedQuantity, totalQuantity])
-  const confirmCreateGrn = () => {
-    if (!editPurchaseOrder) return
 
-    editPurchaseOrder({ grnCreated: true, purchaseId: poNumber, notes: formData.notes, status: getStatus() },
-      poItems.filter(item => item.selected).map(item => ({ purchaseItemId: item.id, receivedQuantity: item.receivedQuantity } as Partial<PurchaseOrderMaterial>))
+  const getMaterial = (id: string) => {
+    return materials.find(item => item.materialId === id)
+  }
+
+  const getRawMaterial = (id?: string) => {
+    return inventory?.find(item => item.inventoryId === id)
+  }
+
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const confirmCreateGrn = () => {
+    if (!editPurchaseOrder || !updateInventory) return
+
+    const selectedItems = poItems.filter(item => item.selected)
+
+    const inventoryBatch = selectedItems.map(item => {
+      const selectedMaterial = getMaterial(item.materialId)
+      const rawMaterial = getRawMaterial(selectedMaterial?.inventoryId)
+      return updateInventory({
+        id: rawMaterial?.id,
+        quantity: (rawMaterial?.quantity || 0) + parseInt(item.receivedQuantity)
+      } as Partial<Inventory>)
+    })
+
+    setIsSubmitting(true)
+    Promise.allSettled(
+      [...inventoryBatch,
+      editPurchaseOrder({ grnCreated: true, purchaseId: poNumber, notes: formData.notes, status: getStatus() },
+        poItems.filter(item => item.selected).map(item => ({ purchaseItemId: item.id, receivedQuantity: item.initialReceived + parseInt(item.receivedQuantity), quantity: item.initialQuantity } as Partial<PurchaseOrderMaterial>))
+      )
+      ]
     ).then(() => {
       // Close the confirmation dialog
       setConfirmGrnDialog(false)
 
       // Close the main dialog
       onOpenChange(false)
+    }).finally(() => {
+      setIsSubmitting(false)
     })
   }
 
@@ -563,8 +599,8 @@ export function GoodsReceivedDialog({ open, onOpenChange, poNumber, onGoodsRecei
           <Button
             type="submit"
             form="grn-form"
-            disabled={noItemsSelected}
-            style={{ backgroundColor: "#1b84ff", color: "#ffffff" }}
+            disabled={noItemsSelected || isSubmitting}
+            style={{ backgroundColor: "#1b84ff", color: "#ffffff", opacity: isSubmitting ? 0.1 : 1 }}
             className="hover:bg-blue-600"
           >
             Create GRN

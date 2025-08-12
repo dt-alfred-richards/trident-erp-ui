@@ -129,7 +129,7 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
         filtered = orders.filter((order) =>
           order.products.some(
             (product) =>
-              product.sku.toLowerCase().includes(searchTerm.toLowerCase()) && getRemainingQuantity(product) > 0,
+              product.name.toLowerCase().includes(searchTerm.toLowerCase()) && getRemainingQuantity(product) > 0,
           ),
         )
       } else if (searchType === "order") {
@@ -143,7 +143,6 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
     if (priorityFilter !== "all") {
       filtered = filtered.filter((order) => order.priority === priorityFilter)
     }
-
     setFilteredOrders(filtered)
   }, [searchTerm, searchType, orders, priorityFilter])
 
@@ -183,9 +182,12 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
     }))
   }
 
+  const [isSubmitting, setIsSubmitting] = useState(false)
   // Handle allocation submission
   const handleSubmitAllocation = () => {
     if (!selectedOrder || !updateSaleAllocation || !inventoryRefetch) return
+
+    setIsSubmitting(true)
     Promise.allSettled(Object.entries(allocations).map(([key, value]) => {
       if (value === 0) return null;
       return updateSaleAllocation({ allocated: parseInt(value + '') + parseInt(getCurrentAllocation(key) + '') }, key, selectedOrder)
@@ -193,6 +195,8 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
       onOpenChange(false)
       refetchContext();
       inventoryRefetch()
+    }).finally(() => {
+      setIsSubmitting(false)
     })
   }
   // Get priority badge
@@ -244,7 +248,7 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
   const getFilteredProducts = (products: OrderProduct[]) => {
     if (searchType === "sku" && searchTerm) {
       return products.filter(
-        (product) => product.sku.toLowerCase().includes(searchTerm.toLowerCase()) && getRemainingQuantity(product) > 0,
+        (product) => product.name.toLowerCase().includes(searchTerm.toLowerCase()) && getRemainingQuantity(product) > 0,
       )
     }
     return products.filter((product) => getRemainingQuantity(product) > 0)
@@ -355,7 +359,7 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
                       filteredOrders
                         .map((order) => {
                           // For SKU search, only show orders with matching products that have remaining quantity
-                          const filteredProducts = getFilteredProducts(order.products)
+                          const filteredProducts = order.products
                           if (searchType === "sku" && filteredProducts.length === 0) return null
 
                           return (
@@ -386,7 +390,7 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
                                     <div className="flex flex-wrap gap-2">
                                       {filteredProducts.map((product) => (
                                         <Badge key={product.id} variant="outline" className="flex items-center gap-1">
-                                          {product.sku}
+                                          {product.name}
                                           <span className="text-xs">({getRemainingQuantity(product)} needed)</span>
                                         </Badge>
                                       ))}
@@ -573,6 +577,7 @@ export function AllocationDialog({ open, onOpenChange, onAllocate, initialSku = 
                   onClick={handleSubmitAllocation}
                   disabled={!getFilteredProducts(selectedOrder.products).every(product => getAllocationProgress(product) <= 100) || Object.values(allocations).every((qty) => qty === 0)}
                   className="bg-[#43ced7] text-white hover:bg-[#36b0b8]"
+                  style={{ opacity: isSubmitting ? 0.1 : 1 }}
                 >
                   Allocate Stock
                 </Button>

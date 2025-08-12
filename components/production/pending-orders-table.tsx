@@ -28,11 +28,10 @@ interface PendingOrdersTableProps {
 
 export function PendingOrdersTable({ filterSku }: PendingOrdersTableProps) {
   const [searchQuery, setSearchQuery] = useState("")
-  const { clientProposedProductMapper, clientMapper = {} } = useOrders()
+  const { clientProposedProductMapper, clientMapper = {}, productSkuMapper } = useOrders()
   const [sortField, setSortField] = useState<keyof PendingOrder>("deliveryDate")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const { productionOrders = [] } = useProduction()
-
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 5
@@ -49,7 +48,7 @@ export function PendingOrdersTable({ filterSku }: PendingOrdersTableProps) {
   const samplePendingOrders = useMemo(() => {
     return productionOrders.map(item => {
       const clientId = productClientMapper[item.productId]?.clientId || "",
-        customer = clientMapper[item.modifiedBy || item.createdBy || '']?.name || ""
+        customer = clientMapper[clientId]?.name || "-"
       return ({
         id: item.productionOrderId,
         sku: item.sku,
@@ -195,7 +194,7 @@ export function PendingOrdersTable({ filterSku }: PendingOrdersTableProps) {
             <TableRow>
               <TableHead className="cursor-pointer" onClick={() => handleSort("sku")}>
                 <div className="flex items-center">
-                  SKU
+                  Product
                   {sortField === "sku" && <ArrowUpDown className="ml-2 h-4 w-4" />}
                 </div>
               </TableHead>

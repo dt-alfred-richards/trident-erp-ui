@@ -89,8 +89,8 @@ export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProduc
       return acc;
     }, {})
   }, [clientProposedProductMapper])
-
   const createBom = useCallback((bomItem: BomAndComponent, bomId: string) => {
+
     return bomItem.components.flatMap(item => ({
       available: materialMapper[item.materialId]?.available,
       cost: item.cost,
@@ -215,7 +215,7 @@ export function CreateProductionDialog({ open, onOpenChange, sku }: CreateProduc
         deadline: date,
         assignedTo,
         productId: selectedSku,
-        sku: productSkuMapper[selectedSku],
+        sku: productNameMapper[selectedSku],
         inProduction: parseInt(quantity),
         quantity: parseInt(quantity)
       })

@@ -31,7 +31,8 @@ export type Material = {
     type: string,
     price: number,
     unit: string,
-    supplierId: string
+    supplierId: string,
+    inventoryId: string
 }
 
 export type PurchaseOrder = {

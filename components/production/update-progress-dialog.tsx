@@ -276,12 +276,12 @@ export function UpdateProgressDialog({
     if (!updateProductionOrder || !refetch || !updateClientProduct) return;
 
     const productionOrder = productionOrders?.find(item => item.productionOrderId === selectedOrderId)
-    const product = Object.values(clientProposedProductMapper).flat().find(item => item.sku === selectedOrder?.sku)
+    const product = Object.values(clientProposedProductMapper).flat().find(item => item.name === selectedOrder?.sku)
 
     if (!product || !productionOrder) return;
     updateClientProduct({
       productId: product.productId,
-      availableQuantity: `${parseInt(product.availableQuantity) + parseInt(newCompletedUnits)}`
+      availableQuantity: `${(isNaN(Number(product.availableQuantity)) ? 0 : Number(product.availableQuantity)) + parseInt(newCompletedUnits)}`
     }).then(() => {
       updateProductionOrder(selectedOrderId,
         {

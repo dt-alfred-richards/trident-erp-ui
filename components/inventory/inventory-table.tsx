@@ -64,7 +64,8 @@ export function InventoryTable({ onAllocate, inventoryData: propInventoryData }:
       const pOrders = productionOrders?.filter(i => i.sku === item.sku)
       const inProduction = getCummulativeSum({ refObject: pOrders || [], key: "inProduction" })
       return {
-        sku: productSkuMapper[item?.productId || ""] || "",
+        sku: `${item?.name || ""}`,
+        clientId: item.clientId,
         available: parseInt(item.availableQuantity) || 0,
         reserved: products[item.sku] || 0,
         inProduction: inProduction,
@@ -152,7 +153,7 @@ export function InventoryTable({ onAllocate, inventoryData: propInventoryData }:
             <TableRow>
               <TableHead className="cursor-pointer" onClick={() => handleSort("sku")}>
                 <div className="flex items-center">
-                  SKU
+                  Product
                   {sortColumn === "sku" && (
                     <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === "desc" ? "transform rotate-180" : ""}`} />
                   )}
@@ -195,12 +196,20 @@ export function InventoryTable({ onAllocate, inventoryData: propInventoryData }:
           </TableHeader>
           <TableBody>
             {paginatedData.length > 0 ? (
-              paginatedData.map((item,index) => {
+              paginatedData.map((item, index) => {
                 const total = parseInt(item.available) + parseInt(item.reserved) + parseInt(item.inProduction)
 
                 return (
                   <TableRow key={`${item.sku}-${index}`}>
-                    <TableCell className="font-medium">{item.sku}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex flex-col">
+                        <span className="font-medium">{item.sku}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {item.clientId}
+                        </span>
+                      </div>
+                      {/* {item.sku} */}
+                    </TableCell>
                     <TableCell className="text-right text-blue-600 font-medium">
                       {item.available.toLocaleString()}
                     </TableCell>

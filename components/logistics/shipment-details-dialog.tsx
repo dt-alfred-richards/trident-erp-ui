@@ -31,8 +31,6 @@ export function ShipmentDetailsDialog({ open, onOpenChange, order }: ShipmentDet
 
   if (!order) return null
 
-  console.log({order})
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
